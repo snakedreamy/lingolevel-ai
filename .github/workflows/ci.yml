@@ -1,0 +1,24 @@
+name: ci
+
+# ----------------------------------------------------------------------
+# Quick CI: type-check on every push / PR.
+# Cheap (~1-2 min) — runs in parallel with the docker-image workflow.
+# ----------------------------------------------------------------------
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
