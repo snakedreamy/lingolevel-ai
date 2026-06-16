@@ -120,8 +120,8 @@ export const BROWSER_PREFS_KEY = 'lingolevel_prefs'
 
 export const DEFAULT_BROWSER_PREFS: Readonly<BrowserPrefs> = {
   provider: 'openai',
-  chatModel: 'deepseek-v4-flash',
-  analyzeModel: 'deepseek-v4-flash',
+  chatModel: 'gpt-4o-mini',
+  analyzeModel: 'gpt-4o-mini',
   baseUrl: '',
   level: 'junior',
   scenarioId: 'free_chat',

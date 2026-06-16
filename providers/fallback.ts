@@ -33,11 +33,11 @@ const FALLBACKS_BY_SCENARIO: Record<string, string[]> = {
 export function fallbackChatReply(scenarioId: string, assistantMessage?: string): string {
   const id = scenarioId || 'free_chat'
   const list = FALLBACKS_BY_SCENARIO[id] ?? FALLBACKS_BY_SCENARIO.free_chat
-  const idx = Math.floor(Math.random() * list.length)
   if (list.length === 0) {
     console.warn(`[fallback] no fallback entries for scenario "${id}"`)
     return ''
   }
+  const idx = Math.floor(Math.random() * list.length)
   return list[idx]
 }
 

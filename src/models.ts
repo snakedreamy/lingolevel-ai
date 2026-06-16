@@ -1,29 +1,44 @@
 // src/models.ts
-// 写死的模型清单(中转站仅支持 deepseek-v4-flash,故只放这一个;未来扩展在此追加)
+// Available model options for each provider.
+// Add or remove entries based on what your upstream proxy / API key supports.
 
 import type { ProviderId } from './types'
 
 export interface ModelOption {
-  id: string                 // 实际发给上游的 model 字段
-  label: string              // UI 显示名
+  id: string                 // actual model identifier sent to the upstream API
+  label: string              // display name shown in the UI
   provider: ProviderId
   description?: string
 }
 
 export const AVAILABLE_MODELS: ModelOption[] = [
+  // ---- OpenAI-compatible (provider: openai) ----
   {
-    id: 'deepseek-v4-flash',
-    label: 'DeepSeek v4 Flash (中转推荐)',
+    id: 'gpt-4o-mini',
+    label: 'GPT-4o mini',
     provider: 'openai',
-    description: '当前中转唯一支持的模型,速度快、成本低'
+    description: 'OpenAI 官方轻量模型,速度快、成本低'
   },
   {
-    id: 'deepseek-v4-flash',
-    label: 'DeepSeek v4 Flash (Anthropic 协议)',
+    id: 'gpt-4o',
+    label: 'GPT-4o',
+    provider: 'openai',
+    description: 'OpenAI 旗舰模型,综合能力强'
+  },
+  // ---- Anthropic (provider: anthropic) ----
+  {
+    id: 'claude-sonnet-4-6',
+    label: 'Claude Sonnet 4.6',
     provider: 'anthropic',
-    description: '同一模型走 Anthropic 协议,用于对比测试'
+    description: 'Anthropic 主力模型,性能与速度均衡'
+  },
+  {
+    id: 'claude-haiku-4-5-20251001',
+    label: 'Claude Haiku 4.5',
+    provider: 'anthropic',
+    description: 'Anthropic 轻量模型,快速响应'
   }
 ]
 
-export const DEFAULT_CHAT_MODEL = 'deepseek-v4-flash'
-export const DEFAULT_ANALYZE_MODEL = 'deepseek-v4-flash'
+export const DEFAULT_CHAT_MODEL = 'gpt-4o-mini'
+export const DEFAULT_ANALYZE_MODEL = 'gpt-4o-mini'

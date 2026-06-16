@@ -285,7 +285,7 @@ export default function App() {
       const errorMsg: Message = {
         id: "error-" + Date.now(),
         role: "assistant",
-        content: `Error details: ${err.message || 'Server timeout'}. Please check that PROVIDER and the matching API key are set in the server's .env.local.`,
+        content: `抱歉，AI 服务暂时无响应。请检查服务器的 .env.local 中 PROVIDER 和对应的 API 密钥是否正确配置，并确认网络连接正常。`,
         timestamp: Date.now()
       };
       setMessages((prev) => [...prev, errorMsg]);
