@@ -2,6 +2,8 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { createServer as createViteServer } from "vite";
 import { loadProviderFromEnv, loadServerConfigFromEnv, type Provider } from "./providers";
 import { errorMessage } from "./providers/util";
@@ -12,6 +14,22 @@ import { errorMessage } from "./providers/util";
 dotenv.config({ path: [".env", ".env.local"] });
 
 const app = express();
+
+// Security headers
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'same-origin' },
+  contentSecurityPolicy: false // Vite dev injects inline scripts; CSP can be tightened for production
+}));
+
+// Rate limiting for LLM API endpoints to prevent API key exhaustion
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute window
+  max: 30,             // max 30 requests per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "TOO_MANY_REQUESTS", message: "请求过于频繁，请稍后再试。" }
+});
+
 app.use(express.json({ limit: "1mb" }));
 
 // Server-config echo (no Key leakage — verified by __manual_test.ts).
@@ -129,9 +147,9 @@ function logRequest(
 }
 
 // ----------------------------------------------------------------------
-// /api/chat
+// /api/chat  (rate-limited)
 // ----------------------------------------------------------------------
-app.post("/api/chat", async (req, res) => {
+app.post("/api/chat", apiLimiter, async (req, res) => {
   const start = Date.now()
   const { messages, level, scenarioInfo } = req.body ?? {}
   if (!messages || !Array.isArray(messages)) {
@@ -173,9 +191,9 @@ app.post("/api/chat", async (req, res) => {
 })
 
 // ----------------------------------------------------------------------
-// /api/analyze
+// /api/analyze  (rate-limited)
 // ----------------------------------------------------------------------
-app.post("/api/analyze", async (req, res) => {
+app.post("/api/analyze", apiLimiter, async (req, res) => {
   const start = Date.now()
   const { userMessage, assistantMessage, level } = req.body ?? {}
   if (!userMessage && !assistantMessage) {
