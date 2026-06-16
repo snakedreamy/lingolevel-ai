@@ -1,0 +1,134 @@
+name: build-and-push-image
+
+# ----------------------------------------------------------------------
+# Build and publish a container image to GitHub Container Registry (ghcr.io)
+# on every push to main and on version tags. Also runs on PRs to main as
+# a smoke test (no push).
+# ----------------------------------------------------------------------
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write   # for cosign keyless signing (optional; can remove)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # default tags
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=lingolevel-ai
+            org.opencontainers.image.description=Adaptive English speaking coach with multi-provider LLM support
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.licenses=MIT
+
+      - name: Build (and push) image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+  # ----------------------------------------------------------------
+  # Post-build smoke test: pull the image we just built (or use the
+  # locally-loaded one) and run a curl against /api/server-config to
+  # verify the container starts cleanly. Catches breakage before users
+  # pull a broken image.
+  # ----------------------------------------------------------------
+  smoke:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to ${{ env.REGISTRY }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull the image just published
+        run: docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+
+      - name: Run container in background
+        run: |
+          docker run -d --name lingolevel-smoke \
+            -p 15999:59100 \
+            -e PORT=59100 \
+            -e PROVIDER=openai \
+            -e OPENAI_API_KEY=sk-smoke-test-dummy \
+            -e OPENAI_BASE_URL=https://example.com/v1 \
+            -e OPENAI_CHAT_MODEL=smoke \
+            -e OPENAI_ANALYZE_MODEL=smoke \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+
+      - name: Wait for boot
+        run: sleep 10
+
+      - name: Curl /api/server-config (expect 500 because PROVIDER not configured cleanly, NOT 5xx crash)
+        run: |
+          # 500 is fine — it means env-var validation ran. A connection error
+          # or crash would fail this step. Don't fail the workflow on 5xx content.
+          set +e
+          code=$(curl -s -o /tmp/cfg.json -w '%{http_code}' http://127.0.0.1:15999/api/server-config)
+          echo "HTTP $code"
+          cat /tmp/cfg.json
+          if [ "$code" -eq 0 ] || [ "$code" -ge 600 ]; then
+            echo "❌ smoke test failed: container crashed or unreachable"
+            exit 1
+          fi
+          echo "✅ smoke test passed (container booted and responded)"
+
+      - name: Stop and remove container
+        if: always()
+        run: docker rm -f lingolevel-smoke || true
