@@ -9,7 +9,7 @@ import ChatWindow from "./components/ChatWindow";
 import AnalysisSidebar from "./components/AnalysisSidebar";
 import WordBook from "./components/WordBook";
 import {
-  BookMarked, Sparkles, Github, HelpCircle, Volume2,
+  BookMarked, Sparkles, HelpCircle, Volume2,
   GraduationCap, Compass, MessageCircle, Menu, X, BookOpen,
   FolderSync, Heart, Settings, Moon, Sun
 } from "lucide-react";
