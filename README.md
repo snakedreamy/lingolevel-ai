@@ -2,8 +2,6 @@
 
 An interactive AI English coach designed for Chinese learners with adaptive difficulty levels, real-time grammar correction, translation, voice-broadcast, and interactive vocabulary notebook.
 
-Originally exported from Google AI Studio: https://ai.studio/apps/b5db8b95-4cc1-43e3-b066-147f05929e48
-
 ## Architecture
 
 - **Provider abstraction layer** (`providers/`): a small typed interface (`Provider` in `providers/types.ts`) implemented by:
