@@ -11,12 +11,12 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
+    "@google/genai": "^2.9.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^6.0.2",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "express-rate-limit": "^7.5.1",
+    "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
     "lucide-react": "^1.20.0",
     "motion": "^12.23.24",
@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.0.0",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.28.1",
     "tailwindcss": "^4.1.14",
