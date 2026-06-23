@@ -2,8 +2,6 @@
 
 An interactive AI English coach designed for Chinese learners with adaptive difficulty levels, real-time grammar correction, translation, voice-broadcast, and interactive vocabulary notebook.
 
-
-
 ## Architecture
 
 - **Provider abstraction layer** (`providers/`): a small typed interface (`Provider` in `providers/types.ts`) implemented by:
