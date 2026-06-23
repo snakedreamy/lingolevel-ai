@@ -56,6 +56,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=sha-${{ github.sha }}
           labels: |
             org.opencontainers.image.title=lingolevel-ai
             org.opencontainers.image.description=Adaptive English speaking coach with multi-provider LLM support
