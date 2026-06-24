@@ -7,7 +7,6 @@ An interactive AI English coach designed for Chinese learners with adaptive diff
 - **Provider abstraction layer** (`providers/`): a small typed interface (`Provider` in `providers/types.ts`) implemented by:
   - `providers/openai-compatible.ts` — any OpenAI-format chat completions endpoint (OpenAI, Groq, DeepSeek, OpenRouter, 硅基流动, self-hosted vLLM/Ollama, etc.)
   - `providers/anthropic.ts` — Anthropic Messages API
-  - `providers/_legacy_gemini.ts` — kept for reference, not selectable via `PROVIDER`
   - `providers/retry.ts` — exponential backoff wrapper for transient errors (429/5xx/timeouts)
   - `providers/fallback.ts` — canned replies returned by adapters when all retries are exhausted
   - `providers/util.ts` — shared helpers (e.g. `errorMessage`)
@@ -138,8 +137,7 @@ lingolevel-ai/
 │   ├── retry.ts                # exponential backoff for transient errors
 │   ├── fallback.ts             # canned replies used by adapters on failure
 │   ├── util.ts                 # shared helpers (errorMessage, etc.)
-│   ├── index.ts                # factory: build provider from process.env
-│   └── _legacy_gemini.ts       # legacy Gemini code, not used at runtime
+│   └── index.ts                # factory: build provider from process.env
 ├── src/                        # React + Vite frontend
 │   ├── App.tsx                 # main app shell, loads/saves lingolevel_prefs
 │   ├── components/             # ChatWindow, AnalysisSidebar, SettingsModal, WordBook, …
