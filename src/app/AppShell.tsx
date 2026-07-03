@@ -162,6 +162,8 @@ export default function AppShell({
           <button
             onClick={() => setIsSettingsOpen(true)}
             className="flex items-center gap-1.5 rounded-xl border border-zinc-200 px-2.5 py-2 text-xs font-bold text-zinc-700 shadow-xs transition hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900 sm:px-3 sm:py-1.5 cursor-pointer"
+            aria-label="打开偏好设置"
+            title="偏好设置"
           >
             <Settings className="h-4 w-4" />
             <span className="hidden sm:inline">偏好设置</span>
@@ -170,6 +172,8 @@ export default function AppShell({
           <button
             onClick={() => setIsWordBookOpen(true)}
             className="relative flex items-center gap-1.5 rounded-xl bg-indigo-50 px-2.5 py-2 text-xs font-bold text-indigo-600 shadow-xs transition hover:bg-indigo-100 dark:bg-indigo-950 dark:text-indigo-400 dark:hover:bg-indigo-900/60 sm:px-3 sm:py-1.5 cursor-pointer"
+            aria-label={`打开我的生词本${savedWords.length > 0 ? `，${savedWords.length} 个词` : ""}`}
+            title="我的生词本"
           >
             <BookMarked className="h-4 w-4" />
             <span className="hidden sm:inline">我的生词本</span>
@@ -239,17 +243,19 @@ export default function AppShell({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <AnalysisSidebar
-              analysis={analysis}
-              isLoading={isAnalysisLoading}
-              onAddWord={addWord}
-              savedWords={savedWords}
-              onSelectSuggestion={(text) => {
-                handleSelectSuggestion(text)
-                setShowMobileSidebar(false)
-              }}
-              userMessageEmpty={inputText.trim() === ""}
-            />
+            <div className="min-h-0 flex-1">
+              <AnalysisSidebar
+                analysis={analysis}
+                isLoading={isAnalysisLoading}
+                onAddWord={addWord}
+                savedWords={savedWords}
+                onSelectSuggestion={(text) => {
+                  handleSelectSuggestion(text)
+                  setShowMobileSidebar(false)
+                }}
+                userMessageEmpty={inputText.trim() === ""}
+              />
+            </div>
           </div>
         </div>
       )}
