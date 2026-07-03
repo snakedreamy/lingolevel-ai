@@ -35,8 +35,11 @@ export async function createApp(args: {
   }
 
   const distPath = path.join(process.cwd(), "dist")
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ error: "NOT_FOUND" })
+  })
   app.use(express.static(distPath))
-  app.use((_req, res) => {
+  app.get(/.*/, (_req, res) => {
     res.sendFile(path.join(distPath, "index.html"))
   })
   return app
