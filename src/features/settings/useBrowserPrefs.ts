@@ -4,6 +4,22 @@ import { BROWSER_PREFS_KEY, DEFAULT_BROWSER_PREFS } from "../../types"
 import { fetchServerConfig, type ServerConfig } from "../../lib/api"
 import { loadStoredJson, saveStoredJson } from "../../lib/storage"
 
+const MISMATCH_FIELDS = ["provider", "chatModel", "analyzeModel", "baseUrl"] as const
+
+function getConfigMismatchSignature(
+  prefs: BrowserPrefs,
+  serverConfig: ServerConfig | null,
+): string | null {
+  if (!serverConfig) return null
+
+  const hasMismatch = MISMATCH_FIELDS.some((field) => prefs[field] !== serverConfig[field])
+  if (!hasMismatch) return null
+
+  return JSON.stringify(
+    MISMATCH_FIELDS.map((field) => [field, prefs[field], serverConfig[field]]),
+  )
+}
+
 function getInitialPrefs(): BrowserPrefs {
   return {
     ...DEFAULT_BROWSER_PREFS,
@@ -14,7 +30,7 @@ function getInitialPrefs(): BrowserPrefs {
 export function useBrowserPrefs() {
   const [prefs, setPrefs] = useState<BrowserPrefs>(getInitialPrefs)
   const [serverConfig, setServerConfig] = useState<ServerConfig | null>(null)
-  const [dismissedMismatch, setDismissedMismatch] = useState(false)
+  const [dismissedMismatchSignature, setDismissedMismatchSignature] = useState<string | null>(null)
 
   useEffect(() => {
     saveStoredJson(BROWSER_PREFS_KEY, prefs)
@@ -36,7 +52,7 @@ export function useBrowserPrefs() {
       .then((cfg) => {
         if (!isActive) return
         setServerConfig(cfg)
-        setPrefs((prev) => ({ ...prev, baseUrl: cfg.baseUrl }))
+        setPrefs((prev) => (prev.baseUrl === cfg.baseUrl ? prev : { ...prev, baseUrl: cfg.baseUrl }))
       })
       .catch(() => {
         if (!isActive) return
@@ -47,21 +63,18 @@ export function useBrowserPrefs() {
     }
   }, [])
 
-  const configMismatch = useMemo(() => {
-    if (!serverConfig || dismissedMismatch) return false
-    return (
-      prefs.provider !== serverConfig.provider ||
-      prefs.chatModel !== serverConfig.chatModel ||
-      prefs.analyzeModel !== serverConfig.analyzeModel ||
-      prefs.baseUrl !== serverConfig.baseUrl
-    )
-  }, [dismissedMismatch, prefs, serverConfig])
+  const mismatchSignature = useMemo(
+    () => getConfigMismatchSignature(prefs, serverConfig),
+    [prefs, serverConfig],
+  )
+
+  const configMismatch = mismatchSignature !== null && mismatchSignature !== dismissedMismatchSignature
 
   return {
     prefs,
     setPrefs,
     serverConfig,
     configMismatch,
-    dismissMismatch: () => setDismissedMismatch(true),
+    dismissMismatch: () => setDismissedMismatchSignature(mismatchSignature),
   }
 }
