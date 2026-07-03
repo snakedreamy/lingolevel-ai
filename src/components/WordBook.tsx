@@ -72,6 +72,11 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
 
   if (!isOpen) return null;
 
+  const safeFlashCardIndex = wordList.length > 0
+    ? Math.min(flashCardIndex, wordList.length - 1)
+    : 0;
+  const activeFlashCard = wordList[safeFlashCardIndex];
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-0 sm:items-center sm:p-4 animate-fade-in">
       <div className="w-full max-w-4xl bg-white dark:bg-zinc-950 rounded-t-3xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col h-[92dvh] sm:h-[85vh]">
@@ -90,9 +95,11 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
               </p>
             </div>
           </div>
-          <button 
+          <button
+            type="button"
             onClick={onClose}
             className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-600 transition"
+            aria-label="关闭生词本"
           >
             <X className="h-5 w-5" />
           </button>
@@ -217,7 +224,7 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
                 {/* Micro instructions */}
                 <div className="absolute top-3 left-4 flex items-center gap-1.5 text-[10px] text-zinc-400">
                   <Layers className="h-3 w-3" />
-                  <span>Card {flashCardIndex + 1} of {wordList.length}</span>
+                  <span>Card {safeFlashCardIndex + 1} of {wordList.length}</span>
                 </div>
                 
                 <div className="absolute top-3 right-4 flex items-center gap-1 text-[10px] text-indigo-500 font-medium">
@@ -229,16 +236,16 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
                 {!isFlipped ? (
                   <div className="text-center animate-fade-in flex flex-col items-center">
                     <h3 className="text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight flex items-center gap-2">
-                      {wordList[flashCardIndex]?.word}
+                      {activeFlashCard?.word}
                       <button 
-                        onClick={(e) => handleSpeakWord(wordList[flashCardIndex]?.word, e)}
+                        onClick={(e) => handleSpeakWord(activeFlashCard?.word, e)}
                         className="p-1 px-1.5 bg-zinc-100 dark:bg-zinc-800 rounded hover:bg-zinc-200 text-indigo-600"
                       >
                         <Volume2 className="h-4 w-4" />
                       </button>
                     </h3>
                     <p className="text-sm font-mono text-zinc-400 mt-2">
-                      {wordList[flashCardIndex]?.phonetic || "/-/"}
+                      {activeFlashCard?.phonetic || "/-/"}
                     </p>
                     <div className="mt-8 px-4 py-1.5 rounded-full bg-zinc-50 dark:bg-zinc-800 text-zinc-500 text-xs flex items-center gap-1">
                       <HelpCircle className="h-3.5 w-3.5 text-indigo-500" />
@@ -252,16 +259,16 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
                       中文释义
                     </span>
                     <h3 className="text-2xl font-bold text-zinc-800 dark:text-zinc-300 mt-3">
-                      {wordList[flashCardIndex]?.translation}
+                      {activeFlashCard?.translation}
                     </h3>
 
                     <div className="mt-5 text-left bg-stone-50 dark:bg-zinc-950/50 p-3 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 max-w-md mx-auto">
                       <p className="text-xs font-semibold text-zinc-400">例句 (Example):</p>
                       <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mt-1 italic leading-relaxed">
-                        “ {wordList[flashCardIndex]?.exampleEn} ”
+                        “ {activeFlashCard?.exampleEn} ”
                       </p>
                       <p className="text-xs text-zinc-500 mt-1">
-                        {wordList[flashCardIndex]?.exampleZh}
+                        {activeFlashCard?.exampleZh}
                       </p>
                     </div>
                   </div>
@@ -277,7 +284,7 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
                   上一个 (Previous)
                 </button>
                 <button
-                  onClick={() => onRemoveWord(wordList[flashCardIndex]?.word)}
+                  onClick={() => onRemoveWord(activeFlashCard?.word)}
                   className="px-4 py-2 border border-rose-200 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl text-xs flex items-center gap-1 cursor-pointer"
                   title="标记为熟记，斩掉这个词"
                 >

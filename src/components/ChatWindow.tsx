@@ -360,6 +360,7 @@ export default function ChatWindow({
                 : "bg-zinc-50 border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-indigo-400 hover:text-indigo-600"
             }`}
             title={isRecording ? "正在倾听您的发音... 再次点击停止录音" : "开启口语录音 (Practice speaking)"}
+            aria-label={isRecording ? "停止语音录入" : "开始语音录入"}
           >
             {isRecording ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
             
@@ -398,6 +399,7 @@ export default function ChatWindow({
           <button
             type="submit"
             disabled={!inputText.trim() || isLoading}
+            aria-label="发送消息"
             className={`p-3 px-4 rounded-xl flex-shrink-0 flex items-center justify-center transition-all cursor-pointer ${
               !inputText.trim() || isLoading
                 ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed"
