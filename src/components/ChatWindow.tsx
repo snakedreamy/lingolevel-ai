@@ -1,19 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Message, DifficultyLevel, Scenario } from "../types";
-import { 
-  Send, 
-  Volume2, 
-  Mic, 
-  MicOff, 
-  Settings, 
-  RefreshCw, 
-  GraduationCap, 
-  Languages, 
+import { createSpeechRecognition, speakText, type SpeechAccent, type SpeechRecognition } from "../features/chat/speech";
+import {
+  Send,
+  Volume2,
+  Mic,
+  MicOff,
+  RefreshCw,
+  Languages,
   HelpCircle,
   Clock,
-  CheckCircle,
-  Copy,
-  Plus
+  Copy
 } from "lucide-react";
 
 interface ChatWindowProps {
@@ -25,7 +22,7 @@ interface ChatWindowProps {
   onResetChat: () => void;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
   inputText: string;
-  setInputText: (text: string) => void;
+  setInputText: React.Dispatch<React.SetStateAction<string>>;
 }
 
 export default function ChatWindow({
@@ -39,14 +36,14 @@ export default function ChatWindow({
   inputText,
   setInputText
 }: ChatWindowProps) {
-  const [accent, setAccent] = useState<'us' | 'uk'>('us');
+  const [accent, setAccent] = useState<SpeechAccent>('us');
   const [speed, setSpeed] = useState<number>(1.0);
   const [isSpeakingId, setIsSpeakingId] = useState<string | null>(null);
   
   // Speech Recognition state
   const [isRecording, setIsRecording] = useState(false);
   const [recognitionError, setRecognitionError] = useState<string | null>(null);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -57,42 +54,12 @@ export default function ChatWindow({
 
   // Set up Speech Recognition on mount
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const rec = new SpeechRecognition();
-      rec.continuous = false;
-      rec.interimResults = false;
-      rec.lang = "en-US"; // Practice English speaking
-
-      rec.onstart = () => {
-        setIsRecording(true);
-        setRecognitionError(null);
-      };
-
-      rec.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          setInputText(inputText ? inputText + " " + transcript : transcript);
-        }
-      };
-
-      rec.onerror = (e: any) => {
-        console.error("Speech recognition error", e);
-        if (e.error === 'not-allowed') {
-          setRecognitionError("麦克风权限被拒绝，请在浏览器地址栏开启麦克风。");
-        } else {
-          setRecognitionError("未能看清您的声音，请重试或打字输入。");
-        }
-        setIsRecording(false);
-      };
-
-      rec.onend = () => {
-        setIsRecording(false);
-      };
-
-      recognitionRef.current = rec;
-    }
-  }, []);
+    recognitionRef.current = createSpeechRecognition(
+      setInputText,
+      setIsRecording,
+      setRecognitionError,
+    );
+  }, [setInputText]);
 
   // Handle Speech Toggle
   const handleToggleRecord = () => {
@@ -115,37 +82,23 @@ export default function ChatWindow({
   // Speaks any English sentence with custom speed and accent
   const handleSpeakText = (text: string, messageId: string) => {
     try {
-      if (!('speechSynthesis' in window)) {
-        alert("浏览器不支持语音合成TTS功能。");
-        return;
-      }
-
-      window.speechSynthesis.cancel();
-
       if (isSpeakingId === messageId) {
-        // Toggle off if clicking the same speaking bubble
+        window.speechSynthesis.cancel();
         setIsSpeakingId(null);
         return;
       }
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = accent === 'us' ? 'en-US' : 'en-GB';
-      utterance.rate = speed;
-
-      utterance.onstart = () => {
-        setIsSpeakingId(messageId);
-      };
-
-      utterance.onend = () => {
-        setIsSpeakingId(null);
-      };
-
-      utterance.onerror = () => {
-        setIsSpeakingId(null);
-      };
-
-      window.speechSynthesis.speak(utterance);
+      speakText({
+        text,
+        accent,
+        speed,
+        onStart: () => setIsSpeakingId(messageId),
+        onEnd: () => setIsSpeakingId(null),
+      });
     } catch (err) {
+      if (err instanceof Error && err.message === "SPEECH_SYNTHESIS_UNAVAILABLE") {
+        alert("浏览器不支持语音合成TTS功能。");
+      }
       console.error("TTS speech error", err);
       setIsSpeakingId(null);
     }

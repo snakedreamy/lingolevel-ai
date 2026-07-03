@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { WordItem } from "../types";
-import { 
+import { speakText } from "../features/chat/speech";
+import {
   BookMarked, 
   Trash2, 
   Volume2, 
@@ -31,13 +32,13 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
   const handleSpeakWord = (word: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     try {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(word);
-        utterance.lang = "en-US";
-        utterance.rate = 0.9;
-        window.speechSynthesis.speak(utterance);
-      }
+      speakText({
+        text: word,
+        accent: "us",
+        speed: 0.9,
+        onStart: () => undefined,
+        onEnd: () => undefined,
+      });
     } catch (err) {
       console.error(err);
     }

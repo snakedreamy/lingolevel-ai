@@ -1,17 +1,15 @@
 import { AnalysisResult, WordItem } from "../types";
-import { 
+import { speakText } from "../features/chat/speech";
+import {
   Sparkles, 
-  HelpCircle, 
-  Plus, 
-  Check, 
-  Volume2, 
-  MessageSquare, 
-  TrendingUp, 
+  Plus,
+  Check,
+  Volume2,
+  TrendingUp,
   AlertTriangle,
   Lightbulb,
   ArrowRight,
-  ShieldCheck,
-  BookMarked
+  ShieldCheck
 } from "lucide-react";
 
 interface AnalysisSidebarProps {
@@ -39,13 +37,13 @@ export default function AnalysisSidebar({
 
   const handleSpeakText = (text: string) => {
     try {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = "en-US";
-        utterance.rate = 0.95;
-        window.speechSynthesis.speak(utterance);
-      }
+      speakText({
+        text,
+        accent: "us",
+        speed: 0.95,
+        onStart: () => undefined,
+        onEnd: () => undefined,
+      });
     } catch (err) {
       console.error(err);
     }
