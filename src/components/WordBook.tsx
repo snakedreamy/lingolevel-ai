@@ -67,19 +67,19 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="w-full max-w-4xl bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col h-[85vh]">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-0 sm:items-center sm:p-4 animate-fade-in">
+      <div className="w-full max-w-4xl bg-white dark:bg-zinc-950 rounded-t-3xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col h-[92dvh] sm:h-[85vh]">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 bg-stone-50/80 dark:bg-zinc-900/50 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-100 dark:border-zinc-800 bg-stone-50/80 dark:bg-zinc-900/50 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg text-indigo-600 dark:text-indigo-400">
               <BookMarked className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+              <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
                 我的英文生词本 (My Vocabulary Notebook)
               </h2>
-              <p className="text-xs text-zinc-500">
+              <p className="hidden text-xs text-zinc-500 sm:block">
                 收录了您在聊天或语法分析时一键加星的词汇，为您量身制作学习卡。
               </p>
             </div>
@@ -93,7 +93,7 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
         </div>
 
         {/* Tab Selector bar */}
-        <div className="px-6 py-2 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-2 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-2">
             <button
               onClick={() => setActiveTab('list')}
@@ -134,7 +134,7 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
         </div>
 
         {/* Body Area */}
-        <div className="flex-1 overflow-y-auto p-6 bg-stone-50/30 dark:bg-zinc-950/20">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-stone-50/30 dark:bg-zinc-950/20">
           {wordList.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto py-12">
               <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-400 mb-4 border border-dashed border-zinc-300">
@@ -294,7 +294,7 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-stone-50/50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-stone-50/50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800 flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4">
           <span className="text-xs text-zinc-500">
             单词本数据使用 LocalStorage 永久存留在本浏览器中，清理缓存会抹除。
           </span>

@@ -128,8 +128,8 @@ export default function ChatWindow({
     <div className="h-full flex flex-col bg-stone-50/40 dark:bg-zinc-900/30 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm overflow-hidden relative">
       
       {/* Top Bar Controls */}
-      <div className="px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur flex items-center justify-between z-10">
-        <div className="flex items-center gap-3">
+      <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between z-10">
+        <div className="min-w-0 flex items-center gap-3">
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="text-xs bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider scale-90 origin-left">
@@ -143,7 +143,7 @@ export default function ChatWindow({
         </div>
 
         {/* Global Sound/Speak Settings Panel */}
-        <div className="flex items-center gap-4">
+        <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 sm:w-auto sm:gap-4 sm:overflow-visible sm:pb-0">
           {/* Accent toggler */}
           <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg text-[10.5px] font-semibold border border-zinc-200 dark:border-zinc-800">
             <button
@@ -197,7 +197,7 @@ export default function ChatWindow({
       </div>
 
       {/* Messages Feed */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-3 sm:py-4 space-y-3 sm:space-y-4">
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center py-16 text-zinc-400 max-w-sm mx-auto">
             <div className="p-4 bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-full mb-4">
@@ -229,7 +229,7 @@ export default function ChatWindow({
               className={`flex w-full group ${isUser ? "justify-end" : "justify-start"}`}
             >
               <div 
-                className={`max-w-[80%] flex flex-col ${isUser ? "items-end" : "items-start"}`}
+                className={`max-w-[92%] sm:max-w-[80%] flex flex-col ${isUser ? "items-end" : "items-start"}`}
               >
                 {/* Message Bubble Container */}
                 <div 
@@ -314,7 +314,7 @@ export default function ChatWindow({
         {/* Streaming / AI Loading indicators */}
         {isLoading && (
           <div className="flex w-full justify-start animate-fade-in">
-            <div className="max-w-[80%] flex flex-col items-start">
+            <div className="max-w-[92%] sm:max-w-[80%] flex flex-col items-start">
               <div className="rounded-2xl rounded-tl-none px-4 py-3 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-500 text-xs shadow-xs">
                 <div className="flex items-center gap-2">
                   <span className="text-[9px] font-extrabold uppercase px-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded p-0.5">AI Coach</span>
@@ -348,7 +348,7 @@ export default function ChatWindow({
       )}
 
       {/* Bottom Input Drawer */}
-      <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950/80 backdrop-blur z-10">
+      <div className="p-3 sm:p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950/80 backdrop-blur z-10 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4">
         <form onSubmit={handleFormSubmit} className="flex gap-2">
           {/* Audio Speaking Mic Input Button */}
           <button
@@ -408,7 +408,7 @@ export default function ChatWindow({
           </button>
         </form>
 
-        <div className="flex justify-between items-center mt-2.5 text-[10px] text-zinc-400">
+        <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center mt-2.5 text-[10px] text-zinc-400">
           <span>建议：您可以直接点击右侧智能接话泡泡，帮助您高效构思地道英文。</span>
           <span>按 <strong className="font-semibold text-zinc-600">Enter</strong> 发送</span>
         </div>

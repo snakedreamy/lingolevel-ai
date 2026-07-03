@@ -61,9 +61,9 @@ export default function AnalysisSidebar({
   };
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+    <div className="h-full flex flex-col bg-white dark:bg-zinc-950 border-t lg:border-t-0 lg:border-l border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
       {/* Sidebar Header */}
-      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/40 flex items-center gap-2">
+      <div className="p-3 sm:p-4 border-b border-zinc-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/40 flex items-center gap-2">
         <Sparkles className="h-4.5 w-4.5 text-indigo-600 dark:text-indigo-400" />
         <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
           实时翻译与语法纠错 (Feedback)
@@ -71,7 +71,7 @@ export default function AnalysisSidebar({
       </div>
 
       {/* Main Content scroll window */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 sm:space-y-5">
         {isLoading ? (
           /* SKELETON LOADING LOOPS */
           <div className="space-y-4 animate-pulse">
