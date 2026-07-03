@@ -1,117 +1,38 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Message, DifficultyLevel, Scenario, WordItem, AnalysisResult,
-  BrowserPrefs, DEFAULT_BROWSER_PREFS, BROWSER_PREFS_KEY, ProviderId
+  Message, DifficultyLevel, Scenario, AnalysisResult, BrowserPrefs
 } from "./types";
 import { LEVELS, SCENARIOS } from "./data";
 import SettingsModal from "./components/SettingsModal";
 import ChatWindow from "./components/ChatWindow";
 import AnalysisSidebar from "./components/AnalysisSidebar";
 import WordBook from "./components/WordBook";
+import { useBrowserPrefs } from "./features/settings/useBrowserPrefs";
+import { useWordBook } from "./features/wordbook/useWordBook";
 import {
   BookMarked, Sparkles, HelpCircle, Volume2,
   GraduationCap, Compass, MessageCircle, Menu, X, BookOpen,
   FolderSync, Heart, Settings, Moon, Sun
 } from "lucide-react";
 
-function loadBrowserPrefs(): BrowserPrefs {
-  try {
-    const raw = localStorage.getItem(BROWSER_PREFS_KEY)
-    if (!raw) return { ...DEFAULT_BROWSER_PREFS }
-    const parsed = JSON.parse(raw)
-    return { ...DEFAULT_BROWSER_PREFS, ...parsed }
-  } catch {
-    return { ...DEFAULT_BROWSER_PREFS }
-  }
-}
-
-function saveBrowserPrefs(prefs: BrowserPrefs) {
-  try {
-    localStorage.setItem(BROWSER_PREFS_KEY, JSON.stringify(prefs))
-  } catch (err) {
-    console.error('Failed to save browser prefs', err)
-  }
-}
-
-interface ServerConfig {
-  provider: ProviderId
-  chatModel: string
-  analyzeModel: string
-  baseUrl: string
-}
-
 export default function App() {
-  const initialPrefs = loadBrowserPrefs()
-  const [currentLevel, setCurrentLevel] = useState<DifficultyLevel>(initialPrefs.level)
-  const initialScenario = SCENARIOS.find((s) => s.id === initialPrefs.scenarioId) ?? SCENARIOS[0]
+  const { prefs, setPrefs, serverConfig, configMismatch, dismissMismatch } = useBrowserPrefs()
+  const { savedWords, addWord, removeWord, clearAllWords } = useWordBook()
+  const [currentLevel, setCurrentLevel] = useState<DifficultyLevel>(prefs.level)
+  const initialScenario = SCENARIOS.find((s) => s.id === prefs.scenarioId) ?? SCENARIOS[0]
   const [activeScenario, setActiveScenario] = useState<Scenario>(initialScenario)
   const [messages, setMessages] = useState<Message[]>([])
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [isChatLoading, setIsChatLoading] = useState(false)
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false)
   const [inputText, setInputText] = useState("")
-  const [savedWords, setSavedWords] = useState<WordItem[]>([])
   const [isWordBookOpen, setIsWordBookOpen] = useState(false)
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [prefs, setPrefs] = useState<BrowserPrefs>(initialPrefs)
-  const [serverConfig, setServerConfig] = useState<ServerConfig | null>(null)
-  const [configMismatch, setConfigMismatch] = useState(false)
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
-  // Sync theme to document and local storage
-  useEffect(() => {
-    if (prefs.theme === 'dark') {
-      document.documentElement.classList.add('dark')
-      localStorage.theme = 'dark'
-    } else {
-      document.documentElement.classList.remove('dark')
-      localStorage.theme = 'light'
-    }
-  }, [prefs.theme])
-
-  // Persist any prefs change
-  useEffect(() => { saveBrowserPrefs(prefs) }, [prefs])
-
-  // 1. Initial Load of Wordbook from LocalStorage
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("english_coach_wordbook");
-      if (stored) {
-        setSavedWords(JSON.parse(stored));
-      }
-    } catch (err) {
-      console.error("Failed to load wordbook from localStorage", err);
-    }
-  }, []);
-
-  // Fetch /api/server-config once, detect mismatch
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/server-config')
-        if (!res.ok) return
-        const cfg = (await res.json()) as ServerConfig
-        setServerConfig(cfg)
-        // Base URL is server-configured only; mirror the server value into
-        // BrowserPrefs so the mismatch check stays accurate, but never let
-        // the user edit it (the Settings UI no longer exposes a baseUrl input).
-        setPrefs((p) => (p.baseUrl === cfg.baseUrl ? p : { ...p, baseUrl: cfg.baseUrl }))
-        const mismatch =
-          cfg.provider !== prefs.provider ||
-          cfg.chatModel !== prefs.chatModel ||
-          cfg.analyzeModel !== prefs.analyzeModel ||
-          cfg.baseUrl !== prefs.baseUrl
-        setConfigMismatch(mismatch)
-      } catch (err) {
-        console.warn('server-config fetch failed', err)
-      }
-    })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // 2. Set up initial welcome messages based on level and scenario
+  // Set up initial welcome messages based on level and scenario
   useEffect(() => {
     resetConversationOnScenario(activeScenario, currentLevel);
   }, []);
@@ -182,44 +103,15 @@ export default function App() {
       const newScenario = SCENARIOS.find((s) => s.id === next.scenarioId) ?? activeScenario;
       handleScenarioSelect(newScenario);
     }
-    if (serverConfig) {
-      const mismatch =
-        serverConfig.provider !== next.provider ||
-        serverConfig.chatModel !== next.chatModel ||
-        serverConfig.analyzeModel !== next.analyzeModel ||
-        serverConfig.baseUrl !== next.baseUrl;
-      setConfigMismatch(mismatch);
-    }
-  };
-
-  // 3. Save words to LocalStorage
-  const handleAddWordToBook = (word: WordItem) => {
-    const isExist = savedWords.some(item => item.word.toLowerCase() === word.word.toLowerCase());
-    if (isExist) {
-      // Toggle / Remove
-      handleRemoveWord(word.word);
-      return;
-    }
-
-    const updated = [word, ...savedWords];
-    setSavedWords(updated);
-    localStorage.setItem("english_coach_wordbook", JSON.stringify(updated));
-  };
-
-  const handleRemoveWord = (wordStr: string) => {
-    const updated = savedWords.filter(item => item.word.toLowerCase() !== wordStr.toLowerCase());
-    setSavedWords(updated);
-    localStorage.setItem("english_coach_wordbook", JSON.stringify(updated));
   };
 
   const handleClearAllWords = () => {
     if (window.confirm("确定要清空您收集的所有单词和口语短语吗？此操作无法撤销。")) {
-      setSavedWords([]);
-      localStorage.removeItem("english_coach_wordbook");
+      clearAllWords();
     }
   };
 
-  // 4. Send Message Loop
+  // Send Message Loop
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isChatLoading) return;
 
@@ -404,7 +296,7 @@ export default function App() {
             <AnalysisSidebar 
               analysis={analysis}
               isLoading={isAnalysisLoading}
-              onAddWord={handleAddWordToBook}
+              onAddWord={addWord}
               savedWords={savedWords}
               onSelectSuggestion={handleSelectSuggestion}
               userMessageEmpty={inputText.trim() === ""}
@@ -419,7 +311,7 @@ export default function App() {
         isOpen={isWordBookOpen}
         onClose={() => setIsWordBookOpen(false)}
         wordList={savedWords}
-        onRemoveWord={handleRemoveWord}
+        onRemoveWord={removeWord}
         onClearAll={handleClearAllWords}
       />
 
@@ -434,7 +326,7 @@ export default function App() {
         onSavePrefs={handleSavePrefs}
         serverConfig={serverConfig}
         configMismatch={configMismatch}
-        onDismissMismatch={() => setConfigMismatch(false)}
+        onDismissMismatch={dismissMismatch}
       />
     </div>
   );

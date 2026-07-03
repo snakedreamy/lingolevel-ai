@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Settings2, Server, AlertTriangle } from "lucide-react";
 import { DifficultyLevel, Scenario, BrowserPrefs, ProviderId } from "../types";
+import type { ServerConfig } from "../lib/api";
 import LevelSelector from "./LevelSelector";
 import ScenarioCards from "./ScenarioCards";
 import { AVAILABLE_MODELS, DEFAULT_CHAT_MODEL, DEFAULT_ANALYZE_MODEL } from "../models";
@@ -14,12 +15,7 @@ interface SettingsModalProps {
   onScenarioSelect: (scenario: Scenario) => void;
   prefs: BrowserPrefs;
   onSavePrefs: (next: BrowserPrefs) => void;
-  serverConfig: {
-    provider: ProviderId;
-    chatModel: string;
-    analyzeModel: string;
-    baseUrl: string;
-  } | null;
+  serverConfig: ServerConfig | null;
   configMismatch: boolean;
   onDismissMismatch: () => void;
 }
