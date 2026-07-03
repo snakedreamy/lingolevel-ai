@@ -42,6 +42,8 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
   }, [activeScenario, currentLevel])
 
   useEffect(() => {
+    // Intentionally reset only when the scenario changes. Level changes are handled by
+    // the caller with a system notice so existing chat history is preserved.
     void resetConversation()
   }, [activeScenario])
 
@@ -73,6 +75,8 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
       setIsChatLoading(true)
       setIsAnalysisLoading(true)
 
+      let assistantContent: string | null = null
+
       try {
         const chatResult = await sendChat({
           messages: nextMessages
@@ -81,6 +85,8 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
           level: currentLevel,
           scenarioInfo: activeScenario.id === "free_chat" ? null : activeScenario,
         })
+
+        assistantContent = chatResult.content
 
         const assistantMessage: Message = {
           id: createMessageId("assistant"),
@@ -91,14 +97,6 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
         }
 
         setMessages((prev) => [...prev, assistantMessage])
-        setIsChatLoading(false)
-
-        const nextAnalysis = await sendAnalyze({
-          userMessage: text,
-          assistantMessage: chatResult.content,
-          level: currentLevel,
-        })
-        setAnalysis(nextAnalysis)
       } catch (err) {
         console.error(err)
         setMessages((prev) => [
@@ -111,8 +109,27 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
             timestamp: Date.now(),
           },
         ])
+        setIsAnalysisLoading(false)
+        return
       } finally {
         setIsChatLoading(false)
+      }
+
+      if (assistantContent === null) {
+        setIsAnalysisLoading(false)
+        return
+      }
+
+      try {
+        const nextAnalysis = await sendAnalyze({
+          userMessage: text,
+          assistantMessage: assistantContent,
+          level: currentLevel,
+        })
+        setAnalysis(nextAnalysis)
+      } catch (err) {
+        console.error("Failed to analyze chat response", err)
+      } finally {
         setIsAnalysisLoading(false)
       }
     },
