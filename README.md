@@ -36,7 +36,7 @@ The server prints its URL on startup (default `http://localhost:59100`).
 
 Set `PROVIDER` to one of `openai` (any OpenAI-compatible service) or `anthropic` in `.env.local`, then fill the matching section.
 
-> **API keys live only on the server.** They are never sent to or stored in the browser. The in-app Settings panel can echo or change only non-sensitive fields (model names, level, scenario, theme). `Base URL` and `API Key` are server-only — they live in `.env.local` and require a server restart to take effect. `GET /api/server-config` is verified to not contain an `apiKey` field.
+> **API keys live only on the server.** They are never sent to or stored in the browser. The in-app Settings panel shows the active server-side provider/model/base URL from `/api/server-config`, but those connection values are controlled by `.env.local` and require a server restart to change. The browser only persists learning preferences such as level, scenario, and theme. `GET /api/server-config` is verified to not contain an `apiKey` field.
 
 ### A note on third-party "transit" proxies
 
