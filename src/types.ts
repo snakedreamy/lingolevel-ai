@@ -82,11 +82,11 @@ export type ProviderId = 'openai' | 'anthropic'
  * persistence tests as a stable baseline.
  */
 export interface BrowserPrefs {
-  /** Which upstream provider the browser sends chat/analyze calls to. */
+  /** Read-only mirror of the server-selected provider. */
   provider: ProviderId
-  /** Model name to use for the chat / conversation turn (e.g. `gpt-4o-mini`). */
+  /** Read-only mirror of the server chat model loaded from `.env.local`. */
   chatModel: string
-  /** Model name to use for the analysis / grammar-correction pass. */
+  /** Read-only mirror of the server analysis model loaded from `.env.local`. */
   analyzeModel: string
   /**
    * Read-only mirror of the server-side Base URL.
@@ -120,8 +120,8 @@ export const BROWSER_PREFS_KEY = 'lingolevel_prefs'
 
 export const DEFAULT_BROWSER_PREFS: Readonly<BrowserPrefs> = {
   provider: 'openai',
-  chatModel: 'gpt-4o-mini',
-  analyzeModel: 'gpt-4o-mini',
+  chatModel: '',
+  analyzeModel: '',
   baseUrl: '',
   level: 'junior',
   scenarioId: 'free_chat',

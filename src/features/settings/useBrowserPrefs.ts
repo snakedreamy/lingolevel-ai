@@ -78,7 +78,16 @@ export function useBrowserPrefs() {
       .then((cfg) => {
         if (!isActive) return
         setServerConfig(cfg)
-        setPrefs((prev) => (prev.baseUrl === cfg.baseUrl ? prev : { ...prev, baseUrl: cfg.baseUrl }))
+        setPrefs((prev) => {
+          const next = {
+            ...prev,
+            provider: cfg.provider,
+            chatModel: cfg.chatModel,
+            analyzeModel: cfg.analyzeModel,
+            baseUrl: cfg.baseUrl,
+          }
+          return getConfigMismatchSignature(prev, cfg) === null ? prev : next
+        })
       })
       .catch(() => {
         if (!isActive) return
