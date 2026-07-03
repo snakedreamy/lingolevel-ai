@@ -170,10 +170,11 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
                     <div>
                       <h4 className="font-bold text-lg text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
                         {item.word}
-                        <button 
+                        <button
                           onClick={(e) => handleSpeakWord(item.word, e)}
                           className="p-1 text-zinc-400 hover:text-indigo-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition cursor-pointer"
                           title="听发音"
+                          aria-label={`播放 ${item.word} 的发音`}
                         >
                           <Volume2 className="h-3.5 w-3.5" />
                         </button>
@@ -237,9 +238,10 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
                   <div className="text-center animate-fade-in flex flex-col items-center">
                     <h3 className="text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight flex items-center gap-2">
                       {activeFlashCard?.word}
-                      <button 
-                        onClick={(e) => handleSpeakWord(activeFlashCard?.word, e)}
+                      <button
+                        onClick={(e) => handleSpeakWord(activeFlashCard?.word ?? "", e)}
                         className="p-1 px-1.5 bg-zinc-100 dark:bg-zinc-800 rounded hover:bg-zinc-200 text-indigo-600"
+                        aria-label={activeFlashCard ? `播放 ${activeFlashCard.word} 的发音` : "播放当前单词发音"}
                       >
                         <Volume2 className="h-4 w-4" />
                       </button>
