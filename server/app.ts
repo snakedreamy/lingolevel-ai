@@ -23,8 +23,10 @@ export async function createApp(args: {
   }))
   app.use(express.json({ limit: "1mb" }))
   app.use("/api", createServerConfigRouter())
-  app.use("/api", apiLimiter, createChatRouter({ provider: args.provider, activeProvider: args.activeProvider, activeChatModel: args.activeChatModel }))
-  app.use("/api", apiLimiter, createAnalyzeRouter({ provider: args.provider, activeProvider: args.activeProvider, activeAnalyzeModel: args.activeAnalyzeModel }))
+  app.post("/api/chat", apiLimiter)
+  app.post("/api/analyze", apiLimiter)
+  app.use("/api", createChatRouter({ provider: args.provider, activeProvider: args.activeProvider, activeChatModel: args.activeChatModel }))
+  app.use("/api", createAnalyzeRouter({ provider: args.provider, activeProvider: args.activeProvider, activeAnalyzeModel: args.activeAnalyzeModel }))
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" })
