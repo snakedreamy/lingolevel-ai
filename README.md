@@ -11,8 +11,8 @@ An interactive AI English coach designed for Chinese learners with adaptive diff
   - `providers/fallback.ts` — canned replies returned by adapters when all retries are exhausted
   - `providers/util.ts` — shared helpers (e.g. `errorMessage`)
   - `providers/index.ts` — factory: build provider from `process.env`
-- **Server** (`server.ts`): Express on the Vite dev middleware. Exposes `GET /api/server-config` (echoes active provider / model / base URL — **no API key**), `POST /api/chat`, and `POST /api/analyze`. The active provider is selected at boot from the `PROVIDER` env var.
-- **Frontend** (`src/`): React + Vite SPA. **Non-sensitive user preferences** (provider URL, model names, level, scenario, theme) are persisted in `localStorage` under the key `lingolevel_prefs`. **No API keys, tokens, or secrets ever touch the browser** — the server is the only thing that talks to upstream LLMs.
+- **Server** (`server/`, with `server.ts` as a compatibility entry): Express on the Vite dev middleware. Exposes `GET /api/server-config` (echoes active provider / model / base URL — **no API key**), `POST /api/chat`, and `POST /api/analyze`. The active provider and model names are selected at boot from `.env.local` / `process.env`.
+- **Frontend** (`src/`): React + Vite SPA. The browser persists only non-sensitive learning preferences such as level, scenario, theme, and a read-only mirror of the active server config under `lingolevel_prefs`. **No API keys, tokens, or secrets ever touch the browser** — the server is the only thing that talks to upstream LLMs.
 - **Tooling** (`scripts/smoke.sh`, `providers/__manual_test.ts`): a curl-based smoke test and a tsx-runnable manual test, both non-zero-exit on failure.
 
 ## Run Locally
