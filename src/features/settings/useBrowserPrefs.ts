@@ -68,6 +68,12 @@ export function useBrowserPrefs() {
     [prefs, serverConfig],
   )
 
+  useEffect(() => {
+    if (mismatchSignature === null) {
+      setDismissedMismatchSignature(null)
+    }
+  }, [mismatchSignature])
+
   const configMismatch = mismatchSignature !== null && mismatchSignature !== dismissedMismatchSignature
 
   return {
