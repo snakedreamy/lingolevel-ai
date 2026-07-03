@@ -54,8 +54,16 @@ function resolveProviderEnv(): ResolvedProviderEnv {
   // `undefined` and `''` and yields a helpful error naming the offending var.
   if (!apiKey) throw new Error(`${isOpenAI ? 'OPENAI_API_KEY' : 'ANTHROPIC_API_KEY'} is required`)
   if (!baseUrl) throw new Error(`${isOpenAI ? 'OPENAI_BASE_URL' : 'ANTHROPIC_BASE_URL'} is required`)
-  if (!chatModel) throw new Error(`${isOpenAI ? 'OPENAI_CHAT_MODEL' : 'ANTHROPIC_CHAT_MODEL'} is required`)
-  if (!analyzeModel) throw new Error(`${isOpenAI ? 'OPENAI_ANALYZE_MODEL' : 'ANTHROPIC_ANALYZE_MODEL'} is required`)
+  const chatModelVar = isOpenAI ? 'OPENAI_CHAT_MODEL' : 'ANTHROPIC_CHAT_MODEL'
+  const analyzeModelVar = isOpenAI ? 'OPENAI_ANALYZE_MODEL' : 'ANTHROPIC_ANALYZE_MODEL'
+  if (!chatModel) throw new Error(`${chatModelVar} is required`)
+  if (!analyzeModel) throw new Error(`${analyzeModelVar} is required`)
+  if (chatModel.startsWith('your-')) {
+    throw new Error(`${chatModelVar} must be set to a real model id, not the .env.example placeholder`)
+  }
+  if (analyzeModel.startsWith('your-')) {
+    throw new Error(`${analyzeModelVar} must be set to a real model id, not the .env.example placeholder`)
+  }
 
   const timeoutRaw = Number(process.env.REQUEST_TIMEOUT_MS ?? '30000')
   if (!Number.isFinite(timeoutRaw) || timeoutRaw <= 0) {

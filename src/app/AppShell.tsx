@@ -155,6 +155,7 @@ export default function AppShell({
             onClick={() => setPrefs((p) => ({ ...p, theme: p.theme === "dark" ? "light" : "dark" }))}
             className="p-2 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl text-zinc-600 dark:text-zinc-400 transition cursor-pointer"
             title={prefs.theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            aria-label={prefs.theme === "dark" ? "切换到浅色模式" : "切换到深色模式"}
           >
             {prefs.theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
@@ -188,6 +189,7 @@ export default function AppShell({
             onClick={() => setShowMobileSidebar(!showMobileSidebar)}
             className="lg:hidden p-2 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900"
             title="实时语法翻译纠错"
+            aria-label={showMobileSidebar ? "关闭反馈与建议面板" : "打开反馈与建议面板"}
           >
             {showMobileSidebar ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>

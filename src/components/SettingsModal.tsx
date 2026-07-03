@@ -71,8 +71,6 @@ export default function SettingsModal({
 
   if (!isOpen) return null;
 
-  const effectiveProvider = serverConfig?.provider ?? draft.provider;
-
   // The browser does not own model/provider configuration. It only mirrors the
   // values that the server loaded from `.env.local`, so the settings UI cannot
   // accidentally imply that changing a dropdown changes the active upstream LLM.
@@ -180,7 +178,7 @@ export default function SettingsModal({
           />
         </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
+        <div className="flex flex-col-reverse gap-2 border-t border-zinc-200 bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
           <button
             type="button"
             onClick={onClose}

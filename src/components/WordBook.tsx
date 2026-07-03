@@ -64,6 +64,12 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
     setIsFlipped(false);
   }, [activeTab]);
 
+  useEffect(() => {
+    // Removing a card can make the current flashcard index point past the end.
+    // Clamp it immediately so the drill never renders an empty card on mobile.
+    setFlashCardIndex((index) => Math.min(index, Math.max(0, wordList.length - 1)));
+  }, [wordList.length]);
+
   if (!isOpen) return null;
 
   return (
@@ -171,8 +177,9 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
                     </div>
                     <button
                       onClick={() => onRemoveWord(item.word)}
-                      className="p-1 text-zinc-400 hover:text-rose-600 rounded opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                      className="p-1 text-zinc-400 hover:text-rose-600 rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition cursor-pointer"
                       title="移出生词本"
+                      aria-label={`移出生词本：${item.word}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
