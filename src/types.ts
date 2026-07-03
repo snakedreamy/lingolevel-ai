@@ -65,8 +65,8 @@ export interface AnalysisResult {
 
 /**
  * `ProviderId` enumerates the upstream LLM providers that the browser may
- * talk to directly. Keep it in sync with the server-side provider allowlist
- * in `server/llm/*` so the UI never offers an option the backend rejects.
+ * choose between. Keep it in sync with the server-side provider allowlist in
+ * `providers/index.ts` so the UI never offers an option the backend rejects.
  */
 export type ProviderId = 'openai' | 'anthropic'
 
