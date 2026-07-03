@@ -4,28 +4,75 @@ import { loadStoredJson, removeStoredValue, saveStoredJson } from "../../lib/sto
 
 const WORDBOOK_KEY = "english_coach_wordbook"
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function stringOrFallback(value: unknown): string {
+  return typeof value === "string" ? value : ""
+}
+
+function normalizeWordItem(value: unknown): WordItem | null {
+  if (!isRecord(value)) return null
+
+  const word = stringOrFallback(value.word).trim()
+  if (!word) return null
+
+  return {
+    word,
+    phonetic: stringOrFallback(value.phonetic),
+    translation: stringOrFallback(value.translation),
+    exampleEn: stringOrFallback(value.exampleEn),
+    exampleZh: stringOrFallback(value.exampleZh),
+    addTime: typeof value.addTime === "number" && Number.isFinite(value.addTime) ? value.addTime : 0,
+  }
+}
+
+function normalizeWordList(value: unknown): WordItem[] {
+  if (!Array.isArray(value)) return []
+  return value.map(normalizeWordItem).filter((item): item is WordItem => item !== null)
+}
+
+function normalizeLookupWord(word: unknown): string {
+  return typeof word === "string" ? word.trim().toLowerCase() : ""
+}
+
 function getInitialWords(): WordItem[] {
-  return loadStoredJson<WordItem[]>(WORDBOOK_KEY, [])
+  return normalizeWordList(loadStoredJson<unknown>(WORDBOOK_KEY, []))
 }
 
 export function useWordBook() {
   const [savedWords, setSavedWords] = useState<WordItem[]>(getInitialWords)
 
-  const hasWord = (word: string) =>
-    savedWords.some((item) => item.word.toLowerCase() === word.toLowerCase())
+  const hasWord = (word: string) => {
+    const lookupWord = normalizeLookupWord(word)
+    return lookupWord ? normalizeWordList(savedWords).some((item) => normalizeLookupWord(item.word) === lookupWord) : false
+  }
 
   const removeWord = (word: string) => {
+    const lookupWord = normalizeLookupWord(word)
+    if (!lookupWord) return
+
     setSavedWords((prev) => {
-      const next = prev.filter((item) => item.word.toLowerCase() !== word.toLowerCase())
+      const next = normalizeWordList(prev).filter((item) => normalizeLookupWord(item.word) !== lookupWord)
       saveStoredJson(WORDBOOK_KEY, next)
       return next
     })
   }
 
   const addWord = (word: WordItem) => {
+    const normalizedWord = normalizeWordItem(word)
+
     setSavedWords((prev) => {
-      const exists = prev.some((item) => item.word.toLowerCase() === word.word.toLowerCase())
-      const next = exists ? prev.filter((item) => item.word.toLowerCase() !== word.word.toLowerCase()) : [word, ...prev]
+      const prevWords = normalizeWordList(prev)
+      if (!normalizedWord) {
+        saveStoredJson(WORDBOOK_KEY, prevWords)
+        return prevWords
+      }
+
+      const lookupWord = normalizeLookupWord(normalizedWord.word)
+      const exists = prevWords.some((item) => normalizeLookupWord(item.word) === lookupWord)
+      const next = exists ? prevWords.filter((item) => normalizeLookupWord(item.word) !== lookupWord) : [normalizedWord, ...prevWords]
       saveStoredJson(WORDBOOK_KEY, next)
       return next
     })

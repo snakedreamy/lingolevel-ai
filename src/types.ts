@@ -74,9 +74,9 @@ export type ProviderId = 'openai' | 'anthropic'
  * Non-sensitive user preferences that are safe to persist in `localStorage`.
  *
  * NOTE: This shape intentionally does NOT include any API key, OAuth token,
- * or other credential. Secrets must travel as short-lived server sessions
- * (see `server/session/*`) and never be cached in the browser. Adding an
- * `apiKey` field here would be a security regression.
+ * or other credential. Secrets are read only from server-side environment
+ * variables and used by the provider layer; they must never be persisted in
+ * the browser. Adding an `apiKey` field here would be a security regression.
  *
  * The defaults below are also used by the server-side `BrowserPrefs`
  * persistence tests as a stable baseline.
