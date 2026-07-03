@@ -1,10 +1,39 @@
 import { useEffect, useMemo, useState } from "react"
-import type { BrowserPrefs } from "../../types"
+import { LEVELS } from "../../data/levels"
+import type { BrowserPrefs, DifficultyLevel } from "../../types"
 import { BROWSER_PREFS_KEY, DEFAULT_BROWSER_PREFS } from "../../types"
 import { fetchServerConfig, type ServerConfig } from "../../lib/api"
 import { loadStoredJson, saveStoredJson } from "../../lib/storage"
 
 const MISMATCH_FIELDS = ["provider", "chatModel", "analyzeModel", "baseUrl"] as const
+const VALID_LEVELS = new Set<DifficultyLevel>(LEVELS.map((level) => level.id))
+
+type BrowserPrefsRecord = Record<string, unknown>
+
+function isRecord(value: unknown): value is BrowserPrefsRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function normalizeBrowserPrefs(value: unknown): BrowserPrefs {
+  const defaults = { ...DEFAULT_BROWSER_PREFS }
+
+  if (!isRecord(value)) return defaults
+
+  return {
+    ...defaults,
+    provider:
+      value.provider === "openai" || value.provider === "anthropic" ? value.provider : defaults.provider,
+    chatModel: typeof value.chatModel === "string" ? value.chatModel : defaults.chatModel,
+    analyzeModel: typeof value.analyzeModel === "string" ? value.analyzeModel : defaults.analyzeModel,
+    baseUrl: typeof value.baseUrl === "string" ? value.baseUrl : defaults.baseUrl,
+    scenarioId: typeof value.scenarioId === "string" ? value.scenarioId : defaults.scenarioId,
+    level:
+      typeof value.level === "string" && VALID_LEVELS.has(value.level as DifficultyLevel)
+        ? (value.level as DifficultyLevel)
+        : defaults.level,
+    theme: value.theme === "light" || value.theme === "dark" ? value.theme : defaults.theme,
+  }
+}
 
 function getConfigMismatchSignature(
   prefs: BrowserPrefs,
@@ -21,10 +50,7 @@ function getConfigMismatchSignature(
 }
 
 function getInitialPrefs(): BrowserPrefs {
-  return {
-    ...DEFAULT_BROWSER_PREFS,
-    ...loadStoredJson<Partial<BrowserPrefs>>(BROWSER_PREFS_KEY, {}),
-  }
+  return normalizeBrowserPrefs(loadStoredJson<unknown>(BROWSER_PREFS_KEY, null))
 }
 
 export function useBrowserPrefs() {
