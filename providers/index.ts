@@ -28,6 +28,7 @@ interface ResolvedProviderEnv {
   chatModel: string
   analyzeModel: string
   timeoutMs: number
+  maxContextMessages: number
 }
 
 /**
@@ -72,13 +73,21 @@ function resolveProviderEnv(): ResolvedProviderEnv {
     )
   }
 
+  const maxContextMessagesRaw = Number(process.env.MAX_CONTEXT_MESSAGES ?? '12')
+  if (!Number.isInteger(maxContextMessagesRaw) || maxContextMessagesRaw <= 0) {
+    throw new Error(
+      `MAX_CONTEXT_MESSAGES must be a positive integer (got "${process.env.MAX_CONTEXT_MESSAGES ?? '12'}")`
+    )
+  }
+
   return {
     provider,
     apiKey,
     baseUrl,
     chatModel,
     analyzeModel,
-    timeoutMs: timeoutRaw
+    timeoutMs: timeoutRaw,
+    maxContextMessages: maxContextMessagesRaw
   }
 }
 
@@ -99,6 +108,8 @@ export interface ServerConfig {
   chatModel: string
   analyzeModel: string
   baseUrl: string
+  requestTimeoutMs: number
+  maxContextMessages: number
 }
 
 /**
@@ -123,7 +134,9 @@ export function loadServerConfigFromEnv(): ServerConfig {
     provider: env.provider,
     chatModel: env.chatModel,
     analyzeModel: env.analyzeModel,
-    baseUrl: env.baseUrl
+    baseUrl: env.baseUrl,
+    requestTimeoutMs: env.timeoutMs,
+    maxContextMessages: env.maxContextMessages
     // Deliberately NO apiKey, NO apiKeyPreview, NO keyHint, NO anything-key.
   }
 }

@@ -80,6 +80,7 @@ async function main(): Promise<void> {
   const analysis = analyzeOut.data as Record<string, unknown>
   assert('analysis.translation is string', typeof analysis.translation === 'string')
   assert('analysis.grammarCorrections is array', Array.isArray(analysis.grammarCorrections))
+  assert('analysis.assistantReplyInsight is object', typeof analysis.assistantReplyInsight === 'object' && analysis.assistantReplyInsight !== null)
   assert('analysis.keyWords is array', Array.isArray(analysis.keyWords))
   assert('analysis.suggestions is array', Array.isArray(analysis.suggestions))
   assert('analyzeOut.isFallback is boolean', typeof analyzeOut.isFallback === 'boolean')

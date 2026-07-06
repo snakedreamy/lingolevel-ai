@@ -229,7 +229,7 @@ if ! do_post "${BASE}/api/analyze" "$an_payload" an status; then
 fi
 echo
 echo "       body = $(truncate "$an" 400)"
-for f in translation grammarCorrections keyWords suggestions; do
+for f in translation grammarCorrections assistantReplyInsight keyWords suggestions; do
   if ! has_field "$an" "$f"; then
     exit 1
   fi

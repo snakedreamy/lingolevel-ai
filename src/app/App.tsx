@@ -19,7 +19,8 @@ export default function App() {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const wordBook = useWordBook()
-  const chat = useChatSession({ currentLevel, activeScenario })
+  const maxContextMessages = serverConfig?.maxContextMessages ?? 12
+  const chat = useChatSession({ currentLevel, activeScenario, maxContextMessages })
 
   return (
     <AppShell

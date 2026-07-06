@@ -46,9 +46,16 @@ export interface GrammarCorrection {
   score: number; // 1-100 rating of the grammar quality
 }
 
+export interface AssistantReplyInsight {
+  structure: string;
+  grammar: string;
+  whyThisReply: string;
+}
+
 export interface AnalysisResult {
   translation: string;
   grammarCorrections: GrammarCorrection[];
+  assistantReplyInsight: AssistantReplyInsight;
   keyWords: {
     word: string;
     phonetic: string;
@@ -57,6 +64,8 @@ export interface AnalysisResult {
     exampleZh: string;
   }[];
   suggestions: string[]; // Idiomatic prompt examples user can say next
+  /** True when the server had to fall back to a conservative backup analysis. */
+  isFallback?: boolean;
 }
 
 export type ProviderId = 'openai' | 'anthropic'

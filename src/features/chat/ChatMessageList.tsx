@@ -28,7 +28,7 @@ export function ChatMessageList({
           </div>
           <p className="font-bold text-zinc-800 dark:text-zinc-200 text-sm">开始您的沉浸式英语之旅</p>
           <p className="text-xs text-zinc-500 mt-2">
-            您可用在底部文本框打字，或者开启麦克风朗读，还可以点击右侧的智能建议快捷回复。
+            您可在底部文本框打字，或者开启麦克风朗读；发送后还可使用反馈面板中的智能建议继续接话。
           </p>
         </div>
       )}

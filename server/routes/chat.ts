@@ -4,8 +4,8 @@ import { errorMessage } from "../../providers/util"
 import { logRequest } from "../logger"
 import { composeScenarioInstruction, getLevelSystemPrompt } from "../prompts"
 
-export function createChatRouter(args: { provider: Provider; activeProvider: string; activeChatModel: string }): ExpressRouter {
-  const { provider, activeProvider, activeChatModel } = args
+export function createChatRouter(args: { provider: Provider; activeProvider: string; activeChatModel: string; maxContextMessages: number }): ExpressRouter {
+  const { provider, activeProvider, activeChatModel, maxContextMessages } = args
   const router = Router()
 
   router.post("/chat", async (req, res) => {
@@ -19,6 +19,7 @@ export function createChatRouter(args: { provider: Provider; activeProvider: str
       .filter((message): message is { role: string; content: unknown } => typeof message === "object" && message !== null && "role" in message)
       .filter((message) => message.role === "user" || message.role === "assistant")
       .map((message) => ({ role: message.role as "user" | "assistant", content: String(message.content ?? "") }))
+      .slice(-maxContextMessages)
 
     if (chatMessages.length === 0) {
       chatMessages.push({

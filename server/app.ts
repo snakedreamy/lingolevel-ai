@@ -13,6 +13,7 @@ export async function createApp(args: {
   activeProvider: string
   activeChatModel: string
   activeAnalyzeModel: string
+  maxContextMessages: number
 }): Promise<express.Express> {
   const app = express()
   const apiLimiter = buildApiLimiter()
@@ -25,7 +26,7 @@ export async function createApp(args: {
   app.use("/api", createServerConfigRouter())
   app.post("/api/chat", apiLimiter)
   app.post("/api/analyze", apiLimiter)
-  app.use("/api", createChatRouter({ provider: args.provider, activeProvider: args.activeProvider, activeChatModel: args.activeChatModel }))
+  app.use("/api", createChatRouter({ provider: args.provider, activeProvider: args.activeProvider, activeChatModel: args.activeChatModel, maxContextMessages: args.maxContextMessages }))
   app.use("/api", createAnalyzeRouter({ provider: args.provider, activeProvider: args.activeProvider, activeAnalyzeModel: args.activeAnalyzeModel }))
 
   if (process.env.NODE_ENV !== "production") {

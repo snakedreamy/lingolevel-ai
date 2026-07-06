@@ -12,8 +12,9 @@ An interactive AI English coach designed for Chinese learners with adaptive diff
   - `providers/util.ts` — shared helpers (e.g. `errorMessage`)
   - `providers/index.ts` — factory: build provider from `process.env`
 - **Server** (`server/`, with `server.ts` as a compatibility entry): Express on the Vite dev middleware. Exposes `GET /api/server-config` (echoes active provider / model / base URL — **no API key**), `POST /api/chat`, and `POST /api/analyze`. The active provider and model names are selected at boot from `.env.local` / `process.env`.
-- **Frontend** (`src/`): React + Vite SPA. The browser persists only non-sensitive learning preferences such as level, scenario, theme, and a read-only mirror of the active server config under `lingolevel_prefs`. **No API keys, tokens, or secrets ever touch the browser** — the server is the only thing that talks to upstream LLMs.
-- **Tooling** (`scripts/smoke.sh`, `providers/__manual_test.ts`): a curl-based smoke test and a tsx-runnable manual test, both non-zero-exit on failure.
+- **Frontend** (`src/`): React + Vite SPA. The browser persists only non-sensitive learning preferences such as level, scenario, and theme under `lingolevel_prefs`. Active provider / model / base URL are fetched separately from `GET /api/server-config` and are never merged into browser-owned prefs. **No API keys, tokens, or secrets ever touch the browser** — the server is the only thing that talks to upstream LLMs.
+- **Tooling** (`scripts/smoke.sh`, `providers/__manual_test.ts`): a curl-based smoke test and a tsx-runnable manual test, both non-zero-exit on failure. These are intentionally committed verification assets for local/manual checks, not production runtime code.
+- **Runtime tuning via `.env.local`**: provider/model/base URL, outbound timeout, and chat context window are all server-owned runtime settings. The browser only reads a sanitized summary from `/api/server-config`.
 
 ## Run Locally
 
@@ -27,6 +28,11 @@ npm run dev
 ```
 
 By default the server runs on `http://localhost:59100`. To change the port, edit `PORT=` in `.env.local` and restart the server. Do **not** override the port via the shell — keep all config in `.env.local`.
+
+Other useful runtime knobs in `.env.local`:
+
+- `REQUEST_TIMEOUT_MS` — how long chat/analyze requests may wait for the upstream model
+- `MAX_CONTEXT_MESSAGES` — how many recent user/assistant turns are sent back to the model as memory
 
 The server prints its URL on startup (default `http://localhost:59100`).
 
@@ -139,9 +145,11 @@ lingolevel-ai/
 │   ├── util.ts                 # shared helpers (errorMessage, etc.)
 │   └── index.ts                # factory: build provider from process.env
 ├── src/                        # React + Vite frontend
-│   ├── App.tsx                 # main app shell, loads/saves lingolevel_prefs
+│   ├── App.tsx                 # compatibility entry, re-exports src/app/App
+│   ├── app/                    # app composition and responsive shell
 │   ├── components/             # ChatWindow, AnalysisSidebar, SettingsModal, WordBook, …
-│   ├── data.ts                 # static level + scenario definitions
+│   ├── data/                   # static level + scenario definitions
+│   ├── features/               # chat, analysis, settings, wordbook feature modules
 │   ├── types.ts                # frontend types incl. BrowserPrefs
 │   ├── index.css               # global styles
 │   └── main.tsx                # entry point
@@ -169,6 +177,8 @@ lingolevel-ai/
 - `npm run build` — production bundle
 - `npm run start` — run the production bundle
 - `npm run lint` — type-check only
+
+The settings panel will also show the active request timeout and context-window size reported by `/api/server-config`, so you can verify the server really booted with the `.env.local` values you expect.
 
 ## Verifying
 

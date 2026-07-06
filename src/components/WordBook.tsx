@@ -138,7 +138,7 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
               </div>
               <h3 className="font-bold text-zinc-800 dark:text-zinc-200 text-base">还没有收录任何生词哦</h3>
               <p className="text-xs text-zinc-500 mt-2">
-                在右侧的【实时语法翻译面板】点击生词旁的加星 “+加词本” 按钮，可以直接将查到的难词与拼写错误收集到这里复习。
+                在反馈面板的生词析卡中点击 “+加词本”，就能把本轮出现的重点词汇收集到这里，后续用清单或抽卡反复复习。
               </p>
             </div>
           ) : activeTab === "list" ? (

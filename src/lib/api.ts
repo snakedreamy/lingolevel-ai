@@ -5,6 +5,8 @@ export interface ServerConfig {
   chatModel: string
   analyzeModel: string
   baseUrl: string
+  requestTimeoutMs: number
+  maxContextMessages: number
 }
 
 export interface ChatRequest {

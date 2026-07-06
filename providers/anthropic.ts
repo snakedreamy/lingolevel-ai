@@ -83,7 +83,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
     const body = {
       model: cfg.analyzeModel,
       max_tokens: 4096,
-      system: 'You are an expert English-Chinese Bilingual Teacher. Always return a valid JSON object matching the documented shape (translation, grammarCorrections, keyWords, suggestions).',
+      system: 'You are an expert English-Chinese Bilingual Teacher. Always return a valid JSON object matching the documented shape (translation, grammarCorrections, assistantReplyInsight, keyWords, suggestions).',
       messages: [
         { role: 'user', content: buildAnalysisUserPrompt(input.level, input.userMessage, input.assistantMessage) + JSON_EXTRACT_HINT }
       ]

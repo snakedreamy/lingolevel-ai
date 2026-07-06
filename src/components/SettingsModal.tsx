@@ -99,13 +99,15 @@ export default function SettingsModal({
                     <ConfigRow label="Base URL" value={serverConfig.baseUrl} />
                     <ConfigRow label="Chat model" value={serverConfig.chatModel} />
                     <ConfigRow label="Analyze model" value={serverConfig.analyzeModel} />
+                    <ConfigRow label="Request timeout" value={`${Math.round(serverConfig.requestTimeoutMs / 1000)} 秒`} />
+                    <ConfigRow label="Context window" value={`最近 ${serverConfig.maxContextMessages} 句`} />
                   </div>
                   <p className="mt-3 text-[10.5px] leading-relaxed text-zinc-500">
                     API Key 只在服务端读取。当前 provider 对应的密钥变量是{" "}
                     <code className="mx-0.5 rounded bg-zinc-100 px-1 dark:bg-zinc-800">
                       {apiKeyEnvName(serverConfig.provider)}
                     </code>
-                    。修改 <code>.env.local</code> 后请重启服务。
+                    。像超时时间、上下文保留轮数这类运行参数也由 <code>.env.local</code> 控制；修改后请重启服务。
                   </p>
                 </>
               ) : (

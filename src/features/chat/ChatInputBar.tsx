@@ -85,7 +85,7 @@ export function ChatInputBar({
       </form>
 
       <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center mt-2.5 text-[10px] text-zinc-400">
-        <span>建议：您可以直接点击右侧智能接话泡泡，帮助您高效构思地道英文。</span>
+        <span>建议：您可以直接点击反馈面板里的智能接话建议，快速生成下一句英文草稿。</span>
         <span>按 <strong className="font-semibold text-zinc-600">Enter</strong> 发送</span>
       </div>
     </div>

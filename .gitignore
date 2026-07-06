@@ -9,6 +9,9 @@ coverage/
 *.tsbuildinfo
 .vscode/
 .idea/
+.claude/
 # Internal refactor / agent working notes — never publish
 docs/
 .superpowers/
+.playwright-mcp/
+*.png

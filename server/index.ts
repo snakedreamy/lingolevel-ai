@@ -13,6 +13,7 @@ export async function startServer(): Promise<void> {
     activeProvider: cfg.provider,
     activeChatModel: cfg.chatModel,
     activeAnalyzeModel: cfg.analyzeModel,
+    maxContextMessages: cfg.maxContextMessages,
   })
   const port = parsePort(process.env.PORT)
 

@@ -14,15 +14,17 @@ export function VocabularyCardsSection({
   onAddWord,
   onSpeakText,
 }: VocabularyCardsSectionProps) {
+  const visibleWords = keyWords.filter((item) => item.word.trim().length > 0)
+
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 space-y-3">
       <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded uppercase font-mono block w-max">
-        本轮生词析卡 Vocabulary Cards
+        可选词汇摘录 Vocabulary
       </span>
 
-      {keyWords.length > 0 ? (
+      {visibleWords.length > 0 ? (
         <div className="space-y-4">
-          {keyWords.map((item, index) => {
+          {visibleWords.map((item, index) => {
             const saved = isWordSaved(item.word)
             return (
               <div
@@ -88,7 +90,7 @@ export function VocabularyCardsSection({
           })}
         </div>
       ) : (
-        <p className="text-xs text-zinc-400 text-center py-2">本回合暂无重点抽取的新单词。</p>
+        <p className="text-xs text-zinc-400 text-center py-2">本回合暂无可选词汇摘录。</p>
       )}
     </div>
   )

@@ -149,12 +149,11 @@ export function normalizeAnalysisShape(
   let grammarCorrections: AnalysisResult['grammarCorrections']
   if (Array.isArray(r.grammarCorrections)) {
     grammarCorrections = (r.grammarCorrections as unknown[]).map((item) =>
-      normalizeGrammarCorrection(item, userMessage)
+      normalizeGrammarCorrection(item, userMessage, assistantMessage)
     )
   } else if (typeof r.grammarCorrections === 'object' && r.grammarCorrections !== null) {
     coerced = true
     const g = r.grammarCorrections as Record<string, unknown>
-    const corrected = pickString(g, ['correctedVersion', 'corrected', 'correction']) ?? userMessage
     const explanationsRaw = g.explanations
     const errorsRaw = g.errors
     const explanationParts: string[] = []
@@ -181,12 +180,18 @@ export function normalizeAnalysisShape(
       typeof scoreRaw === 'number' && Number.isFinite(scoreRaw)
         ? scoreRaw
         : Number(scoreRaw) || 60
+    const combinedExplanation = explanationParts.join('；') || 'No specific issues found.'
+    const corrected =
+      pickString(g, ['correctedVersion', 'corrected', 'correction']) ??
+      deriveCorrectedSentenceFromExplanation(userMessage, combinedExplanation) ??
+      deriveCorrectedSentenceFromAssistantReply(userMessage, assistantMessage, score) ??
+      userMessage
     const politeForm = pickString(g, ['nativeSuggestion', 'politeForm', 'native', 'idiomatic']) ?? corrected
     grammarCorrections = [
       {
         original: pickString(g, ['original']) ?? userMessage,
         corrected,
-        explanation: explanationParts.join('；') || 'No specific issues found.',
+        explanation: combinedExplanation,
         politeForm,
         score
       }
@@ -202,6 +207,18 @@ export function normalizeAnalysisShape(
         score: 80
       }
     ]
+  }
+
+  let assistantReplyInsight: AnalysisResult['assistantReplyInsight']
+  if (typeof r.assistantReplyInsight === 'object' && r.assistantReplyInsight !== null) {
+    const normalizedInsight = normalizeAssistantReplyInsight(r.assistantReplyInsight, assistantMessage)
+    assistantReplyInsight = normalizedInsight.data
+    if (normalizedInsight.coerced) {
+      coerced = true
+    }
+  } else {
+    coerced = true
+    assistantReplyInsight = deriveAssistantReplyInsightFromMessage(assistantMessage)
   }
 
   let keyWords: AnalysisResult['keyWords']
@@ -223,7 +240,7 @@ export function normalizeAnalysisShape(
   }
 
   return {
-    data: { translation, grammarCorrections, keyWords, suggestions },
+    data: { translation, grammarCorrections, assistantReplyInsight, keyWords, suggestions },
     coerced
   }
 }
@@ -238,7 +255,8 @@ function pickString(obj: Record<string, unknown>, keys: string[]): string | unde
 
 function normalizeGrammarCorrection(
   item: unknown,
-  fallbackOriginal: string
+  fallbackOriginal: string,
+  assistantMessage: string
 ): AnalysisResult['grammarCorrections'][number] {
   if (typeof item !== 'object' || item === null) {
     return {
@@ -250,15 +268,243 @@ function normalizeGrammarCorrection(
     }
   }
   const g = item as Record<string, unknown>
+  const explanation = pickString(g, ['explanation', 'detail', 'note']) ?? ''
+  const score =
+    typeof g.score === 'number' && Number.isFinite(g.score)
+      ? g.score
+      : Number(g.score) || 80
+  const corrected =
+    pickString(g, ['corrected', 'correction']) ??
+    deriveCorrectedSentenceFromExplanation(fallbackOriginal, explanation) ??
+    deriveCorrectedSentenceFromAssistantReply(fallbackOriginal, assistantMessage, score) ??
+    fallbackOriginal
+
   return {
     original: pickString(g, ['original']) ?? fallbackOriginal,
-    corrected: pickString(g, ['corrected', 'correction']) ?? fallbackOriginal,
-    explanation: pickString(g, ['explanation', 'detail', 'note']) ?? '',
-    politeForm: pickString(g, ['politeForm', 'nativeSuggestion', 'native', 'idiomatic']) ?? pickString(g, ['corrected']) ?? fallbackOriginal,
-    score:
-      typeof g.score === 'number' && Number.isFinite(g.score)
-        ? g.score
-        : Number(g.score) || 80
+    corrected,
+    explanation,
+    politeForm: pickString(g, ['politeForm', 'nativeSuggestion', 'native', 'idiomatic']) ?? corrected,
+    score
+  }
+}
+
+function normalizeAssistantReplyInsight(
+  value: unknown,
+  assistantMessage: string
+): { data: AnalysisResult['assistantReplyInsight']; coerced: boolean } {
+  const derived = deriveAssistantReplyInsightFromMessage(assistantMessage)
+
+  if (typeof value !== 'object' || value === null) {
+    return { data: derived, coerced: true }
+  }
+
+  const item = value as Record<string, unknown>
+  const structure = pickString(item, ['structure', 'replyStructure', 'pattern'])
+  const grammar = pickString(item, ['grammar', 'grammarPoint', 'sentencePattern'])
+  const whyThisReply = pickString(item, ['whyThisReply', 'whyNatural', 'conversationPurpose'])
+
+  const resolvedStructure = shouldUseDerivedStructure(structure, derived.structure)
+    ? derived.structure
+    : (structure ?? derived.structure)
+  const resolvedGrammar = shouldUseDerivedInsight(grammar) ? derived.grammar : (grammar ?? derived.grammar)
+  const resolvedWhyThisReply = shouldUseDerivedInsight(whyThisReply)
+    ? derived.whyThisReply
+    : (whyThisReply ?? derived.whyThisReply)
+
+  return {
+    data: {
+      structure: resolvedStructure,
+      grammar: resolvedGrammar,
+      whyThisReply: resolvedWhyThisReply,
+    },
+    coerced:
+      resolvedStructure !== structure ||
+      resolvedGrammar !== grammar ||
+      resolvedWhyThisReply !== whyThisReply,
+  }
+}
+
+function deriveCorrectedSentenceFromExplanation(userMessage: string, explanation: string): string | undefined {
+  const normalizedUser = userMessage.trim()
+  if (!normalizedUser) return undefined
+
+  const candidates = Array.from(
+    explanation.matchAll(/\b(?:should be|should say|correct(?:ed)? sentence is|correct(?:ed)? form is)\s*["“]?([^"”.。!！?？\n]+)["”]?/gi),
+    (match) => match[1]?.trim() ?? ''
+  ).filter((candidate) => {
+    if (!candidate) return false
+    if (candidate === normalizedUser) return false
+    if (!/[A-Za-z]/.test(candidate)) return false
+    return candidate.split(/\s+/).length >= 3
+  })
+
+  if (candidates.length !== 1) {
+    return undefined
+  }
+
+  return candidates[0]
+}
+
+function deriveCorrectedSentenceFromAssistantReply(
+  userMessage: string,
+  assistantMessage: string,
+  score: unknown
+): string | undefined {
+  const numericScore = typeof score === 'number' ? score : Number(score)
+  if (Number.isFinite(numericScore) && numericScore >= 90) {
+    return undefined
+  }
+
+  const correctionCue = /(?:i think you mean|it should be|you should say|the correct sentence is|the correct form is)\s*[:：-]?\s*["“]([^"”]+)["”]/gi
+  const matches = Array.from(assistantMessage.matchAll(correctionCue), (match) => match[1]?.trim() ?? '').filter((candidate) => {
+    if (!candidate) return false
+    if (candidate === userMessage) return false
+    if (!/[A-Za-z]/.test(candidate)) return false
+    return candidate.split(/\s+/).length >= 3
+  })
+
+  if (matches.length !== 1) {
+    return undefined
+  }
+
+  return matches[0]
+}
+
+function shouldUseDerivedInsight(value: string | undefined): value is undefined {
+  if (!value) return true
+
+  return [
+    '这句回复用于承接当前对话并继续推进话题。',
+    '可关注其中的常见时态、问句结构和连接方式。',
+    '它先回应上文，再主动给出可继续交流的内容，所以读起来更自然。',
+  ].includes(value)
+}
+
+function looksLikeQuestionWord(text: string, word: string) {
+  return new RegExp(`\\b${word}\\b`, 'i').test(text)
+}
+
+function shouldUseDerivedStructure(value: string | undefined, derived: string): boolean {
+  if (shouldUseDerivedInsight(value)) return true
+  if (!value) return true
+
+  const trimmed = value.trim()
+  if (trimmed === '最后用追问把话题继续往下推进。') return true
+
+  return trimmed === derived
+}
+
+function deriveAssistantReplyInsightFromMessage(assistantMessage: string): AnalysisResult['assistantReplyInsight'] {
+  const lower = assistantMessage.toLowerCase()
+  const hasCorrection =
+    lower.includes('i think you mean') ||
+    lower.includes('it should be') ||
+    lower.includes('we say') ||
+    lower.includes('past form') ||
+    lower.includes('correct')
+  const hasPositiveFeedback =
+    lower.includes("i'm glad") ||
+    lower.includes('im glad') ||
+    lower.includes('glad to hear') ||
+    lower.includes("that's great") ||
+    lower.includes('that is great') ||
+    lower.includes('good to hear') ||
+    lower.includes('sounds great') ||
+    lower.includes('sounds good') ||
+    lower.includes('well done') ||
+    lower.includes('nice work') ||
+    lower.includes('nice job')
+  const hasFollowUpQuestion = assistantMessage.includes('?')
+  const hasSpecificQuestion = [
+    'what',
+    'how',
+    'why',
+    'when',
+    'where',
+    'which',
+    'who',
+    'do',
+    'did',
+    'are',
+    'is',
+    'can',
+    'could',
+    'would',
+    'have',
+    'has',
+    'was',
+    'were',
+  ].some((word) => looksLikeQuestionWord(assistantMessage, word))
+  const hasSelfDisclosure =
+    lower.includes('i really enjoy') ||
+    lower.includes('i enjoy ') ||
+    lower.includes('i like ') ||
+    lower.includes("i'm into") ||
+    lower.includes('for example') ||
+    lower.includes('like science') ||
+    lower.includes('like history')
+
+  let structure = '这句回复通常会先回应上文，再补充信息或继续推进对话。'
+
+  if (hasCorrection && hasPositiveFeedback && hasFollowUpQuestion) {
+    structure = '先点出更自然的说法，再补一句鼓励，最后用追问把话题继续往下推进。'
+  } else if (hasCorrection && hasFollowUpQuestion) {
+    structure = '先纠正上一句里更自然的表达，再顺势追问，把对话继续往下推进。'
+  } else if (hasPositiveFeedback && hasFollowUpQuestion && hasSelfDisclosure) {
+    structure = '先回应你的上一句并给出正向反馈，再抛出一个具体问题，最后补一点自己的信息让语气更自然。'
+  } else if (hasPositiveFeedback && hasFollowUpQuestion) {
+    structure = '先回应你的上一句并给出正向反馈，再抛出一个具体问题邀请你继续展开。'
+  } else if (hasFollowUpQuestion && hasSelfDisclosure) {
+    structure = '先顺着当前话题抛出问题，再补一点自己的信息，让对话不只是在盘问。'
+  } else if (hasFollowUpQuestion && hasSpecificQuestion) {
+    structure = '先顺着当前话题提出一个具体问题，方便你直接接下一句。'
+  } else if (hasFollowUpQuestion) {
+    structure = '最后用追问把话题继续往下推进。'
+  }
+
+  const grammarParts: string[] = []
+  if (lower.includes('yesterday') || lower.includes('went') || lower.includes('did ')) {
+    grammarParts.push('过去时')
+  }
+  if (lower.includes('past form')) {
+    grammarParts.push('过去式说明')
+  }
+  if (lower.includes('if ')) {
+    grammarParts.push('if 条件句')
+  }
+  if (hasFollowUpQuestion) {
+    grammarParts.push('问句结构')
+  }
+  if (lower.includes('have you ever')) {
+    grammarParts.push('have you ever 这类现在完成时提问')
+  }
+  if (lower.includes("i'm ") || lower.includes("what's ") || lower.includes("that's ") || lower.includes("it's ")) {
+    grammarParts.push('缩略形式')
+  }
+  if (lower.includes('enjoy ') || lower.includes('like ')) {
+    grammarParts.push('常见动词搭配')
+  }
+
+  const uniqueGrammarParts = [...new Set(grammarParts)]
+
+  let whyThisReply = '它先承接当前语境，再补充反馈或信息，因此读起来会更自然。'
+  if (hasCorrection && hasFollowUpQuestion) {
+    whyThisReply = '它把纠正、鼓励和继续练习放在同一轮回复里，所以既不会打断交流，也方便你马上模仿下一句。'
+  } else if (hasPositiveFeedback && hasFollowUpQuestion && hasSelfDisclosure) {
+    whyThisReply = '它先肯定你的表达，再给出一个具体问题，还顺手补了一点自己的信息，因此更像真实对话。'
+  } else if (hasPositiveFeedback && hasFollowUpQuestion) {
+    whyThisReply = '它先肯定你的表达，再给出一个容易接的话题，所以对话会更轻松，也更容易继续。'
+  } else if (hasFollowUpQuestion) {
+    whyThisReply = '它先承接你刚才的意思，再用提问把对话继续往前推进，所以既自然也方便你接下一句。'
+  }
+
+  return {
+    structure,
+    grammar:
+      uniqueGrammarParts.length > 0
+        ? `可重点观察其中的 ${uniqueGrammarParts.join('、')}，以及句子之间如何自然衔接。`
+        : '可重点观察其中的时态、问句结构，以及句子之间如何自然衔接。',
+    whyThisReply,
   }
 }
 

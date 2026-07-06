@@ -3,21 +3,19 @@ import { sendAnalyze, sendChat } from "../../lib/api"
 import { createMessageId } from "../../lib/ids"
 import type { AnalysisResult, DifficultyLevel, Message, Scenario } from "../../types"
 
-const MAX_CONTEXT_MESSAGES = 12
-
 function getStarterMessage(scenario: Scenario): string {
   return scenario.starterMessages[Math.floor(Math.random() * scenario.starterMessages.length)]
 }
 
-function trimChatContext(messages: Message[]) {
+function trimChatContext(messages: Message[], maxContextMessages: number) {
   return messages
     .filter((message) => message.role === "user" || message.role === "assistant")
-    .slice(-MAX_CONTEXT_MESSAGES)
+    .slice(-maxContextMessages)
     .map((message) => ({ role: message.role as "user" | "assistant", content: message.content }))
 }
 
-export function useChatSession(args: { currentLevel: DifficultyLevel; activeScenario: Scenario }) {
-  const { currentLevel, activeScenario } = args
+export function useChatSession(args: { currentLevel: DifficultyLevel; activeScenario: Scenario; maxContextMessages: number }) {
+  const { currentLevel, activeScenario, maxContextMessages } = args
   const [messages, setMessages] = useState<Message[]>([])
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [isChatLoading, setIsChatLoading] = useState(false)
@@ -41,26 +39,8 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
     setMessages([starterMessage])
     setAnalysis(null)
     setIsChatLoading(false)
-    setIsAnalysisLoading(true)
-
-    try {
-      const nextAnalysis = await sendAnalyze({
-        userMessage: "",
-        assistantMessage: starterEnglish,
-        level: currentLevel,
-      })
-      if (sessionIdRef.current !== sessionId) return
-      setAnalysis(nextAnalysis)
-    } catch (err) {
-      if (sessionIdRef.current !== sessionId) return
-      console.error("Failed to analyze starter message", err)
-      setAnalysis(null)
-    } finally {
-      if (sessionIdRef.current === sessionId) {
-        setIsAnalysisLoading(false)
-      }
-    }
-  }, [activeScenario, currentLevel])
+    setIsAnalysisLoading(false)
+  }, [activeScenario])
 
   useEffect(() => {
     void resetConversation()
@@ -102,7 +82,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
 
       try {
         const chatResult = await sendChat({
-          messages: trimChatContext(nextMessages),
+          messages: trimChatContext(nextMessages, maxContextMessages),
           level: currentLevel,
           scenarioInfo: activeScenario.id === "free_chat" ? null : activeScenario,
         })
@@ -128,6 +108,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
         }
 
         console.error(err)
+        setAnalysis(null)
         setMessages((prev) => [
           ...prev,
           {
@@ -174,7 +155,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
         }
       }
     },
-    [activeScenario, currentLevel, isChatLoading, messages],
+    [activeScenario, currentLevel, isChatLoading, maxContextMessages, messages],
   )
 
   return {

@@ -28,7 +28,7 @@ export default function MobileAnalysisDrawer({
         <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
           <div>
             <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">反馈与建议</p>
-            <p className="text-[11px] text-zinc-500">上滑查看翻译、纠错、生词与接话建议</p>
+            <p className="text-[11px] text-zinc-500">上滑查看纠错、翻译与接话建议</p>
           </div>
           <button
             type="button"
@@ -39,12 +39,13 @@ export default function MobileAnalysisDrawer({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 flex flex-1 flex-col overflow-hidden">
           <AnalysisSidebar
             analysis={analysis}
             isLoading={isLoading}
             onAddWord={onAddWord}
             isWordSaved={isWordSaved}
+            embedded
             onSelectSuggestion={(text) => {
               onSelectSuggestion(text)
               onClose()
