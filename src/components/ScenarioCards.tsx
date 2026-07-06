@@ -1,5 +1,5 @@
 import { Scenario } from "../types";
-import { SCENARIOS } from "../data";
+import { SCENARIOS } from "../data/scenarios";
 import { 
   Coffee, 
   Plane, 

@@ -1,5 +1,5 @@
 import { DifficultyLevel } from "../types";
-import { LEVELS } from "../data";
+import { LEVELS } from "../data/levels";
 import { GraduationCap, Sparkles, BookOpen } from "lucide-react";
 
 interface LevelSelectorProps {
