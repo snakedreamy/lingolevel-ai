@@ -9,3 +9,6 @@ coverage/
 *.tsbuildinfo
 .vscode/
 .idea/
+# Internal refactor / agent working notes — never publish
+docs/
+.superpowers/

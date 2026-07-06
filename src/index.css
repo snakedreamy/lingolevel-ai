@@ -9,3 +9,13 @@ html, body, #root {
   padding: 0;
   overflow: hidden;
 }
+
+/* Mobile browsers resize the visual viewport when the address bar appears.
+   `100dvh` keeps the chat workspace pinned to the visible screen instead of
+   hiding the input drawer under browser chrome. */
+@supports (height: 100dvh) {
+  #app {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+}

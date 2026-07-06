@@ -64,9 +64,9 @@ export interface AnalysisResult {
 // ----------------------------------------------------------------------
 
 /**
- * `ProviderId` enumerates the upstream LLM providers that the browser may
- * talk to directly. Keep it in sync with the server-side provider allowlist
- * in `server/llm/*` so the UI never offers an option the backend rejects.
+ * `ProviderId` enumerates the upstream LLM providers selected by the server.
+ * The browser mirrors this value from `/api/server-config`; keep it in sync
+ * with the server-side provider allowlist in `providers/index.ts`.
  */
 export type ProviderId = 'openai' | 'anthropic'
 
@@ -74,19 +74,19 @@ export type ProviderId = 'openai' | 'anthropic'
  * Non-sensitive user preferences that are safe to persist in `localStorage`.
  *
  * NOTE: This shape intentionally does NOT include any API key, OAuth token,
- * or other credential. Secrets must travel as short-lived server sessions
- * (see `server/session/*`) and never be cached in the browser. Adding an
- * `apiKey` field here would be a security regression.
+ * or other credential. Secrets are read only from server-side environment
+ * variables and used by the provider layer; they must never be persisted in
+ * the browser. Adding an `apiKey` field here would be a security regression.
  *
  * The defaults below are also used by the server-side `BrowserPrefs`
  * persistence tests as a stable baseline.
  */
 export interface BrowserPrefs {
-  /** Which upstream provider the browser sends chat/analyze calls to. */
+  /** Read-only mirror of the server-selected provider. */
   provider: ProviderId
-  /** Model name to use for the chat / conversation turn (e.g. `gpt-4o-mini`). */
+  /** Read-only mirror of the server chat model loaded from `.env.local`. */
   chatModel: string
-  /** Model name to use for the analysis / grammar-correction pass. */
+  /** Read-only mirror of the server analysis model loaded from `.env.local`. */
   analyzeModel: string
   /**
    * Read-only mirror of the server-side Base URL.
@@ -120,8 +120,8 @@ export const BROWSER_PREFS_KEY = 'lingolevel_prefs'
 
 export const DEFAULT_BROWSER_PREFS: Readonly<BrowserPrefs> = {
   provider: 'openai',
-  chatModel: 'gpt-4o-mini',
-  analyzeModel: 'gpt-4o-mini',
+  chatModel: '',
+  analyzeModel: '',
   baseUrl: '',
   level: 'junior',
   scenarioId: 'free_chat',

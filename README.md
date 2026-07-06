@@ -11,8 +11,8 @@ An interactive AI English coach designed for Chinese learners with adaptive diff
   - `providers/fallback.ts` — canned replies returned by adapters when all retries are exhausted
   - `providers/util.ts` — shared helpers (e.g. `errorMessage`)
   - `providers/index.ts` — factory: build provider from `process.env`
-- **Server** (`server.ts`): Express on the Vite dev middleware. Exposes `GET /api/server-config` (echoes active provider / model / base URL — **no API key**), `POST /api/chat`, and `POST /api/analyze`. The active provider is selected at boot from the `PROVIDER` env var.
-- **Frontend** (`src/`): React + Vite SPA. **Non-sensitive user preferences** (provider URL, model names, level, scenario, theme) are persisted in `localStorage` under the key `lingolevel_prefs`. **No API keys, tokens, or secrets ever touch the browser** — the server is the only thing that talks to upstream LLMs.
+- **Server** (`server/`, with `server.ts` as a compatibility entry): Express on the Vite dev middleware. Exposes `GET /api/server-config` (echoes active provider / model / base URL — **no API key**), `POST /api/chat`, and `POST /api/analyze`. The active provider and model names are selected at boot from `.env.local` / `process.env`.
+- **Frontend** (`src/`): React + Vite SPA. The browser persists only non-sensitive learning preferences such as level, scenario, theme, and a read-only mirror of the active server config under `lingolevel_prefs`. **No API keys, tokens, or secrets ever touch the browser** — the server is the only thing that talks to upstream LLMs.
 - **Tooling** (`scripts/smoke.sh`, `providers/__manual_test.ts`): a curl-based smoke test and a tsx-runnable manual test, both non-zero-exit on failure.
 
 ## Run Locally
@@ -36,7 +36,7 @@ The server prints its URL on startup (default `http://localhost:59100`).
 
 Set `PROVIDER` to one of `openai` (any OpenAI-compatible service) or `anthropic` in `.env.local`, then fill the matching section.
 
-> **API keys live only on the server.** They are never sent to or stored in the browser. The in-app Settings panel can echo or change only non-sensitive fields (model names, level, scenario, theme). `Base URL` and `API Key` are server-only — they live in `.env.local` and require a server restart to take effect. `GET /api/server-config` is verified to not contain an `apiKey` field.
+> **API keys live only on the server.** They are never sent to or stored in the browser. The in-app Settings panel shows the active server-side provider/model/base URL from `/api/server-config`, but those connection values are controlled by `.env.local` and require a server restart to change. The browser only persists learning preferences such as level, scenario, and theme. `GET /api/server-config` is verified to not contain an `apiKey` field.
 
 ### A note on third-party "transit" proxies
 

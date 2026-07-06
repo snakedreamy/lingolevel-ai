@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { WordItem } from "../types";
-import { 
+import { speakText } from "../features/chat/speech";
+import {
   BookMarked, 
   Trash2, 
   Volume2, 
@@ -31,13 +32,13 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
   const handleSpeakWord = (word: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     try {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(word);
-        utterance.lang = "en-US";
-        utterance.rate = 0.9;
-        window.speechSynthesis.speak(utterance);
-      }
+      speakText({
+        text: word,
+        accent: "us",
+        speed: 0.9,
+        onStart: () => undefined,
+        onEnd: () => undefined,
+      });
     } catch (err) {
       console.error(err);
     }
@@ -63,36 +64,49 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
     setIsFlipped(false);
   }, [activeTab]);
 
+  useEffect(() => {
+    // Removing a card can make the current flashcard index point past the end.
+    // Clamp it immediately so the drill never renders an empty card on mobile.
+    setFlashCardIndex((index) => Math.min(index, Math.max(0, wordList.length - 1)));
+  }, [wordList.length]);
+
   if (!isOpen) return null;
 
+  const safeFlashCardIndex = wordList.length > 0
+    ? Math.min(flashCardIndex, wordList.length - 1)
+    : 0;
+  const activeFlashCard = wordList[safeFlashCardIndex];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="w-full max-w-4xl bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col h-[85vh]">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-0 sm:items-center sm:p-4 animate-fade-in">
+      <div className="w-full max-w-4xl bg-white dark:bg-zinc-950 rounded-t-3xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col h-[92dvh] sm:h-[85vh]">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 bg-stone-50/80 dark:bg-zinc-900/50 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-100 dark:border-zinc-800 bg-stone-50/80 dark:bg-zinc-900/50 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg text-indigo-600 dark:text-indigo-400">
               <BookMarked className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+              <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
                 我的英文生词本 (My Vocabulary Notebook)
               </h2>
-              <p className="text-xs text-zinc-500">
+              <p className="hidden text-xs text-zinc-500 sm:block">
                 收录了您在聊天或语法分析时一键加星的词汇，为您量身制作学习卡。
               </p>
             </div>
           </div>
-          <button 
+          <button
+            type="button"
             onClick={onClose}
             className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-600 transition"
+            aria-label="关闭生词本"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Tab Selector bar */}
-        <div className="px-6 py-2 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-2 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-2">
             <button
               onClick={() => setActiveTab('list')}
@@ -133,7 +147,7 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
         </div>
 
         {/* Body Area */}
-        <div className="flex-1 overflow-y-auto p-6 bg-stone-50/30 dark:bg-zinc-950/20">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-stone-50/30 dark:bg-zinc-950/20">
           {wordList.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto py-12">
               <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-400 mb-4 border border-dashed border-zinc-300">
@@ -156,10 +170,11 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
                     <div>
                       <h4 className="font-bold text-lg text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
                         {item.word}
-                        <button 
+                        <button
                           onClick={(e) => handleSpeakWord(item.word, e)}
                           className="p-1 text-zinc-400 hover:text-indigo-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition cursor-pointer"
                           title="听发音"
+                          aria-label={`播放 ${item.word} 的发音`}
                         >
                           <Volume2 className="h-3.5 w-3.5" />
                         </button>
@@ -170,8 +185,9 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
                     </div>
                     <button
                       onClick={() => onRemoveWord(item.word)}
-                      className="p-1 text-zinc-400 hover:text-rose-600 rounded opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                      className="p-1 text-zinc-400 hover:text-rose-600 rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition cursor-pointer"
                       title="移出生词本"
+                      aria-label={`移出生词本：${item.word}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -209,7 +225,7 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
                 {/* Micro instructions */}
                 <div className="absolute top-3 left-4 flex items-center gap-1.5 text-[10px] text-zinc-400">
                   <Layers className="h-3 w-3" />
-                  <span>Card {flashCardIndex + 1} of {wordList.length}</span>
+                  <span>Card {safeFlashCardIndex + 1} of {wordList.length}</span>
                 </div>
                 
                 <div className="absolute top-3 right-4 flex items-center gap-1 text-[10px] text-indigo-500 font-medium">
@@ -221,16 +237,17 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
                 {!isFlipped ? (
                   <div className="text-center animate-fade-in flex flex-col items-center">
                     <h3 className="text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight flex items-center gap-2">
-                      {wordList[flashCardIndex]?.word}
-                      <button 
-                        onClick={(e) => handleSpeakWord(wordList[flashCardIndex]?.word, e)}
+                      {activeFlashCard?.word}
+                      <button
+                        onClick={(e) => handleSpeakWord(activeFlashCard?.word ?? "", e)}
                         className="p-1 px-1.5 bg-zinc-100 dark:bg-zinc-800 rounded hover:bg-zinc-200 text-indigo-600"
+                        aria-label={activeFlashCard ? `播放 ${activeFlashCard.word} 的发音` : "播放当前单词发音"}
                       >
                         <Volume2 className="h-4 w-4" />
                       </button>
                     </h3>
                     <p className="text-sm font-mono text-zinc-400 mt-2">
-                      {wordList[flashCardIndex]?.phonetic || "/-/"}
+                      {activeFlashCard?.phonetic || "/-/"}
                     </p>
                     <div className="mt-8 px-4 py-1.5 rounded-full bg-zinc-50 dark:bg-zinc-800 text-zinc-500 text-xs flex items-center gap-1">
                       <HelpCircle className="h-3.5 w-3.5 text-indigo-500" />
@@ -244,16 +261,16 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
                       中文释义
                     </span>
                     <h3 className="text-2xl font-bold text-zinc-800 dark:text-zinc-300 mt-3">
-                      {wordList[flashCardIndex]?.translation}
+                      {activeFlashCard?.translation}
                     </h3>
 
                     <div className="mt-5 text-left bg-stone-50 dark:bg-zinc-950/50 p-3 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 max-w-md mx-auto">
                       <p className="text-xs font-semibold text-zinc-400">例句 (Example):</p>
                       <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mt-1 italic leading-relaxed">
-                        “ {wordList[flashCardIndex]?.exampleEn} ”
+                        “ {activeFlashCard?.exampleEn} ”
                       </p>
                       <p className="text-xs text-zinc-500 mt-1">
-                        {wordList[flashCardIndex]?.exampleZh}
+                        {activeFlashCard?.exampleZh}
                       </p>
                     </div>
                   </div>
@@ -269,7 +286,7 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
                   上一个 (Previous)
                 </button>
                 <button
-                  onClick={() => onRemoveWord(wordList[flashCardIndex]?.word)}
+                  onClick={() => onRemoveWord(activeFlashCard?.word)}
                   className="px-4 py-2 border border-rose-200 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl text-xs flex items-center gap-1 cursor-pointer"
                   title="标记为熟记，斩掉这个词"
                 >
@@ -293,7 +310,7 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-stone-50/50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-stone-50/50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800 flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4">
           <span className="text-xs text-zinc-500">
             单词本数据使用 LocalStorage 永久存留在本浏览器中，清理缓存会抹除。
           </span>
