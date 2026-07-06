@@ -1,4 +1,3 @@
-// providers/types.ts
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
@@ -8,6 +7,7 @@ export interface ProviderChatInput {
   messages: ChatMessage[]
   systemInstruction: string
   temperature?: number
+  scenarioId?: string | null
 }
 
 export interface ProviderChatOutput {

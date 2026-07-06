@@ -30,7 +30,7 @@ const FALLBACKS_BY_SCENARIO: Record<string, string[]> = {
   ]
 }
 
-export function fallbackChatReply(scenarioId: string, assistantMessage?: string): string {
+export function fallbackChatReply(scenarioId?: string | null): string {
   const id = scenarioId || 'free_chat'
   const list = FALLBACKS_BY_SCENARIO[id] ?? FALLBACKS_BY_SCENARIO.free_chat
   if (list.length === 0) {
@@ -85,11 +85,6 @@ export function fallbackAnalyzeResult(
   }
 }
 
-/**
- * Wrap a fallback `AnalysisResult` into the `{ data, isFallback }` envelope
- * expected by `Provider.analyzeJSON`. Use this from provider adapters on the
- * catch path so the server can log `fallback=true` accurately.
- */
 export function fallbackAnalyzeOutput(
   userMessage: string,
   assistantMessage: string | undefined,

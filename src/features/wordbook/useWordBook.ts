@@ -4,12 +4,18 @@ import { loadStoredJson, removeStoredValue, saveStoredJson } from "../../lib/sto
 
 const WORDBOOK_KEY = "english_coach_wordbook"
 
+type WordLookup = Record<string, true>
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 function stringOrFallback(value: unknown): string {
   return typeof value === "string" ? value : ""
+}
+
+function normalizeLookupWord(word: unknown): string {
+  return typeof word === "string" ? word.trim().toLowerCase() : ""
 }
 
 function normalizeWordItem(value: unknown): WordItem | null {
@@ -24,29 +30,47 @@ function normalizeWordItem(value: unknown): WordItem | null {
     translation: stringOrFallback(value.translation),
     exampleEn: stringOrFallback(value.exampleEn),
     exampleZh: stringOrFallback(value.exampleZh),
-    addTime: typeof value.addTime === "number" && Number.isFinite(value.addTime) ? value.addTime : 0,
+    addTime: typeof value.addTime === "number" && Number.isFinite(value.addTime) ? value.addTime : Date.now(),
   }
 }
 
 function normalizeWordList(value: unknown): WordItem[] {
   if (!Array.isArray(value)) return []
-  return value.map(normalizeWordItem).filter((item): item is WordItem => item !== null)
-}
 
-function normalizeLookupWord(word: unknown): string {
-  return typeof word === "string" ? word.trim().toLowerCase() : ""
+  const words = value.map(normalizeWordItem).filter((item): item is WordItem => item !== null)
+  const seen = new Set<string>()
+  const uniqueWords: WordItem[] = []
+
+  for (const item of words) {
+    const lookupWord = normalizeLookupWord(item.word)
+    if (!lookupWord || seen.has(lookupWord)) continue
+    seen.add(lookupWord)
+    uniqueWords.push(item)
+  }
+
+  return uniqueWords
 }
 
 function getInitialWords(): WordItem[] {
   return normalizeWordList(loadStoredJson<unknown>(WORDBOOK_KEY, []))
 }
 
+function buildWordLookup(words: WordItem[]): WordLookup {
+  return words.reduce<WordLookup>((lookup, item) => {
+    const key = normalizeLookupWord(item.word)
+    if (key) lookup[key] = true
+    return lookup
+  }, {})
+}
+
 export function useWordBook() {
   const [savedWords, setSavedWords] = useState<WordItem[]>(getInitialWords)
 
+  const wordLookup = useMemo(() => buildWordLookup(savedWords), [savedWords])
+
   const hasWord = (word: string) => {
     const lookupWord = normalizeLookupWord(word)
-    return lookupWord ? normalizeWordList(savedWords).some((item) => normalizeLookupWord(item.word) === lookupWord) : false
+    return lookupWord ? wordLookup[lookupWord] === true : false
   }
 
   const removeWord = (word: string) => {
@@ -54,7 +78,7 @@ export function useWordBook() {
     if (!lookupWord) return
 
     setSavedWords((prev) => {
-      const next = normalizeWordList(prev).filter((item) => normalizeLookupWord(item.word) !== lookupWord)
+      const next = prev.filter((item) => normalizeLookupWord(item.word) !== lookupWord)
       saveStoredJson(WORDBOOK_KEY, next)
       return next
     })
@@ -62,20 +86,27 @@ export function useWordBook() {
 
   const addWord = (word: WordItem) => {
     const normalizedWord = normalizeWordItem(word)
+    if (!normalizedWord) return false
+
+    const lookupWord = normalizeLookupWord(normalizedWord.word)
+    if (!lookupWord) return false
+
+    let added = false
 
     setSavedWords((prev) => {
-      const prevWords = normalizeWordList(prev)
-      if (!normalizedWord) {
-        saveStoredJson(WORDBOOK_KEY, prevWords)
-        return prevWords
+      const exists = prev.some((item) => normalizeLookupWord(item.word) === lookupWord)
+      if (exists) {
+        saveStoredJson(WORDBOOK_KEY, prev)
+        return prev
       }
 
-      const lookupWord = normalizeLookupWord(normalizedWord.word)
-      const exists = prevWords.some((item) => normalizeLookupWord(item.word) === lookupWord)
-      const next = exists ? prevWords.filter((item) => normalizeLookupWord(item.word) !== lookupWord) : [normalizedWord, ...prevWords]
+      added = true
+      const next = [normalizedWord, ...prev]
       saveStoredJson(WORDBOOK_KEY, next)
       return next
     })
+
+    return added
   }
 
   const clearAllWords = () => {
@@ -89,6 +120,6 @@ export function useWordBook() {
     removeWord,
     clearAllWords,
     hasWord,
-    hasAnyWords: useMemo(() => savedWords.length > 0, [savedWords]),
+    hasAnyWords: savedWords.length > 0,
   }
 }

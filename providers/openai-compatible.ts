@@ -5,42 +5,13 @@ import type {
 import { callWithRetry } from './retry'
 import { fallbackChatReply, fallbackAnalyzeOutput } from './fallback'
 import { buildAnalysisUserPrompt } from './schema'
-import { errorMessage, extractJsonObject, normalizeAnalysisShape } from './util'
-
-const JSON_EXTRACT_HINT = '\n\nIMPORTANT: Return ONLY a valid JSON object. No markdown code blocks, no commentary, no prefix. Just the raw JSON starting with { and ending with }.'
-
-/**
- * Heuristic: does this "content" string look like an error/HTML page that a
- * misconfigured transit proxy might have returned instead of a real model
- * reply? Real model content never starts with phrases like "Error:" or
- * contains the literal text "<!DOCTYPE" or "<html". If we see those, we
- * treat the response as garbage and let retry/fallback kick in.
- */
-function looksLikeErrorContent(s: string): boolean {
-  const head = s.slice(0, 256).trimStart()
-  if (head.length === 0) return true
-  // Lowercase once for cheap checks.
-  const lower = head.toLowerCase()
-  if (
-    lower.startsWith('error:') ||
-    lower.startsWith('error -') ||
-    lower.startsWith('invalid api') ||
-    lower.startsWith('authentication') ||
-    lower.startsWith('unauthorized') ||
-    lower.startsWith('forbidden') ||
-    lower.startsWith('access denied') ||
-    lower.startsWith('not found') ||
-    lower.startsWith('bad request') ||
-    lower.startsWith('<!doctype') ||
-    lower.startsWith('<html') ||
-    lower.startsWith('{"error"') ||
-    lower.startsWith('{"type":"error"') ||
-    lower.startsWith('an error occurred')
-  ) {
-    return true
-  }
-  return false
-}
+import {
+  JSON_EXTRACT_HINT,
+  errorMessage,
+  extractJsonObject,
+  looksLikeErrorContent,
+  normalizeAnalysisShape,
+} from './util'
 
 export function createOpenAIProvider(cfg: ProviderConfig): Provider {
   const baseUrl = cfg.baseUrl.replace(/\/$/, '')
@@ -93,7 +64,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
     } catch (err) {
       console.error('[openai.chat] falling back:', errorMessage(err))
       return {
-        content: fallbackChatReply('free_chat'),
+        content: fallbackChatReply(input.scenarioId),
         isFallback: true
       }
     }
@@ -112,11 +83,6 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
         (signal) => runCompletion('analyze', body, signal),
         { timeoutMs: cfg.timeoutMs }
       )
-      // Soft-constraint JSON extraction — many third-party relays do NOT
-      // enforce response_format: json_schema server-side, so the model often
-      // wraps the JSON in ```json ... ``` fences or adds prefix text. We
-      // extract a JSON object heuristically instead of relying on raw
-      // JSON.parse(text).
       let parsed: unknown
       try {
         const candidate = extractJsonObject(text)
@@ -124,13 +90,6 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
       } catch (err) {
         throw new Error(`OpenAI analyze returned non-JSON content: ${errorMessage(err)}`)
       }
-      // Normalize + soft validate. The relay's underlying model often
-      // deviates from the documented schema (e.g. translation is sometimes
-      // an object, keyWords use `chineseDefinition` instead of
-      // `definition`). We coerce known deviations into the documented
-      // `AnalysisResult` shape instead of throwing — that way the user
-      // still gets a useful response, and we only fall back to the
-      // canned `AnalysisResult` when the output is unparseable.
       const { data, coerced } = normalizeAnalysisShape(
         parsed,
         input.userMessage,

@@ -35,6 +35,7 @@ export function createChatRouter(args: { provider: Provider; activeProvider: str
           scenarioInfo,
         }),
         temperature: 0.7,
+        scenarioId: typeof scenarioInfo?.id === "string" ? scenarioInfo.id : "free_chat",
       })
 
       logRequest({ endpoint: "chat", provider: activeProvider, model: activeChatModel, status: 200, latencyMs: Date.now() - start, retry: 0, fallback: !!result.isFallback })

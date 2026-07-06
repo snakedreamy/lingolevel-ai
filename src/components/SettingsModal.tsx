@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
-import { X, Settings2, Server, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { DifficultyLevel, Scenario, BrowserPrefs, ProviderId } from "../types";
-import type { ServerConfig } from "../lib/api";
-import LevelSelector from "./LevelSelector";
-import ScenarioCards from "./ScenarioCards";
+import { X, Settings2, Server, CheckCircle2 } from "lucide-react"
+import { DifficultyLevel, Scenario, ProviderId } from "../types"
+import type { ServerConfig } from "../lib/api"
+import LevelSelector from "./LevelSelector"
+import ScenarioCards from "./ScenarioCards"
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -12,11 +11,7 @@ interface SettingsModalProps {
   onLevelChange: (level: DifficultyLevel) => void;
   activeScenario: Scenario;
   onScenarioSelect: (scenario: Scenario) => void;
-  prefs: BrowserPrefs;
-  onSavePrefs: (next: BrowserPrefs) => void;
   serverConfig: ServerConfig | null;
-  configMismatch: boolean;
-  onDismissMismatch: () => void;
 }
 
 const PROVIDER_LABELS: Record<ProviderId, string> = {
@@ -55,36 +50,9 @@ export default function SettingsModal({
   onLevelChange,
   activeScenario,
   onScenarioSelect,
-  prefs,
-  onSavePrefs,
   serverConfig,
-  configMismatch,
-  onDismissMismatch,
 }: SettingsModalProps) {
-  const [draft, setDraft] = useState<BrowserPrefs>(prefs);
-
-  useEffect(() => {
-    if (isOpen) {
-      setDraft(prefs);
-    }
-  }, [isOpen, prefs]);
-
   if (!isOpen) return null;
-
-  // The browser does not own model/provider configuration. It only mirrors the
-  // values that the server loaded from `.env.local`, so the settings UI cannot
-  // accidentally imply that changing a dropdown changes the active upstream LLM.
-  const syncLocalMirror = () => {
-    if (!serverConfig) return;
-    onSavePrefs({
-      ...draft,
-      provider: serverConfig.provider,
-      chatModel: serverConfig.chatModel,
-      analyzeModel: serverConfig.analyzeModel,
-      baseUrl: serverConfig.baseUrl,
-    });
-    onClose();
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm animate-fade-in sm:items-center sm:p-4">
@@ -110,29 +78,6 @@ export default function SettingsModal({
         </div>
 
         <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
-          {configMismatch && serverConfig && (
-            <div
-              role="alert"
-              className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400"
-            >
-              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
-              <div className="flex-1">
-                <p className="font-bold">本地缓存与服务端配置不一致</p>
-                <p className="mt-1 opacity-80">
-                  当前生效配置来自服务端 <code>.env.local</code>。点击“同步服务端配置”会刷新浏览器缓存；如需更换服务商、模型或 Base URL，请修改 <code>.env.local</code> 后重启服务。
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={onDismissMismatch}
-                className="cursor-pointer text-[10px] font-bold underline"
-                aria-label="忽略配置不一致警告"
-              >
-                忽略
-              </button>
-            </div>
-          )}
-
           <section className="space-y-3">
             <div className="flex items-center gap-2">
               <Server className="h-4 w-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
@@ -178,21 +123,13 @@ export default function SettingsModal({
           />
         </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t border-zinc-200 bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
+        <div className="flex justify-end border-t border-zinc-200 bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] dark:border-zinc-800 dark:bg-zinc-900 sm:px-6 sm:py-4">
           <button
             type="button"
             onClick={onClose}
             className="cursor-pointer rounded-lg px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             关闭
-          </button>
-          <button
-            type="button"
-            onClick={syncLocalMirror}
-            disabled={!serverConfig}
-            className="cursor-pointer rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:disabled:bg-zinc-700"
-          >
-            同步服务端配置
           </button>
         </div>
       </div>

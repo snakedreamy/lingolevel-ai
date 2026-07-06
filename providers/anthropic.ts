@@ -1,45 +1,18 @@
-// providers/anthropic.ts
 import type {
   Provider, ProviderConfig, ProviderChatInput, ProviderAnalyzeInput
 } from './types'
 import { callWithRetry } from './retry'
 import { fallbackChatReply, fallbackAnalyzeOutput } from './fallback'
 import { buildAnalysisUserPrompt } from './schema'
-import { errorMessage, extractJsonObject, normalizeAnalysisShape } from './util'
+import {
+  JSON_EXTRACT_HINT,
+  errorMessage,
+  extractJsonObject,
+  looksLikeErrorContent,
+  normalizeAnalysisShape,
+} from './util'
 
 const ANTHROPIC_VERSION = '2023-06-01'
-const JSON_EXTRACT_HINT = '\n\nIMPORTANT: Return ONLY a valid JSON object. No markdown code blocks, no commentary, no prefix. Just the raw JSON starting with { and ending with }.'
-
-/**
- * Heuristic: does this text block look like an error/HTML page that a
- * misconfigured transit proxy might have returned instead of a real model
- * reply? Mirrors the same checks as the OpenAI-compatible adapter so the two
- * adapters behave consistently when garbage flows in.
- */
-function looksLikeErrorContent(s: string): boolean {
-  const head = s.slice(0, 256).trimStart()
-  if (head.length === 0) return true
-  const lower = head.toLowerCase()
-  if (
-    lower.startsWith('error:') ||
-    lower.startsWith('error -') ||
-    lower.startsWith('invalid api') ||
-    lower.startsWith('authentication') ||
-    lower.startsWith('unauthorized') ||
-    lower.startsWith('forbidden') ||
-    lower.startsWith('access denied') ||
-    lower.startsWith('not found') ||
-    lower.startsWith('bad request') ||
-    lower.startsWith('<!doctype') ||
-    lower.startsWith('<html') ||
-    lower.startsWith('{"error"') ||
-    lower.startsWith('{"type":"error"') ||
-    lower.startsWith('an error occurred')
-  ) {
-    return true
-  }
-  return false
-}
 
 export function createAnthropicProvider(cfg: ProviderConfig): Provider {
   const baseUrl = cfg.baseUrl.replace(/\/$/, '')
@@ -100,7 +73,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
     } catch (err) {
       console.error('[anthropic.chat] falling back:', errorMessage(err))
       return {
-        content: fallbackChatReply('free_chat'),
+        content: fallbackChatReply(input.scenarioId),
         isFallback: true
       }
     }
@@ -120,10 +93,6 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
         (signal) => runCompletion('analyze', body, signal, parseAnalyzeText),
         { timeoutMs: cfg.timeoutMs }
       )
-      // Soft-constraint JSON extraction — the transit relay does NOT
-      // enforce tool_choice server-side, so the model may wrap JSON in
-      // ```json ... ``` fences or add prefix text. We extract a JSON
-      // object heuristically (same approach as the OpenAI adapter).
       let parsed: unknown
       try {
         const candidate = extractJsonObject(text)
@@ -131,12 +100,6 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
       } catch (err) {
         throw new Error(`Anthropic analyze returned non-JSON content: ${errorMessage(err)}`)
       }
-      // Normalize + soft validate. The relay's underlying model often
-      // deviates from the documented schema (e.g. translation is sometimes
-      // an object, keyWords use `chineseDefinition` instead of
-      // `definition`). We coerce known deviations into the documented
-      // `AnalysisResult` shape instead of throwing — that way the user
-      // still gets a useful response.
       const { data, coerced } = normalizeAnalysisShape(
         parsed,
         input.userMessage,
@@ -162,13 +125,6 @@ function readContentBlocks(json: unknown): unknown[] {
   return j.content
 }
 
-/**
- * Pull all `type === "text"` blocks out of an Anthropic Messages response,
- * skipping `thinking` blocks and any other non-text content. The relay's
- * `deepseek-v4-flash` model emits a `type: "thinking"` block carrying the
- * chain-of-thought reasoning that must NOT be mixed into the user-visible
- * chat reply. We only concatenate the actual `text` blocks.
- */
 function readAssistantTextBlocks(json: unknown): string {
   const blocks = readContentBlocks(json)
   const parts: string[] = []
@@ -178,7 +134,6 @@ function readAssistantTextBlocks(json: unknown): string {
     if (block.type === 'text' && typeof block.text === 'string') {
       parts.push(block.text)
     }
-    // intentionally skip `type === "thinking"` and any other unknown types
   }
   return parts.join('')
 }

@@ -1,5 +1,6 @@
-// providers/util.ts
 import type { AnalysisResult } from '../src/types'
+
+export const JSON_EXTRACT_HINT = '\n\nIMPORTANT: Return ONLY a valid JSON object. No markdown code blocks, no commentary, no prefix. Just the raw JSON starting with { and ending with }.'
 
 /**
  * Safely convert an unknown error into a human-readable string.
@@ -13,6 +14,33 @@ export function errorMessage(err: unknown): string {
   } catch {
     return 'Unknown error (failed to stringify)'
   }
+}
+
+/**
+ * Heuristic: does this text look like an HTML/error page or a transport-layer
+ * failure payload instead of a real model response?
+ */
+export function looksLikeErrorContent(text: string): boolean {
+  const head = text.slice(0, 256).trimStart()
+  if (head.length === 0) return true
+
+  const lower = head.toLowerCase()
+  return (
+    lower.startsWith('error:') ||
+    lower.startsWith('error -') ||
+    lower.startsWith('invalid api') ||
+    lower.startsWith('authentication') ||
+    lower.startsWith('unauthorized') ||
+    lower.startsWith('forbidden') ||
+    lower.startsWith('access denied') ||
+    lower.startsWith('not found') ||
+    lower.startsWith('bad request') ||
+    lower.startsWith('<!doctype') ||
+    lower.startsWith('<html') ||
+    lower.startsWith('{"error"') ||
+    lower.startsWith('{"type":"error"') ||
+    lower.startsWith('an error occurred')
+  )
 }
 
 /**
@@ -85,22 +113,7 @@ export function extractJsonObject(text: string): string {
 
 /**
  * Normalize a model-returned analysis object into the documented `AnalysisResult`
- * shape, tolerating common field-name and structural deviations:
- *
- *   - `translation`: may be a string OR an object like
- *     `{ userSentence, aiResponse }` / `{ user, assistant }` /
- *     `{ user, ai }`. Flatten those into a single string.
- *   - `grammarCorrections`: may be an array, OR an object with
- *     `{ score, errors, correctedVersion, explanations, nativeSuggestion }`.
- *     Coerce into a single-element `GrammarCorrection[]`.
- *   - `keyWords[i]`: may use `definition` / `phonetic` (schema) OR
- *     `chineseDefinition` / `phonetic` / `translation` / `pastTense` etc.
- *     Map whatever fields exist to the schema; pass through any string fields
- *     verbatim.
- *   - `suggestions`: usually a string[] — pass through as-is.
- *
- * Returns a fully-typed `AnalysisResult` and a boolean indicating whether
- * any field had to be coerced (used for debug logging).
+ * shape, tolerating common field-name and structural deviations.
  */
 export function normalizeAnalysisShape(
   raw: unknown,
@@ -113,7 +126,6 @@ export function normalizeAnalysisShape(
   const r = raw as Record<string, unknown>
   let coerced = false
 
-  // ---- translation: string or {userSentence/aiResponse/user/ai/...} ----
   let translation: string
   if (typeof r.translation === 'string') {
     translation = r.translation
@@ -134,7 +146,6 @@ export function normalizeAnalysisShape(
       : userMessage || ''
   }
 
-  // ---- grammarCorrections: array OR object form ----
   let grammarCorrections: AnalysisResult['grammarCorrections']
   if (Array.isArray(r.grammarCorrections)) {
     grammarCorrections = (r.grammarCorrections as unknown[]).map((item) =>
@@ -193,18 +204,14 @@ export function normalizeAnalysisShape(
     ]
   }
 
-  // ---- keyWords: array of objects, accept field-name variations ----
   let keyWords: AnalysisResult['keyWords']
   if (Array.isArray(r.keyWords)) {
-    keyWords = (r.keyWords as unknown[]).map((item) =>
-      normalizeKeyWord(item)
-    )
+    keyWords = (r.keyWords as unknown[]).map((item) => normalizeKeyWord(item))
   } else {
     coerced = true
     keyWords = []
   }
 
-  // ---- suggestions: array of strings (tolerate non-strings) ----
   let suggestions: string[]
   if (Array.isArray(r.suggestions)) {
     suggestions = (r.suggestions as unknown[])
