@@ -20,6 +20,8 @@ export interface ProviderAnalyzeInput {
   userMessage: string
   assistantMessage: string
   level: string
+  /** Optional scenario context injected into the analysis prompt (e.g. "Ordering Coffee at Starbucks"). */
+  scenarioContext?: string
 }
 
 export interface ProviderAnalyzeOutput {

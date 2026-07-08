@@ -9,7 +9,7 @@ export function createAnalyzeRouter(args: { provider: Provider; activeProvider: 
 
   router.post("/analyze", async (req, res) => {
     const start = Date.now()
-    const { userMessage, assistantMessage, level } = req.body ?? {}
+    const { userMessage, assistantMessage, level, scenarioContext } = req.body ?? {}
     if (!userMessage && !assistantMessage) {
       return res.status(400).json({ error: "userMessage or assistantMessage is required" })
     }
@@ -17,12 +17,16 @@ export function createAnalyzeRouter(args: { provider: Provider; activeProvider: 
     const normalizedUserMessage = String(userMessage ?? "")
     const normalizedAssistantMessage = String(assistantMessage ?? "")
     const normalizedLevel = String(level ?? "junior")
+    const normalizedScenarioContext = typeof scenarioContext === 'string' && scenarioContext.trim()
+      ? scenarioContext.trim()
+      : undefined
 
     try {
       const { data, isFallback } = await provider.analyzeJSON({
         userMessage: normalizedUserMessage,
         assistantMessage: normalizedAssistantMessage,
         level: normalizedLevel,
+        scenarioContext: normalizedScenarioContext,
       })
       logRequest({ endpoint: "analyze", provider: activeProvider, model: activeAnalyzeModel, status: 200, latencyMs: Date.now() - start, retry: 0, fallback: !!isFallback })
       res.json({

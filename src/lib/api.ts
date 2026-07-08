@@ -25,6 +25,8 @@ export interface AnalyzeRequest {
   userMessage: string
   assistantMessage: string
   level: DifficultyLevel
+  /** Scenario display name forwarded to the analysis prompt for context-aware suggestions. */
+  scenarioContext?: string
 }
 
 export async function fetchServerConfig(): Promise<ServerConfig> {

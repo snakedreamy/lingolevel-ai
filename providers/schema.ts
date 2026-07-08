@@ -80,11 +80,16 @@ export const analysisSystemPrompt = `
      - suggestion 3: a reply that asks a follow-up question and keeps the conversation going
      - Never return an empty list.
      Each MUST contain the full English phrase and its Chinese translation in brackets like: "Do you agree? [你同意吗？]".
+{SCENARIO_LINE}
 `
 
-export function buildAnalysisUserPrompt(level: string, userMessage: string, assistantMessage: string): string {
+export function buildAnalysisUserPrompt(level: string, userMessage: string, assistantMessage: string, scenarioContext?: string): string {
+  const scenarioLine = scenarioContext
+    ? `\n  NOTE: This conversation is in the context of "${scenarioContext}". Ensure all suggestions and examples fit this scenario naturally.`
+    : ''
   return analysisSystemPrompt
     .replace('{LEVEL}', level)
     .replace('{USER}', userMessage || '')
     .replace('{ASSISTANT}', assistantMessage || '')
+    .replace('{SCENARIO_LINE}', scenarioLine)
 }

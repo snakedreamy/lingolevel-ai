@@ -143,6 +143,9 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
           userMessage: text,
           assistantMessage: assistantContent,
           level: currentLevel,
+          scenarioContext: activeScenario.id === 'free_chat'
+            ? undefined
+            : `${activeScenario.englishName} — ${activeScenario.description}`,
         })
         if (sessionIdRef.current !== sessionId || requestIdRef.current !== requestId) {
           return
@@ -167,6 +170,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
           return
         }
         console.error("Failed to analyze chat response", err)
+        setIsAnalysisLoading(false)
       } finally {
         if (sessionIdRef.current === sessionId && requestIdRef.current === requestId) {
           setIsAnalysisLoading(false)
