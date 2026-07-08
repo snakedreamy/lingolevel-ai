@@ -34,7 +34,7 @@ export default function AppHeader({
             </span>
           </h1>
           <p className="hidden text-[11px] text-zinc-500 font-medium sm:block">
-            专为中国用户打磨的沉浸式智能纠错英语学习沙盒
+            专注开口、纠错、复盘的英语输出练习工具
           </p>
         </div>
       </div>

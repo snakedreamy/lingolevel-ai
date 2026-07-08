@@ -82,10 +82,10 @@ export function fallbackAnalyzeResult(
     ],
     assistantReplyInsight: {
       structure: assistantMessage
-        ? '这句回复通常采用“回应当前话题 + 给出鼓励或反馈 + 继续追问”的结构。'
-        : '开场白通常采用“打招呼 + 邀请开口”的结构。',
-      grammar: '可重点模仿常见的日常问句、一般现在时表达，以及用于延续话题的 follow-up question。',
-      whyThisReply: '这种回复自然的原因在于它既回应了上下文，又主动给出下一个可聊的话题，能帮助对话继续下去。'
+        ? '它先接住当前话题，再给你一个可以继续回答的问题。'
+        : '开场白先帮你开口，重点是先整句模仿再往下接。',
+      grammar: '优先模仿这轮里最容易直接复用的短句或问句，不必硬找复杂语法点。',
+      whyThisReply: '先回答它最后那个问题，再补一条自己的信息，通常就是最顺的接法。'
     },
     keyWords: FALLBACK_WORDS,
     suggestions

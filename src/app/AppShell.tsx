@@ -4,7 +4,7 @@ import SettingsModal from "../components/SettingsModal"
 import WordBook from "../components/WordBook"
 import { LEVELS } from "../data/levels"
 import type { ServerConfig } from "../lib/api"
-import type { BrowserPrefs, DifficultyLevel, Message, Scenario, AnalysisResult, WordItem } from "../types"
+import type { AnalysisHistoryEntry, BrowserPrefs, DifficultyLevel, Message, Scenario, AnalysisResult, WordItem } from "../types"
 import AppHeader from "./AppHeader"
 import AnalysisSidebar from "../components/AnalysisSidebar"
 import MobileAnalysisDrawer from "./MobileAnalysisDrawer"
@@ -20,11 +20,16 @@ interface WordBookState {
 interface ChatSessionState {
   messages: Message[]
   analysis: AnalysisResult | null
+  analysisHistory: AnalysisHistoryEntry[]
+  selectedAnalysisIndex: number
   isChatLoading: boolean
   isAnalysisLoading: boolean
   resetConversation: () => Promise<void>
   sendMessage: (text: string) => Promise<void>
   addSystemMessage: (content: string) => void
+  showPreviousAnalysis: () => void
+  showNextAnalysis: () => void
+  showLatestAnalysis: () => void
 }
 
 interface AppShellProps {
@@ -65,7 +70,20 @@ export default function AppShell({
   chat,
 }: AppShellProps) {
   const { savedWords, addWord, removeWord, clearAllWords, hasWord } = wordBook
-  const { messages, analysis, isChatLoading, isAnalysisLoading, resetConversation, sendMessage, addSystemMessage } = chat
+  const {
+    messages,
+    analysis,
+    analysisHistory,
+    selectedAnalysisIndex,
+    isChatLoading,
+    isAnalysisLoading,
+    resetConversation,
+    sendMessage,
+    addSystemMessage,
+    showPreviousAnalysis,
+    showNextAnalysis,
+    showLatestAnalysis,
+  } = chat
 
   const handleScenarioSelect = (scenario: Scenario) => {
     setPrefs((p) => ({ ...p, scenarioId: scenario.id }))
@@ -132,10 +150,15 @@ export default function AppShell({
           <div className="hidden lg:block lg:col-span-1 h-full min-h-0 animate-fade-in">
             <AnalysisSidebar
               analysis={analysis}
+              analysisHistory={analysisHistory}
+              selectedAnalysisIndex={selectedAnalysisIndex}
               isLoading={isAnalysisLoading}
               onAddWord={addWord}
               isWordSaved={hasWord}
               onSelectSuggestion={handleSelectSuggestion}
+              onPreviousAnalysis={showPreviousAnalysis}
+              onNextAnalysis={showNextAnalysis}
+              onLatestAnalysis={showLatestAnalysis}
             />
           </div>
         </div>
@@ -144,10 +167,15 @@ export default function AppShell({
       {showMobileSidebar && (
         <MobileAnalysisDrawer
           analysis={analysis}
+          analysisHistory={analysisHistory}
+          selectedAnalysisIndex={selectedAnalysisIndex}
           isLoading={isAnalysisLoading}
           onAddWord={addWord}
           isWordSaved={hasWord}
           onSelectSuggestion={handleSelectSuggestion}
+          onPreviousAnalysis={showPreviousAnalysis}
+          onNextAnalysis={showNextAnalysis}
+          onLatestAnalysis={showLatestAnalysis}
           onClose={() => setShowMobileSidebar(false)}
         />
       )}

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { sendAnalyze, sendChat } from "../../lib/api"
 import { createMessageId } from "../../lib/ids"
-import type { AnalysisResult, DifficultyLevel, Message, Scenario } from "../../types"
+import type { AnalysisHistoryEntry, AnalysisResult, DifficultyLevel, Message, Scenario } from "../../types"
 
 function getStarterMessage(scenario: Scenario): string {
   return scenario.starterMessages[Math.floor(Math.random() * scenario.starterMessages.length)]
@@ -18,6 +18,8 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
   const { currentLevel, activeScenario, maxContextMessages } = args
   const [messages, setMessages] = useState<Message[]>([])
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
+  const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistoryEntry[]>([])
+  const [selectedAnalysisIndex, setSelectedAnalysisIndex] = useState(0)
   const [isChatLoading, setIsChatLoading] = useState(false)
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false)
   const sessionIdRef = useRef(0)
@@ -38,6 +40,8 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
 
     setMessages([starterMessage])
     setAnalysis(null)
+    setAnalysisHistory([])
+    setSelectedAnalysisIndex(0)
     setIsChatLoading(false)
     setIsAnalysisLoading(false)
   }, [activeScenario])
@@ -143,7 +147,21 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
         if (sessionIdRef.current !== sessionId || requestIdRef.current !== requestId) {
           return
         }
+
+        const historyEntry: AnalysisHistoryEntry = {
+          id: createMessageId("analysis"),
+          userMessage: text,
+          assistantMessage: assistantContent,
+          analysis: nextAnalysis,
+          createdAt: Date.now(),
+        }
+
         setAnalysis(nextAnalysis)
+        setAnalysisHistory((prev) => {
+          const nextHistory = [...prev, historyEntry]
+          setSelectedAnalysisIndex(nextHistory.length - 1)
+          return nextHistory
+        })
       } catch (err) {
         if (sessionIdRef.current !== sessionId || requestIdRef.current !== requestId) {
           return
@@ -158,14 +176,43 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
     [activeScenario, currentLevel, isChatLoading, maxContextMessages, messages],
   )
 
+  const showAnalysisAtIndex = useCallback(
+    (index: number) => {
+      const entry = analysisHistory[index]
+      if (!entry) return
+      setSelectedAnalysisIndex(index)
+      setAnalysis(entry.analysis)
+    },
+    [analysisHistory],
+  )
+
+  const showPreviousAnalysis = useCallback(() => {
+    if (selectedAnalysisIndex <= 0) return
+    showAnalysisAtIndex(selectedAnalysisIndex - 1)
+  }, [selectedAnalysisIndex, showAnalysisAtIndex])
+
+  const showNextAnalysis = useCallback(() => {
+    if (selectedAnalysisIndex >= analysisHistory.length - 1) return
+    showAnalysisAtIndex(selectedAnalysisIndex + 1)
+  }, [analysisHistory.length, selectedAnalysisIndex, showAnalysisAtIndex])
+
+  const showLatestAnalysis = useCallback(() => {
+    if (analysisHistory.length === 0) return
+    showAnalysisAtIndex(analysisHistory.length - 1)
+  }, [analysisHistory.length, showAnalysisAtIndex])
+
   return {
     messages,
     analysis,
+    analysisHistory,
+    selectedAnalysisIndex,
     isChatLoading,
     isAnalysisLoading,
     resetConversation,
     sendMessage,
-    setAnalysis,
     addSystemMessage,
+    showPreviousAnalysis,
+    showNextAnalysis,
+    showLatestAnalysis,
   }
 }

@@ -23,6 +23,19 @@ function deriveLearningFocus(correction: GrammarCorrection) {
     }
   }
 
+  if (
+    lowerCombined.includes("your") ||
+    lowerCombined.includes("you name") ||
+    lowerCombined.includes("所有格") ||
+    lowerCombined.includes("形容词性物主代词") ||
+    lowerCombined.includes("possessive")
+  ) {
+    return {
+      label: "本轮重点：your / my 这类所有格",
+      rule: "放在 name、book、teacher 这类名词前时，通常要用 your / my / his 这类词，而不是 you / I / he。",
+    }
+  }
+
   if (lowerCombined.includes("介词") || lowerCombined.includes("preposition")) {
     return {
       label: "本轮重点：固定搭配",
@@ -44,24 +57,43 @@ function deriveLearningFocus(correction: GrammarCorrection) {
     }
   }
 
+  if (correction.original.trim() === correction.corrected.trim()) {
+    return {
+      label: "本轮重点：直接套用高频句",
+      rule: "像 Hi!、Thank you.、What is your name? 这种高频短句，先整句记住，再换其中一个词，最容易开口。",
+    }
+  }
+
   return {
     label: "本轮重点：先模仿再替换",
     rule: "先把更正句整句读顺，再替换一个时间、地点或人物信息，最容易形成自己的表达。",
   }
 }
 
-function resolveExplanation(correction: GrammarCorrection, focus: ReturnType<typeof deriveLearningFocus>) {
-  const explanation = correction.explanation.trim()
+function containsChinese(text: string) {
+  return /[一-鿿]/.test(text)
+}
 
-  if (explanation && explanation !== "No specific issues found.") {
-    return explanation
+function buildFallbackExplanation(correction: GrammarCorrection, focus: ReturnType<typeof deriveLearningFocus>) {
+  if (correction.original.trim() === correction.corrected.trim()) {
+    return "这句话本身已经可以直接使用，更值得做的是把它当成高频整句记住，再替换其中一个词继续练。"
   }
 
-  if (correction.original.trim() === correction.corrected.trim()) {
-    return "这句话没有明显语法错误，当前更适合继续关注表达是否自然、是否顺口。"
+  if (focus.label.includes("your / my")) {
+    return `这句更适合直接记成“${correction.corrected}”。${focus.rule}`
   }
 
   return `优先记住这条规则：${focus.rule}`
+}
+
+function resolveExplanation(correction: GrammarCorrection, focus: ReturnType<typeof deriveLearningFocus>) {
+  const explanation = correction.explanation.trim()
+
+  if (explanation && explanation !== "No specific issues found." && containsChinese(explanation)) {
+    return explanation
+  }
+
+  return buildFallbackExplanation(correction, focus)
 }
 
 export function GrammarFeedbackCard({ corrections, onSpeakText, isFallback = false }: GrammarFeedbackCardProps) {
@@ -69,7 +101,7 @@ export function GrammarFeedbackCard({ corrections, onSpeakText, isFallback = fal
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 space-y-3">
       <div className="flex justify-between items-center pb-2 border-b border-zinc-100 dark:border-zinc-800">
         <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded uppercase font-mono">
-          句法纠错 Grammar Check
+          你的这句先看这里
         </span>
 
         {corrections.length > 0 ? (

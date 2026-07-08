@@ -131,7 +131,7 @@ export function ChatMessageList({
             <div className="rounded-2xl rounded-tl-none px-4 py-3 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-500 text-xs shadow-xs">
               <div className="flex items-center gap-2">
                 <span className="text-[9px] font-extrabold uppercase px-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded p-0.5">AI Coach</span>
-                <p className="text-[11px] text-zinc-400 italic">Thinking and checking grammar...</p>
+                <p className="text-[11px] text-zinc-400 italic">正在生成回复并整理这轮学习重点...</p>
               </div>
               <div className="flex items-center gap-1 mt-3">
                 <span className="w-2 h-2 rounded-full bg-indigo-600 animate-bounce" style={{ animationDelay: "0ms" }}></span>

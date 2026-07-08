@@ -68,6 +68,14 @@ export interface AnalysisResult {
   isFallback?: boolean;
 }
 
+export interface AnalysisHistoryEntry {
+  id: string;
+  userMessage: string;
+  assistantMessage: string;
+  analysis: AnalysisResult;
+  createdAt: number;
+}
+
 export type ProviderId = 'openai' | 'anthropic'
 
 /**

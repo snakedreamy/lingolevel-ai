@@ -29,9 +29,14 @@ function suggestionStep(index: number) {
 export function SuggestionListSection({ suggestions, onSelectSuggestion }: SuggestionListSectionProps) {
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 space-y-3">
-      <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded uppercase font-mono block w-max">
-        接话建议 Speech Suggestions
-      </span>
+      <div className="space-y-1">
+        <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded uppercase font-mono block w-max">
+          下一句怎么接
+        </span>
+        <p className="text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+          直接选一句继续说，先开口比先想复杂分析更重要。
+        </p>
+      </div>
       <div className="space-y-2">
         {suggestions.length > 0 ? (
           suggestions.map((suggestion, index) => {

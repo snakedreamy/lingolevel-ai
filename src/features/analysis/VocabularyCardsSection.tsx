@@ -14,7 +14,10 @@ export function VocabularyCardsSection({
   onAddWord,
   onSpeakText,
 }: VocabularyCardsSectionProps) {
-  const visibleWords = keyWords.filter((item) => item.word.trim().length > 0)
+  const visibleWords = keyWords
+    .filter((item) => item.word.trim().length > 0)
+    .filter((item, index, list) => list.findIndex((candidate) => candidate.word.trim().toLowerCase() === item.word.trim().toLowerCase()) === index)
+    .slice(0, 3)
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 space-y-3">

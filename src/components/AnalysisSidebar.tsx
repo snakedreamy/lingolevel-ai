@@ -1,5 +1,5 @@
-import { Sparkles, Lightbulb, TrendingUp } from "lucide-react";
-import type { AnalysisResult, WordItem } from "../types";
+import { ArrowLeft, ArrowRight, Lightbulb, TrendingUp } from "lucide-react";
+import type { AnalysisHistoryEntry, AnalysisResult, WordItem } from "../types";
 import { speakText } from "../features/chat/speech";
 import { AnalysisTranslationCard } from "../features/analysis/AnalysisTranslationCard";
 import { GrammarFeedbackCard } from "../features/analysis/GrammarFeedbackCard";
@@ -8,19 +8,29 @@ import { SuggestionListSection } from "../features/analysis/SuggestionListSectio
 
 interface AnalysisSidebarProps {
   analysis: AnalysisResult | null;
+  analysisHistory: AnalysisHistoryEntry[];
+  selectedAnalysisIndex: number;
   isLoading: boolean;
   onAddWord: (word: WordItem) => boolean;
   isWordSaved: (word: string) => boolean;
   onSelectSuggestion: (text: string) => void;
+  onPreviousAnalysis: () => void;
+  onNextAnalysis: () => void;
+  onLatestAnalysis: () => void;
   embedded?: boolean;
 }
 
 export default function AnalysisSidebar({
   analysis,
+  analysisHistory,
+  selectedAnalysisIndex,
   isLoading,
   onAddWord,
   isWordSaved,
   onSelectSuggestion,
+  onPreviousAnalysis,
+  onNextAnalysis,
+  onLatestAnalysis,
   embedded = false,
 }: AnalysisSidebarProps) {
   const handleSpeakText = (text: string) => {
@@ -40,15 +50,62 @@ export default function AnalysisSidebar({
   const shellClassName = embedded
     ? "min-h-0 flex flex-1 flex-col overflow-hidden bg-white dark:bg-zinc-950"
     : "h-full min-h-0 flex flex-col overflow-hidden border-t border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950 lg:border-t-0 lg:border-l"
+  const hasHistory = analysisHistory.length > 0
+  const isViewingLatest = hasHistory && selectedAnalysisIndex === analysisHistory.length - 1
+  const currentRound = hasHistory ? selectedAnalysisIndex + 1 : 0
 
   return (
     <div className={shellClassName}>
       {!embedded && (
-        <div className="p-3 sm:p-4 border-b border-zinc-200 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/40 flex items-center gap-2">
-          <Sparkles className="h-4.5 w-4.5 text-indigo-600 dark:text-indigo-400" />
-          <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
-            实时翻译与语法纠错 (Feedback)
+        <div className="border-b border-zinc-200 bg-stone-50/60 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900/40 sm:px-4 sm:py-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
+            Feedback
+          </p>
+          <h3 className="mt-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            这句怎么学
           </h3>
+          <p className="mt-1 text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+            只保留对开口有帮助的内容：这句哪里要改、哪句能直接套、下一句怎么接。
+          </p>
+        </div>
+      )}
+
+      {hasHistory && (
+        <div className={`border-b border-zinc-200 bg-white/90 dark:border-zinc-800 dark:bg-zinc-950/90 ${embedded ? "px-4 py-2.5" : "px-3 py-2.5 sm:px-4"}`}>
+          <div className="flex items-center justify-between gap-2">
+            <div className="rounded-full border border-zinc-200 bg-stone-50 px-2.5 py-1 text-[11px] font-medium text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+              第 {currentRound} / {analysisHistory.length} 轮{isViewingLatest ? " · 最新" : " · 回看中"}
+            </div>
+            {!isViewingLatest && (
+              <button
+                type="button"
+                onClick={onLatestAnalysis}
+                className="rounded-full bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-white transition hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+              >
+                回到最新
+              </button>
+            )}
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onPreviousAnalysis}
+              disabled={selectedAnalysisIndex === 0}
+              className="inline-flex items-center gap-1 rounded-full border border-zinc-200 px-2.5 py-1 text-[11px] font-medium text-zinc-600 transition hover:border-zinc-300 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              上一轮
+            </button>
+            <button
+              type="button"
+              onClick={onNextAnalysis}
+              disabled={selectedAnalysisIndex >= analysisHistory.length - 1}
+              className="inline-flex items-center gap-1 rounded-full border border-zinc-200 px-2.5 py-1 text-[11px] font-medium text-zinc-600 transition hover:border-zinc-300 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
+            >
+              下一轮
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       )}
 

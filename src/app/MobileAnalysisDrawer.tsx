@@ -1,22 +1,32 @@
 import { X } from "lucide-react"
 import AnalysisSidebar from "../components/AnalysisSidebar"
-import type { AnalysisResult, WordItem } from "../types"
+import type { AnalysisHistoryEntry, AnalysisResult, WordItem } from "../types"
 
 interface MobileAnalysisDrawerProps {
   analysis: AnalysisResult | null
+  analysisHistory: AnalysisHistoryEntry[]
+  selectedAnalysisIndex: number
   isLoading: boolean
   onAddWord: (word: WordItem) => boolean
   isWordSaved: (word: string) => boolean
   onSelectSuggestion: (text: string) => void
+  onPreviousAnalysis: () => void
+  onNextAnalysis: () => void
+  onLatestAnalysis: () => void
   onClose: () => void
 }
 
 export default function MobileAnalysisDrawer({
   analysis,
+  analysisHistory,
+  selectedAnalysisIndex,
   isLoading,
   onAddWord,
   isWordSaved,
   onSelectSuggestion,
+  onPreviousAnalysis,
+  onNextAnalysis,
+  onLatestAnalysis,
   onClose,
 }: MobileAnalysisDrawerProps) {
   return (
@@ -42,10 +52,15 @@ export default function MobileAnalysisDrawer({
         <div className="min-h-0 flex flex-1 flex-col overflow-hidden">
           <AnalysisSidebar
             analysis={analysis}
+            analysisHistory={analysisHistory}
+            selectedAnalysisIndex={selectedAnalysisIndex}
             isLoading={isLoading}
             onAddWord={onAddWord}
             isWordSaved={isWordSaved}
             embedded
+            onPreviousAnalysis={onPreviousAnalysis}
+            onNextAnalysis={onNextAnalysis}
+            onLatestAnalysis={onLatestAnalysis}
             onSelectSuggestion={(text) => {
               onSelectSuggestion(text)
               onClose()
