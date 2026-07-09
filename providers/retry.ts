@@ -54,6 +54,8 @@ function isTransient(err: unknown): boolean {
     msg.includes('overloaded') ||
     msg.includes('rate limit') ||
     msg.includes('timeout') ||
-    msg.includes('aborted')
+    msg.includes('aborted') ||
+    msg.includes('json') ||
+    msg.includes('parse')
   )
 }

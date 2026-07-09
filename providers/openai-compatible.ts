@@ -114,18 +114,21 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
     }
     try {
       const text = await callWithRetry(
-        (signal) => runCompletion('analyze', body, signal),
+        async (signal) => {
+          const resText = await runCompletion('analyze', body, signal)
+          try {
+            const candidate = extractJsonObject(resText)
+            return JSON.parse(candidate)
+          } catch (err) {
+            // Throw with 'parseable json' so isTransient in retry.ts can catch it
+            throw new Error(`OpenAI analyze returned non-JSON content: no parseable json found: ${errorMessage(err)}`)
+          }
+        },
         { timeoutMs: cfg.timeoutMs }
       )
-      let parsed: unknown
-      try {
-        const candidate = extractJsonObject(text)
-        parsed = JSON.parse(candidate)
-      } catch (err) {
-        throw new Error(`OpenAI analyze returned non-JSON content: ${errorMessage(err)}`)
-      }
+      
       const { data, coerced } = normalizeAnalysisShape(
-        parsed,
+        text,
         input.userMessage,
         input.assistantMessage
       )
