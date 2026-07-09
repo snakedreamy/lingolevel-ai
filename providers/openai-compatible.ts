@@ -46,11 +46,16 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
       if (!reader) throw new Error(`OpenAI ${label} returned no body`)
       const decoder = new TextDecoder()
       let accumulated = ''
+      let buffer = ''
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const chunk = decoder.decode(value, { stream: true })
-        for (const line of chunk.split('\n')) {
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        // Keep the last partial line in the buffer
+        buffer = lines.pop() ?? ''
+        
+        for (const line of lines) {
           const trimmed = line.trim()
           if (!trimmed.startsWith('data:')) continue
           const data = trimmed.slice(5).trim()
@@ -61,6 +66,17 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
             if (delta) accumulated += delta
           } catch { /* ignore malformed SSE lines */ }
         }
+      }
+      // Flush the remaining buffer if it contains data
+      if (buffer.trim().startsWith('data:')) {
+         const data = buffer.trim().slice(5).trim()
+         if (data !== '[DONE]') {
+           try {
+             const parsed = JSON.parse(data) as { choices?: { delta?: { content?: string } }[] }
+             const delta = parsed.choices?.[0]?.delta?.content
+             if (delta) accumulated += delta
+           } catch {}
+         }
       }
       content = accumulated
     } else {
