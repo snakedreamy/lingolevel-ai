@@ -4,7 +4,7 @@ import type {
 } from './types'
 import { callWithRetry } from './retry'
 import { fallbackChatReply, fallbackAnalyzeOutput } from './fallback'
-import { buildAnalysisUserPrompt } from './schema'
+import { analysisJsonSchema, buildAnalysisUserPrompt } from './schema'
 import {
   JSON_EXTRACT_HINT,
   errorMessage,
@@ -107,9 +107,16 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
   async function analyzeJSON(input: ProviderAnalyzeInput) {
     const body = {
       model: cfg.analyzeModel,
+      response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: 'You are an expert English-Chinese Bilingual Teacher. Always return a valid JSON object matching the documented shape (translation, grammarCorrections, assistantReplyInsight, keyWords, suggestions).' },
-        { role: 'user', content: buildAnalysisUserPrompt(input.level, input.userMessage, input.assistantMessage, input.scenarioContext) + JSON_EXTRACT_HINT }
+        { 
+          role: 'system', 
+          content: 'You are an expert English-Chinese Bilingual Teacher. You MUST return a valid JSON object matching this exact schema:\n' + JSON.stringify(analysisJsonSchema, null, 2) 
+        },
+        { 
+          role: 'user', 
+          content: buildAnalysisUserPrompt(input.level, input.userMessage, input.assistantMessage, input.scenarioContext) + JSON_EXTRACT_HINT 
+        }
       ]
     }
     try {
