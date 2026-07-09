@@ -64,6 +64,7 @@ export async function streamSSE(url: string, body: unknown, handlers: SSEHandler
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let gotDone = false
   const dispatch = (evt: string) => {
     const line = evt.trim()
     if (!line.startsWith('data:')) return
@@ -72,7 +73,10 @@ export async function streamSSE(url: string, body: unknown, handlers: SSEHandler
     try {
       const parsed = JSON.parse(data) as { type: string; content?: string; isFallback?: boolean; timestamp?: number; message?: string }
       if (parsed.type === 'delta' && typeof parsed.content === 'string') handlers.onDelta(parsed.content)
-      else if (parsed.type === 'done') handlers.onDone({ isFallback: parsed.isFallback, timestamp: parsed.timestamp })
+      else if (parsed.type === 'done') {
+        handlers.onDone({ isFallback: parsed.isFallback, timestamp: parsed.timestamp })
+        gotDone = true
+      }
       else if (parsed.type === 'error') handlers.onError(parsed.message ?? 'UNKNOWN_ERROR')
     } catch {
       /* ignore malformed line */
@@ -87,6 +91,7 @@ export async function streamSSE(url: string, body: unknown, handlers: SSEHandler
     for (const evt of events) dispatch(evt)
   }
   if (buffer.trim()) dispatch(buffer)
+  if (!gotDone) handlers.onError('STREAM_CLOSED_UNEXPECTEDLY')
 }
 
 export function streamChat(body: ChatRequest, handlers: SSEHandlers, signal?: AbortSignal) {

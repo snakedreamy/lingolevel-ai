@@ -25,8 +25,10 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false)
   const sessionIdRef = useRef(0)
   const requestIdRef = useRef(0)
+  const abortRef = useRef<AbortController | null>(null)
 
   const resetConversation = useCallback(async () => {
+    abortRef.current?.abort()
     const sessionId = sessionIdRef.current + 1
     sessionIdRef.current = sessionId
     requestIdRef.current += 1
@@ -66,6 +68,9 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
       id: assistantId, role: 'assistant', content: '', timestamp: Date.now(), streaming: true,
     }])
 
+    const controller = new AbortController()
+    abortRef.current = controller
+
     let assistantContent = ''
     let isFallback = false
     try {
@@ -94,8 +99,10 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
               : m))
           },
         },
+        controller.signal,
       )
     } catch (err) {
+      if (controller.signal.aborted || (err instanceof Error && err.name === 'AbortError')) return
       if (sessionIdRef.current !== sessionId || requestIdRef.current !== requestId) return
       console.error(err)
       setAnalysis(null)
