@@ -18,13 +18,15 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
 
   async function runCompletion(label: 'chat' | 'analyze', body: unknown, signal: AbortSignal): Promise<string> {
     const url = `${baseUrl}/chat/completions`
+    // Always request streaming — some relay proxies (e.g. CPA/Cline) only
+    // forward SSE responses and silently drop non-streaming content.
     const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${cfg.apiKey}`
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ ...(body as object), stream: true }),
       signal
     })
     if (!res.ok) {
@@ -34,9 +36,41 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
       )
       throw err
     }
-    const json: unknown = await res.json()
-    const content = readOpenAIContent(json)
-    if (typeof content !== 'string' || content.length === 0) {
+
+    const contentType = res.headers.get('content-type') ?? ''
+    let content: string
+
+    if (contentType.includes('text/event-stream')) {
+      // --- SSE streaming path ---
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error(`OpenAI ${label} returned no body`)
+      const decoder = new TextDecoder()
+      let accumulated = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value, { stream: true })
+        for (const line of chunk.split('\n')) {
+          const trimmed = line.trim()
+          if (!trimmed.startsWith('data:')) continue
+          const data = trimmed.slice(5).trim()
+          if (data === '[DONE]') break
+          try {
+            const parsed = JSON.parse(data) as { choices?: { delta?: { content?: string } }[] }
+            const delta = parsed.choices?.[0]?.delta?.content
+            if (delta) accumulated += delta
+          } catch { /* ignore malformed SSE lines */ }
+        }
+      }
+      content = accumulated
+    } else {
+      // --- Non-streaming JSON path (fallback for direct API calls) ---
+      const json: unknown = await res.json()
+      const raw = readOpenAIContent(json)
+      content = typeof raw === 'string' ? raw : ''
+    }
+
+    if (content.length === 0) {
       throw new Error(`OpenAI ${label} returned empty content`)
     }
     if (looksLikeErrorContent(content)) {
