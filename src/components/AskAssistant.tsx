@@ -12,9 +12,10 @@ interface AskAssistantProps {
   initialContext: AskContext | null
   onAsk: (question: string, context?: AskContext) => void
   onReset: () => void
+  sendOnCtrlEnter?: boolean
 }
 
-export default function AskAssistant({ isOpen, onClose, messages, isLoading, initialContext, onAsk, onReset }: AskAssistantProps) {
+export default function AskAssistant({ isOpen, onClose, messages, isLoading, initialContext, onAsk, onReset, sendOnCtrlEnter = false }: AskAssistantProps) {
   const [question, setQuestion] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const [ctx, setCtx] = useState<AskContext | null>(initialContext)
@@ -95,8 +96,11 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
           )}
           <div className="flex gap-2">
             <textarea rows={1} value={question} onChange={(e) => setQuestion(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
-              placeholder="问：单词怎么拼？这句话什么语法？"
+              onKeyDown={(e) => {
+                const isSendCombo = sendOnCtrlEnter ? (e.ctrlKey || e.metaKey) : !e.shiftKey
+                if (e.key === 'Enter' && isSendCombo) { e.preventDefault(); submit() }
+              }}
+              placeholder={"问：单词怎么拼？这句话什么语法？" + (sendOnCtrlEnter ? ' (Ctrl+Enter 发送)' : '')}
               className="flex-1 resize-none bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-[13px] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
             <button onClick={submit} disabled={!question.trim() || isLoading}
               className={`px-3 rounded-xl flex items-center justify-center ${!question.trim() || isLoading ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
