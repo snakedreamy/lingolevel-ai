@@ -27,6 +27,23 @@ export interface Message {
   translation?: string;
   pronunciation?: string; // IPA phonetics
   isFallback?: boolean;
+  /** True while the assistant message is still being streamed token-by-token. */
+  streaming?: boolean;
+}
+
+export interface AskContext {
+  word?: string
+  sentence?: string
+}
+
+export interface AskMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: number
+  context?: AskContext
+  streaming?: boolean
+  isFallback?: boolean
 }
 
 export interface WordItem {

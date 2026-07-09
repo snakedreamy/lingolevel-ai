@@ -1,23 +1,25 @@
 // src/App.tsx (merged: App + AppShell + AppHeader + MobileAnalysisDrawer)
 import { useMemo, useRef, useState } from 'react'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
-import { BookMarked, Menu, Moon, Settings, Sun, X } from 'lucide-react'
+import { BookMarked, HelpCircle, Menu, Moon, Settings, Sun, X } from 'lucide-react'
 import ChatWindow from './components/ChatWindow'
 import SettingsModal from './components/SettingsModal'
 import WordBook from './components/WordBook'
 import AnalysisSidebar from './components/AnalysisSidebar'
+import AskAssistant from './components/AskAssistant'
 import { LEVELS } from './data/levels'
 import { SCENARIOS } from './data/scenarios'
 import { useBrowserPrefs } from './hooks/useBrowserPrefs'
 import { useWordBook } from './hooks/useWordBook'
 import { useChatSession } from './hooks/useChatSession'
+import { useAskAssistant } from './hooks/useAskAssistant'
 import type { ServerConfig } from './lib/api'
-import type { AnalysisHistoryEntry, BrowserPrefs, DifficultyLevel, Message, Scenario, AnalysisResult, WordItem } from './types'
+import type { AnalysisHistoryEntry, AskContext, BrowserPrefs, DifficultyLevel, Message, Scenario, AnalysisResult, WordItem } from './types'
 
 // ─── AppHeader (inlined) ─────────────────────────────────────────────────────
 
 function AppHeader({
-  theme, savedWordsCount, showMobileSidebar, onToggleTheme, onOpenSettings, onOpenWordBook, onToggleMobileSidebar,
+  theme, savedWordsCount, showMobileSidebar, onToggleTheme, onOpenSettings, onOpenWordBook, onToggleMobileSidebar, onOpenAsk,
 }: {
   theme: BrowserPrefs['theme']
   savedWordsCount: number
@@ -26,6 +28,7 @@ function AppHeader({
   onOpenSettings: () => void
   onOpenWordBook: () => void
   onToggleMobileSidebar: () => void
+  onOpenAsk: () => void
 }) {
   return (
     <header className="flex-shrink-0 w-full bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 shadow-xs">
@@ -45,6 +48,13 @@ function AppHeader({
           className="p-2 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl text-zinc-600 dark:text-zinc-400 transition cursor-pointer"
           title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
           {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </button>
+
+        <button onClick={onOpenAsk}
+          className="flex items-center gap-1.5 rounded-xl border border-zinc-200 px-2.5 py-2 text-xs font-bold text-zinc-700 shadow-xs transition hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900 sm:px-3 sm:py-1.5 cursor-pointer"
+          title="打开答疑助手">
+          <HelpCircle className="h-4 w-4" />
+          <span className="hidden sm:inline">答疑</span>
         </button>
 
         <button onClick={onOpenSettings}
@@ -154,15 +164,21 @@ interface AppShellProps {
   setIsWordBookOpen: Dispatch<SetStateAction<boolean>>
   showMobileSidebar: boolean
   setShowMobileSidebar: Dispatch<SetStateAction<boolean>>
+  isAskOpen: boolean
+  setIsAskOpen: Dispatch<SetStateAction<boolean>>
+  askContext: AskContext | null
+  setAskContext: Dispatch<SetStateAction<AskContext | null>>
   serverConfig: ServerConfig | null
   wordBook: WordBookState
   chat: ChatSessionState
+  ask: ReturnType<typeof useAskAssistant>
 }
 
 function AppShell({
   prefs, setPrefs, currentLevel, activeScenario, inputText, setInputText, inputRef,
   isSettingsOpen, setIsSettingsOpen, isWordBookOpen, setIsWordBookOpen,
-  showMobileSidebar, setShowMobileSidebar, serverConfig, wordBook, chat,
+  showMobileSidebar, setShowMobileSidebar, isAskOpen, setIsAskOpen, askContext, setAskContext,
+  serverConfig, wordBook, chat, ask,
 }: AppShellProps) {
   const { savedWords, addWord, removeWord, clearAllWords, hasWord } = wordBook
   const {
@@ -178,6 +194,8 @@ function AppShell({
   }
 
   const handleSendMessage = (text: string) => { void sendMessage(text); setInputText('') }
+  const openAskWithWord = (word: string) => { setAskContext({ word }); setIsAskOpen(true) }
+  const openAskWithSentence = (sentence: string) => { setAskContext({ sentence }); setIsAskOpen(true) }
   const handleSelectSuggestion = (text: string) => { setInputText(text); inputRef.current?.focus() }
   const handleResetChat = () => {
     if (window.confirm('确定要清空当前对话，重新开始吗？')) void resetConversation()
@@ -208,6 +226,7 @@ function AppShell({
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenWordBook={() => setIsWordBookOpen(true)}
         onToggleMobileSidebar={() => setShowMobileSidebar((prev) => !prev)}
+        onOpenAsk={() => { setAskContext(null); setIsAskOpen(true) }}
       />
 
       <main className="flex-1 w-full max-w-[1550px] mx-auto px-2.5 sm:px-4 md:px-6 py-2.5 sm:py-4 flex flex-col min-h-0 overflow-hidden">
@@ -222,6 +241,8 @@ function AppShell({
               inputRef={inputRef}
               inputText={inputText}
               setInputText={setInputText}
+              onWordClick={openAskWithWord}
+              onSelectSentence={openAskWithSentence}
             />
           </div>
           <div className="hidden lg:block lg:col-span-1 h-full min-h-0 animate-fade-in">
@@ -233,6 +254,11 @@ function AppShell({
       {showMobileSidebar && (
         <MobileAnalysisDrawer {...sidebarProps} onClose={() => setShowMobileSidebar(false)} />
       )}
+
+      <AskAssistant isOpen={isAskOpen} onClose={() => setIsAskOpen(false)}
+        messages={ask.messages} isLoading={ask.isLoading}
+        initialContext={askContext}
+        onAsk={ask.ask} onReset={ask.reset} />
 
       <WordBook isOpen={isWordBookOpen} onClose={() => setIsWordBookOpen(false)}
         wordList={savedWords} onRemoveWord={removeWord} onClearAll={handleClearAllWords} />
@@ -258,6 +284,8 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isWordBookOpen, setIsWordBookOpen] = useState(false)
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
+  const [isAskOpen, setIsAskOpen] = useState(false)
+  const [askContext, setAskContext] = useState<AskContext | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const wordBook = useWordBook()
   const chat = useChatSession({
@@ -265,6 +293,7 @@ export default function App() {
     activeScenario,
     maxContextMessages: serverConfig?.maxContextMessages ?? 12,
   })
+  const ask = useAskAssistant({ currentLevel: prefs.level })
 
   return (
     <AppShell
@@ -274,7 +303,9 @@ export default function App() {
       isSettingsOpen={isSettingsOpen} setIsSettingsOpen={setIsSettingsOpen}
       isWordBookOpen={isWordBookOpen} setIsWordBookOpen={setIsWordBookOpen}
       showMobileSidebar={showMobileSidebar} setShowMobileSidebar={setShowMobileSidebar}
-      serverConfig={serverConfig} wordBook={wordBook} chat={chat}
+      isAskOpen={isAskOpen} setIsAskOpen={setIsAskOpen}
+      askContext={askContext} setAskContext={setAskContext}
+      serverConfig={serverConfig} wordBook={wordBook} chat={chat} ask={ask}
     />
   )
 }
