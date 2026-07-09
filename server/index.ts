@@ -1,30 +1,59 @@
-import { loadProviderFromEnv, loadServerConfigFromEnv } from "../providers"
-import { errorMessage } from "../providers/util"
-import { createApp } from "./app"
-import { loadEnv, parsePort } from "./config"
+// server/index.ts — entry point + express app setup (merged from app.ts + config.ts + index.ts)
+import dotenv from 'dotenv'
+import express from 'express'
+import helmet from 'helmet'
+import path from 'path'
+import { createServer as createViteServer } from 'vite'
+import { loadProviderFromEnv, loadServerConfigFromEnv } from '../providers'
+import { errorMessage } from '../providers/util'
+import { buildApiLimiter } from './middleware/apiLimiter'
+import { createApiRouter } from './routes'
 
-export async function startServer(): Promise<void> {
-  loadEnv()
+dotenv.config({ path: ['.env', '.env.local'] })
 
-  const provider = loadProviderFromEnv()
-  const cfg = loadServerConfigFromEnv()
-  const app = await createApp({
-    provider,
-    activeProvider: cfg.provider,
-    activeChatModel: cfg.chatModel,
-    activeAnalyzeModel: cfg.analyzeModel,
-    maxContextMessages: cfg.maxContextMessages,
-  })
-  const port = parsePort(process.env.PORT)
-
-  console.log(`[boot] provider=${cfg.provider} ready`)
-  console.log(`[boot] listening on port ${port} (from .env PORT=${process.env.PORT ?? "59100 (default)"})`)
-  app.listen(port, "0.0.0.0", () => {
-    console.log(`English Learning Chat Server running on http://localhost:${port}`)
-  })
+function parsePort(raw: string | undefined): number {
+  const value = Number(raw ?? '59100')
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`PORT must be a positive integer (got "${raw}")`)
+  }
+  return value
 }
 
-startServer().catch((error) => {
+async function createApp(): Promise<express.Express> {
+  const provider = loadProviderFromEnv()
+  const cfg = loadServerConfigFromEnv()
+
+  const app = express()
+  const apiLimiter = buildApiLimiter()
+
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-origin' }, contentSecurityPolicy: false }))
+  app.use(express.json({ limit: '1mb' }))
+  app.post('/api/chat', apiLimiter)
+  app.post('/api/analyze', apiLimiter)
+  app.use('/api', createApiRouter({ provider, cfg }))
+
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' })
+    app.use(vite.middlewares)
+    return app
+  }
+
+  const distPath = path.join(process.cwd(), 'dist')
+  app.use('/api', (_req, res) => { res.status(404).json({ error: 'NOT_FOUND' }) })
+  app.use(express.static(distPath))
+  app.get(/.*/, (_req, res) => { res.sendFile(path.join(distPath, 'index.html')) })
+  return app
+}
+
+createApp().then((app) => {
+  const port = parsePort(process.env.PORT)
+  const cfg = loadServerConfigFromEnv()
+  console.log(`[boot] provider=${cfg.provider} ready`)
+  console.log(`[boot] listening on port ${port}`)
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`LingoLevel AI running on http://localhost:${port}`)
+  })
+}).catch((error) => {
   console.error(`[fatal] ${errorMessage(error)}`)
   process.exit(1)
 })
