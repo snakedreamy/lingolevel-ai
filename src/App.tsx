@@ -169,6 +169,7 @@ interface AppShellProps {
   askContext: AskContext | null
   setAskContext: Dispatch<SetStateAction<AskContext | null>>
   serverConfig: ServerConfig | null
+  serverConfigError: boolean
   wordBook: WordBookState
   chat: ChatSessionState
   ask: ReturnType<typeof useAskAssistant>
@@ -178,7 +179,7 @@ function AppShell({
   prefs, setPrefs, currentLevel, activeScenario, inputText, setInputText, inputRef,
   isSettingsOpen, setIsSettingsOpen, isWordBookOpen, setIsWordBookOpen,
   showMobileSidebar, setShowMobileSidebar, isAskOpen, setIsAskOpen, askContext, setAskContext,
-  serverConfig, wordBook, chat, ask,
+  serverConfig, serverConfigError, wordBook, chat, ask,
 }: AppShellProps) {
   const { savedWords, addWord, removeWord, clearAllWords, hasWord } = wordBook
   const {
@@ -267,7 +268,7 @@ function AppShell({
         currentLevel={currentLevel} onLevelChange={handleLevelChange}
         activeScenario={activeScenario}
         onScenarioSelect={(scenario) => setPrefs((p) => ({ ...p, scenarioId: scenario.id }))}
-        serverConfig={serverConfig} />
+        serverConfig={serverConfig} serverConfigError={serverConfigError} />
     </div>
   )
 }
@@ -275,7 +276,7 @@ function AppShell({
 // ─── App (default export) ────────────────────────────────────────────────────
 
 export default function App() {
-  const { prefs, setPrefs, serverConfig } = useBrowserPrefs()
+  const { prefs, setPrefs, serverConfig, serverConfigError } = useBrowserPrefs()
   const activeScenario = useMemo<Scenario>(
     () => SCENARIOS.find((s) => s.id === prefs.scenarioId) ?? SCENARIOS[0],
     [prefs.scenarioId],
@@ -305,7 +306,7 @@ export default function App() {
       showMobileSidebar={showMobileSidebar} setShowMobileSidebar={setShowMobileSidebar}
       isAskOpen={isAskOpen} setIsAskOpen={setIsAskOpen}
       askContext={askContext} setAskContext={setAskContext}
-      serverConfig={serverConfig} wordBook={wordBook} chat={chat} ask={ask}
+      serverConfig={serverConfig} serverConfigError={serverConfigError} wordBook={wordBook} chat={chat} ask={ask}
     />
   )
 }

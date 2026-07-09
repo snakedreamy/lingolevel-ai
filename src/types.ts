@@ -1,3 +1,5 @@
+import type { LucideIcon } from 'lucide-react'
+
 export type DifficultyLevel = 'kindergarten' | 'primary_low' | 'primary_high' | 'junior' | 'senior' | 'college' | 'ielts';
 
 export interface LevelConfig {
@@ -14,7 +16,7 @@ export interface Scenario {
   id: string;
   name: string;
   englishName: string;
-  icon: string;
+  icon: LucideIcon;
   description: string;
   starterMessages: string[];
 }

@@ -1,29 +1,11 @@
-import { Scenario } from "../types";
+import type { Scenario } from "../types";
 import { SCENARIOS } from "../data/scenarios";
-import { 
-  Coffee, 
-  Plane, 
-  MapPin, 
-  Briefcase, 
-  Hotel, 
-  MessageSquare,
-  Sparkles
-} from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 interface ScenarioCardsProps {
   activeScenarioId: string;
   onScenarioSelect: (scenario: Scenario) => void;
 }
-
-// Map icon string names to components
-const iconMap: Record<string, any> = {
-  Coffee: Coffee,
-  Plane: Plane,
-  MapPin: MapPin,
-  Briefcase: Briefcase,
-  Hotel: Hotel,
-  MessageSquare: MessageSquare
-};
 
 export default function ScenarioCards({ activeScenarioId, onScenarioSelect }: ScenarioCardsProps) {
   return (
@@ -43,8 +25,8 @@ export default function ScenarioCards({ activeScenarioId, onScenarioSelect }: Sc
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {SCENARIOS.map((scenario) => {
           const isActive = activeScenarioId === scenario.id;
-          const IconComponent = iconMap[scenario.icon] || MessageSquare;
-          
+          const IconComponent = scenario.icon;
+
           return (
             <button
               key={scenario.id}
@@ -64,7 +46,7 @@ export default function ScenarioCards({ activeScenarioId, onScenarioSelect }: Sc
               <span className="text-[10px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-0.5">
                 {scenario.englishName}
               </span>
-              
+
               {isActive && (
                 <div className="absolute right-0 top-0 h-4 w-4 bg-indigo-600 rounded-bl-lg flex items-center justify-center">
                   <div className="h-1.5 w-1.5 bg-white rounded-full"></div>
