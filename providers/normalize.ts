@@ -17,7 +17,17 @@ export function normalizeAnalysisShape(
 
   let translation: string
   if (typeof r.translation === 'string') {
-    translation = r.translation
+    const t = r.translation as string
+    // Guard against models that only translate the user sentence and omit
+    // the AI response. A well-formed dual translation always separates the
+    // two parts with a newline and labels the AI part.
+    if (!t.includes('AI:') && !t.includes('AI：') && !t.includes('\n')) {
+      coerced = true
+      console.warn('[normalize] translation string looks user-only, appending AI English fallback')
+      translation = `User: ${t}\nAI: ${assistantMessage}`
+    } else {
+      translation = t
+    }
   } else if (typeof r.translation === 'object' && r.translation !== null) {
     coerced = true
     const t = r.translation as Record<string, unknown>
