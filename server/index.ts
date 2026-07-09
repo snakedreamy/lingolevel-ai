@@ -24,6 +24,10 @@ async function createApp(): Promise<express.Express> {
   const cfg = loadServerConfigFromEnv()
 
   const app = express()
+  // Trust the immediate upstream reverse proxy (Nginx / Caddy / Traefik).
+  // Required for express-rate-limit to read the real client IP from
+  // X-Forwarded-For instead of seeing the proxy's address.
+  app.set('trust proxy', 1)
   const apiLimiter = buildApiLimiter()
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-origin' }, contentSecurityPolicy: false }))
