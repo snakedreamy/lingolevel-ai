@@ -123,7 +123,6 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
   async function analyzeJSON(input: ProviderAnalyzeInput) {
     const body = {
       model: cfg.analyzeModel,
-      response_format: { type: 'json_object' },
       messages: [
         { 
           role: 'system', 

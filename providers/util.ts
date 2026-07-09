@@ -8,7 +8,13 @@ export const JSON_EXTRACT_HINT = '\n\nIMPORTANT: Return ONLY a valid JSON object
  * pathological cases where String(err) itself throws.
  */
 export function errorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message
+  if (err instanceof Error) {
+    const cause = (err as any).cause
+    if (cause) {
+      return `${err.message} (cause: ${errorMessage(cause)})`
+    }
+    return err.message
+  }
   try {
     return String(err)
   } catch {

@@ -56,6 +56,7 @@ function isTransient(err: unknown): boolean {
     msg.includes('timeout') ||
     msg.includes('aborted') ||
     msg.includes('json') ||
-    msg.includes('parse')
+    msg.includes('parse') ||
+    msg.includes('empty content')
   )
 }
