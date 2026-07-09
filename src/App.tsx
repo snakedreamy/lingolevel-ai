@@ -244,6 +244,7 @@ function AppShell({
               setInputText={setInputText}
               onWordClick={openAskWithWord}
               onSelectSentence={openAskWithSentence}
+              sendOnCtrlEnter={prefs.sendOnCtrlEnter}
             />
           </div>
           <div className="hidden lg:block lg:col-span-1 h-full min-h-0 animate-fade-in">
@@ -268,7 +269,9 @@ function AppShell({
         currentLevel={currentLevel} onLevelChange={handleLevelChange}
         activeScenario={activeScenario}
         onScenarioSelect={(scenario) => setPrefs((p) => ({ ...p, scenarioId: scenario.id }))}
-        serverConfig={serverConfig} serverConfigError={serverConfigError} />
+        serverConfig={serverConfig} serverConfigError={serverConfigError}
+        sendOnCtrlEnter={prefs.sendOnCtrlEnter}
+        onToggleSendOnCtrlEnter={() => setPrefs((p) => ({ ...p, sendOnCtrlEnter: !p.sendOnCtrlEnter }))} />
     </div>
   )
 }

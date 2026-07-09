@@ -18,6 +18,7 @@ function normalizeBrowserPrefs(value: unknown): BrowserPrefs {
     level: typeof v.level === 'string' && VALID_LEVELS.has(v.level as DifficultyLevel)
       ? (v.level as DifficultyLevel) : defaults.level,
     theme: v.theme === 'light' || v.theme === 'dark' ? v.theme : defaults.theme,
+    sendOnCtrlEnter: v.sendOnCtrlEnter === true,
   }
 }
 

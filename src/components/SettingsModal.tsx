@@ -13,6 +13,8 @@ interface SettingsModalProps {
   onScenarioSelect: (scenario: Scenario) => void;
   serverConfig: ServerConfig | null;
   serverConfigError?: boolean;
+  sendOnCtrlEnter: boolean;
+  onToggleSendOnCtrlEnter: () => void;
 }
 
 const PROVIDER_LABELS: Record<ProviderId, string> = {
@@ -53,6 +55,8 @@ export default function SettingsModal({
   onScenarioSelect,
   serverConfig,
   serverConfigError,
+  sendOnCtrlEnter,
+  onToggleSendOnCtrlEnter,
 }: SettingsModalProps) {
   if (!isOpen) return null;
 
@@ -119,6 +123,32 @@ export default function SettingsModal({
                     : '正在读取服务端配置。如果这里长期为空，请确认 dev server 已启动且 /api/server-config 可访问。'}
                 </div>
               )}
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Server className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
+                输入偏好
+              </h3>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Ctrl+Enter 发送</p>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">开启后按 Ctrl+Enter（Mac 上 Cmd+Enter）才发送；直接回车换行，避免误触发送。</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={sendOnCtrlEnter}
+                  onClick={onToggleSendOnCtrlEnter}
+                  className={`relative inline-flex h-6 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${sendOnCtrlEnter ? 'bg-indigo-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                >
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${sendOnCtrlEnter ? 'translate-x-4' : 'translate-x-0'}`} />
+                </button>
+              </div>
             </div>
           </section>
 
