@@ -260,7 +260,8 @@ function AppShell({
       <AskAssistant isOpen={isAskOpen} onClose={() => setIsAskOpen(false)}
         messages={ask.messages} isLoading={ask.isLoading}
         initialContext={askContext}
-        onAsk={ask.ask} onReset={ask.reset} />
+        onAsk={ask.ask} onReset={ask.reset}
+        sendOnCtrlEnter={prefs.sendOnCtrlEnter} />
 
       <WordBook isOpen={isWordBookOpen} onClose={() => setIsWordBookOpen(false)}
         wordList={savedWords} onRemoveWord={removeWord} onClearAll={handleClearAllWords} />
