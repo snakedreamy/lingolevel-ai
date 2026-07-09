@@ -22,11 +22,31 @@ export function normalizeAnalysisShape(
     coerced = true
     const t = r.translation as Record<string, unknown>
     const userPart =
-      pickString(t, ['userSentence', 'user', 'userText', 'userTranslation']) ??
-      userMessage
+      pickString(t, [
+        'userMessage', 'userText', 'userTranslation', 'userSentence',
+        'user', 'userContent', 'message',
+      ]) ?? userMessage
     const aiPart =
-      pickString(t, ['aiResponse', 'ai', 'assistantResponse', 'assistant', 'assistantText', 'aiTranslation']) ??
-      assistantMessage
+      pickString(t, [
+        'aiMessage', 'assistantMessage', 'aiResponse', 'assistantResponse',
+        'ai', 'assistant', 'assistantText', 'aiTranslation', 'aiContent',
+        'response',
+      ]) ?? assistantMessage
+    // If we couldn't extract a real translation (both parts fell back to the
+    // original English), log the unknown field names so we can spot new quirks.
+    const gotUser = pickString(t, [
+      'userMessage', 'userText', 'userTranslation', 'userSentence',
+      'user', 'userContent', 'message',
+    ])
+    const gotAi = pickString(t, [
+      'aiMessage', 'assistantMessage', 'aiResponse', 'assistantResponse',
+      'ai', 'assistant', 'assistantText', 'aiTranslation', 'aiContent',
+      'response',
+    ])
+    if (!gotUser && !gotAi) {
+      console.warn('[normalize] translation was an object with unrecognized keys:',
+        Object.keys(t).join(', '), '— adding raw English fallback')
+    }
     translation = `User: ${userPart}\nAI: ${aiPart}`
   } else {
     coerced = true
