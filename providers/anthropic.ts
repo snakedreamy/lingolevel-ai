@@ -4,13 +4,8 @@ import type {
 import { callWithRetry } from './retry'
 import { fallbackChatReply, fallbackAnalyzeOutput } from './fallback'
 import { buildAnalysisUserPrompt } from './schema'
-import {
-  JSON_EXTRACT_HINT,
-  errorMessage,
-  extractJsonObject,
-  looksLikeErrorContent,
-  normalizeAnalysisShape,
-} from './util'
+import { JSON_EXTRACT_HINT, errorMessage, extractJsonObject, looksLikeErrorContent } from './util'
+import { normalizeAnalysisShape } from './normalize'
 
 const ANTHROPIC_VERSION = '2023-06-01'
 

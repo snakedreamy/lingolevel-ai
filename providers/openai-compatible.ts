@@ -5,13 +5,8 @@ import type {
 import { callWithRetry } from './retry'
 import { fallbackChatReply, fallbackAnalyzeOutput } from './fallback'
 import { analysisJsonSchema, buildAnalysisUserPrompt } from './schema'
-import {
-  JSON_EXTRACT_HINT,
-  errorMessage,
-  extractJsonObject,
-  looksLikeErrorContent,
-  normalizeAnalysisShape,
-} from './util'
+import { JSON_EXTRACT_HINT, errorMessage, extractJsonObject, looksLikeErrorContent } from './util'
+import { normalizeAnalysisShape } from './normalize'
 
 export function createOpenAIProvider(cfg: ProviderConfig): Provider {
   const baseUrl = cfg.baseUrl.replace(/\/$/, '')
