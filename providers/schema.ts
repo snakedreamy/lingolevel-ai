@@ -59,7 +59,13 @@ export const analysisSystemPrompt = `
   AI response: "{ASSISTANT}"
 
   Tasks:
-  1. Provide a beautiful Chinese translation for BOTH sentences.
+      1. **翻译 (translation)**: Provide a natural, idiomatic Chinese translation for BOTH the user's sentence and the AI's response.
+         - The "translation" field MUST be a SINGLE string, NOT an object. Do NOT nest sub-fields.
+         - Use exactly this format: "用户: [翻译]\nAI: [翻译]"
+         - Example: 用户说了"I use a computer to program. I like dogs."，AI回复了"That is great! Do you code every day?"
+           → "translation": "用户: 我用电脑编程。我喜欢狗。\nAI: 那太棒了！你每天都写代码吗？"
+         - If the user's English has grammar mistakes, translate what they MEANT, not the literal errors.
+         - Don't chatter, don't add explanations — just the two translations.
   2. Analyze the USER's sentence for grammar, phrasing, tense, and spelling.
      - Score the user sentence out of 100 on correctness.
      - Scoring rubric: 95-100 fully correct; 80-94 minor issues; 60-79 clear grammar mistakes; below 60 hard to understand.
