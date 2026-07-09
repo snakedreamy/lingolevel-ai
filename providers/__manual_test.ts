@@ -33,7 +33,7 @@ function assert(label: string, cond: unknown, detail = ''): void {
 
 async function main(): Promise<void> {
   // Match the project's local-dev convention: secrets live in .env.local
-  // (gitignored). server.ts falls through to `dotenv.config()` which only
+  // (gitignored). server/index.ts falls through to `dotenv.config()` which only
   // reads .env; this script explicitly targets .env.local so the manual
   // tester doesn't have to copy secrets into the tracked .env file.
   // `override: false` lets a real shell export win over the file (useful

@@ -29,7 +29,7 @@ COPY . .
 # Build the production bundle: frontend assets + bundled server.
 # `npm run build` (from package.json) runs:
 #   - vite build  → dist/{index.html,assets/*}
-#   - esbuild server.ts → dist/server.cjs
+#   - esbuild server/index.ts → dist/server.cjs
 RUN npm run build
 
 # ---------- Stage 2: runtime ----------
@@ -61,7 +61,7 @@ ENV NODE_ENV=production
 USER lingolevel
 
 # Document the port. The actual value is read from $PORT at runtime
-# (defaults to 59100 — see server.ts and .env.example).
+# (defaults to 59100 — see server/index.ts and .env.example).
 EXPOSE 59100
 
 # Lightweight liveness check using the server-config echo endpoint.

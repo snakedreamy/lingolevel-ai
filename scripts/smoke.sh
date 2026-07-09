@@ -10,7 +10,7 @@
 #   SMOKE_TIMEOUT — per-request curl timeout in seconds (default: 10)
 #
 # The script exits non-zero on the first failed check. Designed to be run from
-# the project root after `npm run dev` (or `PORT=59100 npx tsx server.ts`)
+# the project root after `npm run dev` (or `PORT=59100 npx tsx server/index.ts`)
 # is up and listening.
 #
 # Design notes:
@@ -19,7 +19,14 @@
 #   - Always passes `--max-time` so a hung server can't hang the script.
 #   - Distinguishes HTTP transport errors (curl -f, exit >= 400) from JSON
 #     structure errors and prints a clear reason for each.
-#   - Truncates large response bodies (chat can be long) to keep logs readable.
+#   - Truncates large response bodies (chat/ask streams can be long) to keep
+#     logs readable.
+#   - The chat + ask endpoints stream Server-Sent Events. Each streaming check
+#     issues a single `curl -sN -D <hdr> -o <body>` request (no buffering,
+#     bounded by --max-time) and then greps the dumped header file for
+#     `text/event-stream` and the body file for `"type":"delta"` +
+#     `"type":"done"` events. A second HEAD request is NOT used because the
+#     POST-only endpoints may not respond to HEAD the same way.
 #   - Never reads, prints, or echoes secrets. The /api/server-config check is
 #     purely about *absence* of an apiKey field.
 
@@ -206,21 +213,52 @@ else
 fi
 echo "       ok (no key fields)"
 
-# --- 3. POST /api/chat ------------------------------------------------------
-echo -n "POST /api/chat ... "
+# --- 3. POST /api/chat (SSE stream) -----------------------------------------
+# /api/chat streams Server-Sent Events: Content-Type text/event-stream with
+# `data: {"type":"delta",...}\n\n` chunks and a final `{"type":"done",...}`.
+# We issue a SINGLE curl request that dumps headers (-D) and body (-o) so the
+# content-type we validate comes from the same response that produced the body
+# (a separate HEAD request might not exercise the POST handler identically).
+# `curl -sN` disables output buffering so a long stream still terminates under
+# --max-time once the server closes the connection.
+echo -n "POST /api/chat (SSE) ... "
 chat_payload='{"messages":[{"role":"user","content":"Hi"}],"level":"junior"}'
-if ! do_post "${BASE}/api/chat" "$chat_payload" chat status; then
-  echo "FAIL ($status)"
+chat_hdr="$(mktemp)"
+chat_body="$(mktemp)"
+set +e
+curl -sN --max-time "$TIMEOUT" -D "$chat_hdr" -o "$chat_body" \
+  -X POST -H 'Content-Type: application/json' \
+  --data "$chat_payload" "${BASE}/api/chat" >/dev/null 2>&1
+chat_rc=$?
+set -e
+if (( chat_rc != 0 )); then
+  rm -f "$chat_hdr" "$chat_body"
+  echo "FAIL (curl exit $chat_rc)"
   exit 1
 fi
+chat_ct="$(grep -i '^content-type:' "$chat_hdr" | head -1 | tr -d '\r')"
+chat="$(cat "$chat_body")"
+rm -f "$chat_hdr" "$chat_body"
 echo
+echo "       ct   = $(truncate "$chat_ct" 80)"
 echo "       body = $(truncate "$chat" 200)"
-if ! has_field "$chat" "content"; then
+if [[ -z "$chat" ]]; then
+  echo "FAIL: empty body"
   exit 1
 fi
+if ! printf '%s' "$chat_ct" | grep -qi 'text/event-stream'; then
+  echo "FAIL: not text/event-stream (got: $chat_ct)"
+  exit 1
+fi
+for ev in '"type":"delta"' '"type":"done"'; do
+  if ! printf '%s' "$chat" | grep -qF "$ev"; then
+    echo "FAIL: missing $ev in chat stream"
+    exit 1
+  fi
+done
 echo "       ok"
 
-# --- 4. POST /api/analyze ---------------------------------------------------
+# --- 4. POST /api/analyze (unchanged, non-streaming) -----------------------
 echo -n "POST /api/analyze ... "
 an_payload='{"userMessage":"I am go.","assistantMessage":"OK","level":"junior"}'
 if ! do_post "${BASE}/api/analyze" "$an_payload" an status; then
@@ -231,6 +269,47 @@ echo
 echo "       body = $(truncate "$an" 400)"
 for f in translation grammarCorrections assistantReplyInsight keyWords suggestions; do
   if ! has_field "$an" "$f"; then
+    exit 1
+  fi
+done
+echo "       ok"
+
+# --- 5. POST /api/ask (SSE stream) ------------------------------------------
+# /api/ask streams the same SSE event shape as /api/chat (delta + done) but is
+# scoped to the ask-assistant tutor (Chinese explanations of a word/sentence
+# or a free-form question). Same single-request header+body dump approach.
+echo -n "POST /api/ask (SSE) ... "
+ask_payload='{"question":"how to spell apple","level":"junior"}'
+ask_hdr="$(mktemp)"
+ask_body="$(mktemp)"
+set +e
+curl -sN --max-time "$TIMEOUT" -D "$ask_hdr" -o "$ask_body" \
+  -X POST -H 'Content-Type: application/json' \
+  --data "$ask_payload" "${BASE}/api/ask" >/dev/null 2>&1
+ask_rc=$?
+set -e
+if (( ask_rc != 0 )); then
+  rm -f "$ask_hdr" "$ask_body"
+  echo "FAIL (curl exit $ask_rc)"
+  exit 1
+fi
+ask_ct="$(grep -i '^content-type:' "$ask_hdr" | head -1 | tr -d '\r')"
+ask="$(cat "$ask_body")"
+rm -f "$ask_hdr" "$ask_body"
+echo
+echo "       ct   = $(truncate "$ask_ct" 80)"
+echo "       body = $(truncate "$ask" 200)"
+if [[ -z "$ask" ]]; then
+  echo "FAIL: empty body"
+  exit 1
+fi
+if ! printf '%s' "$ask_ct" | grep -qi 'text/event-stream'; then
+  echo "FAIL: not text/event-stream (got: $ask_ct)"
+  exit 1
+fi
+for ev in '"type":"delta"' '"type":"done"'; do
+  if ! printf '%s' "$ask" | grep -qF "$ev"; then
+    echo "FAIL: missing $ev in ask stream"
     exit 1
   fi
 done

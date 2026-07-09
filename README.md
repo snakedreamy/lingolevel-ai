@@ -2,6 +2,14 @@
 
 An interactive AI English coach designed for Chinese learners with adaptive difficulty levels, real-time grammar correction, translation, voice-broadcast, and interactive vocabulary notebook.
 
+## Features
+
+- **Token-by-token streaming chat** — `/api/chat` and `/api/ask` reply as Server-Sent Events (`data: {"type":"delta","content":"..."}\n\n` … `{"type":"done"}`), so tokens render live in the UI instead of arriving as one blocking blob.
+- **Ask assistant** — click a word in an AI reply, select a sentence, or type a free-form question into the ask drawer (`src/components/AskAssistant.tsx`, driven by `src/hooks/useAskAssistant.ts`) to get a Chinese-language tutor answer covering spelling, IPA pronunciation, and an example sentence.
+- **Adaptive difficulty + scenarios** — junior / intermediate / senior levels with themed conversation scenarios.
+- **Real-time analysis** — `/api/analyze` returns translation, grammar corrections, a reply insight, keywords, and follow-up suggestions for each user/assistant turn.
+- **Voice broadcast, word book, and theme switching** — persisted as non-sensitive browser prefs under `lingolevel_prefs`.
+
 ## Architecture
 
 - **Provider abstraction layer** (`providers/`): a small typed interface (`Provider` in `providers/types.ts`) implemented by:
@@ -11,7 +19,7 @@ An interactive AI English coach designed for Chinese learners with adaptive diff
   - `providers/fallback.ts` — canned replies returned by adapters when all retries are exhausted
   - `providers/util.ts` — shared helpers (e.g. `errorMessage`)
   - `providers/index.ts` — factory: build provider from `process.env`
-- **Server** (`server/`, with `server.ts` as a compatibility entry): Express on the Vite dev middleware. Exposes `GET /api/server-config` (echoes active provider / model / base URL — **no API key**), `POST /api/chat`, and `POST /api/analyze`. The active provider and model names are selected at boot from `.env.local` / `process.env`.
+- **Server** (`server/`): Express on the Vite dev middleware. `server/index.ts` is the entry; `server/routes.ts` mounts `GET /api/server-config` (echoes active provider / model / base URL — **no API key**), the streaming `POST /api/chat` and `POST /api/ask` (Server-Sent Events: `data: {"type":"delta"|"done"|"error",...}`), and the non-streaming `POST /api/analyze`. The active provider and model names are selected at boot from `.env.local` / `process.env`. `server/prompts.ts` holds the system-prompt composition, `server/middleware/` holds the rate limiter.
 - **Frontend** (`src/`): React + Vite SPA. The browser persists only non-sensitive learning preferences such as level, scenario, and theme under `lingolevel_prefs`. Active provider / model / base URL are fetched separately from `GET /api/server-config` and are never merged into browser-owned prefs. **No API keys, tokens, or secrets ever touch the browser** — the server is the only thing that talks to upstream LLMs.
 - **Tooling** (`scripts/smoke.sh`, `providers/__manual_test.ts`): a curl-based smoke test and a tsx-runnable manual test, both non-zero-exit on failure. These are intentionally committed verification assets for local/manual checks, not production runtime code.
 - **Runtime tuning via `.env.local`**: provider/model/base URL, outbound timeout, and chat context window are all server-owned runtime settings. The browser only reads a sanitized summary from `/api/server-config`.
@@ -138,24 +146,29 @@ lingolevel-ai/
 ├── providers/                  # Provider abstraction layer (see Architecture)
 │   ├── types.ts                # Provider interface and shared types
 │   ├── schema.ts               # JSON schema for the analyze endpoint
+│   ├── normalize.ts            # request/response normalization helpers
 │   ├── openai-compatible.ts    # OpenAI-format chat completions adapter
 │   ├── anthropic.ts            # Anthropic Messages API adapter
 │   ├── retry.ts                # exponential backoff for transient errors
 │   ├── fallback.ts             # canned replies used by adapters on failure
 │   ├── util.ts                 # shared helpers (errorMessage, etc.)
 │   └── index.ts                # factory: build provider from process.env
+├── server/                     # Express server (entry: server/index.ts)
+│   ├── index.ts                # app setup + boot
+│   ├── routes.ts               # /api/server-config, /api/chat, /api/ask, /api/analyze
+│   ├── prompts.ts              # level + scenario + ask system-prompt composition
+│   └── middleware/             # apiLimiter (express-rate-limit)
 ├── src/                        # React + Vite frontend
-│   ├── App.tsx                 # compatibility entry, re-exports src/app/App
-│   ├── app/                    # app composition and responsive shell
-│   ├── components/             # ChatWindow, AnalysisSidebar, SettingsModal, WordBook, …
+│   ├── App.tsx                 # app shell (header + chat + sidebar + ask drawer)
+│   ├── components/             # ChatWindow, AnalysisSidebar, SettingsModal, WordBook, AskAssistant, …
+│   ├── hooks/                  # useChatSession, useAskAssistant, useBrowserPrefs, useWordBook
 │   ├── data/                   # static level + scenario definitions
 │   ├── features/               # chat, analysis, settings, wordbook feature modules
 │   ├── types.ts                # frontend types incl. BrowserPrefs
 │   ├── index.css               # global styles
 │   └── main.tsx                # entry point
 ├── scripts/
-│   └── smoke.sh                # curl-based post-startup smoke test
-├── server.ts                   # Express routes, delegates to provider
+│   └── smoke.sh                # curl-based post-startup smoke test (chat/ask SSE + analyze)
 ├── vite.config.ts
 ├── index.html
 ├── tsconfig.json

@@ -64,7 +64,7 @@ function ChatToolbar({
 // ─── ChatMessageList ─────────────────────────────────────────────────────────
 
 function ChatMessageList({
-  messages, isLoading, isSpeakingId, onSpeakMessage, onCopyMessage, messagesEndRef,
+  messages, isLoading, isSpeakingId, onSpeakMessage, onCopyMessage, messagesEndRef, onWordClick,
 }: {
   messages: Message[]
   isLoading: boolean
@@ -72,6 +72,7 @@ function ChatMessageList({
   onSpeakMessage: (text: string, id: string) => void
   onCopyMessage: (text: string, e: React.MouseEvent) => void
   messagesEndRef: React.RefObject<HTMLDivElement | null>
+  onWordClick: (word: string) => void
 }) {
   return (
     <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-3 sm:py-4 space-y-3 sm:space-y-4">
@@ -101,7 +102,7 @@ function ChatMessageList({
         return (
           <div key={message.id} className={`flex w-full group ${isUser ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[92%] sm:max-w-[80%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-              <div className={`rounded-2xl px-4 py-3 shadow-xs relative transition-all duration-200 ${isUser ? 'bg-indigo-600 text-white rounded-tr-none hover:bg-indigo-700' : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-tl-none hover:shadow-xs'}`}>
+              <div data-msg-bubble className={`rounded-2xl px-4 py-3 shadow-xs relative transition-all duration-200 ${isUser ? 'bg-indigo-600 text-white rounded-tr-none hover:bg-indigo-700' : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-tl-none hover:shadow-xs'}`}>
                 <div className="flex justify-between items-start gap-3 mb-1">
                   <div className="flex items-center gap-1.5">
                     <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full ${isUser ? 'bg-indigo-500/65 text-white' : message.isFallback ? 'bg-amber-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
@@ -126,7 +127,14 @@ function ChatMessageList({
                     </button>
                   </div>
                 </div>
-                <p className="text-[13px] leading-relaxed break-words font-sans selection:bg-indigo-200">{message.content}</p>
+                <p className="text-[13px] leading-relaxed break-words font-sans selection:bg-indigo-200">
+                  {isUser
+                    ? message.content
+                    : message.streaming
+                      ? message.content
+                      : renderClickableContent(message.content, onWordClick)}
+                  {message.streaming && <span className="inline-block w-1.5 h-3.5 ml-0.5 bg-current animate-pulse align-middle" />}
+                </p>
                 {isSpeakingId === message.id && (
                   <div className="flex items-center gap-0.5 mt-2 h-3 justify-center">
                     {[0, 150, 300].map((d) => (
@@ -165,6 +173,21 @@ function ChatMessageList({
       <div ref={messagesEndRef} />
     </div>
   )
+}
+
+function renderClickableContent(text: string, onWord: (w: string) => void) {
+  const parts = text.split(/([A-Za-z]+(?:'[A-Za-z]+)?)/g)
+  return parts.map((part, i) => {
+    if (/^[A-Za-z]+(?:'[A-Za-z]+)?$/.test(part)) {
+      return (
+        <button key={i} onClick={() => onWord(part)}
+          className="hover:bg-indigo-100/60 dark:hover:bg-indigo-900/40 hover:text-indigo-700 dark:hover:text-indigo-300 rounded px-0.5 cursor-pointer">
+          {part}
+        </button>
+      )
+    }
+    return <span key={i}>{part}</span>
+  })
 }
 
 // ─── ChatInputBar ────────────────────────────────────────────────────────────
@@ -234,10 +257,13 @@ interface ChatWindowProps {
   inputRef: React.RefObject<HTMLTextAreaElement | null>
   inputText: string
   setInputText: React.Dispatch<React.SetStateAction<string>>
+  onWordClick: (word: string) => void
+  onSelectSentence: (sentence: string) => void
 }
 
 export default function ChatWindow({
   messages, onSendMessage, isLoading, activeScenario, onResetChat, inputRef, inputText, setInputText,
+  onWordClick, onSelectSentence,
 }: ChatWindowProps) {
   const [accent, setAccent] = useState<SpeechAccent>('us')
   const [speed, setSpeed] = useState(1.0)
@@ -245,10 +271,37 @@ export default function ChatWindow({
   const [isRecording, setIsRecording] = useState(false)
   const [recognitionError, setRecognitionError] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [selectionBox, setSelectionBox] = useState<{ text: string; x: number; y: number } | null>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  const handleSelection = () => {
+    const sel = window.getSelection()
+    if (!sel || sel.isCollapsed) { setSelectionBox(null); return }
+    const text = sel.toString().trim()
+    if (text.length < 5 || text.length > 300) { setSelectionBox(null); return }
+    const range = sel.getRangeAt(0)
+    const bubble = (range.commonAncestorContainer as HTMLElement).closest?.('[data-msg-bubble]')
+    if (!bubble) { setSelectionBox(null); return }
+    const rect = range.getBoundingClientRect()
+    setSelectionBox({ text, x: rect.left + rect.width / 2, y: rect.top })
+  }
+
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, isLoading])
+
+  useEffect(() => {
+    const onScroll = () => setSelectionBox(null)
+    const onSelectionChange = () => {
+      const sel = window.getSelection()
+      if (!sel || sel.isCollapsed) setSelectionBox(null)
+    }
+    window.addEventListener('scroll', onScroll, true)
+    document.addEventListener('selectionchange', onSelectionChange)
+    return () => {
+      window.removeEventListener('scroll', onScroll, true)
+      document.removeEventListener('selectionchange', onSelectionChange)
+    }
+  }, [])
 
   useEffect(() => {
     recognitionRef.current = createSpeechRecognition(setInputText, setIsRecording, setRecognitionError)
@@ -299,8 +352,20 @@ export default function ChatWindow({
       <ChatToolbar activeScenario={activeScenario} accent={accent} speed={speed}
         onAccentChange={setAccent} onSpeedChange={setSpeed} onResetChat={onResetChat} />
 
-      <ChatMessageList messages={messages} isLoading={isLoading} isSpeakingId={isSpeakingId}
-        onSpeakMessage={handleSpeakText} onCopyMessage={handleCopyText} messagesEndRef={messagesEndRef} />
+      <div className="min-h-0 flex-1 flex flex-col" onMouseUp={handleSelection}>
+        <ChatMessageList messages={messages} isLoading={isLoading} isSpeakingId={isSpeakingId}
+          onSpeakMessage={handleSpeakText} onCopyMessage={handleCopyText} messagesEndRef={messagesEndRef}
+          onWordClick={onWordClick} />
+      </div>
+
+      {selectionBox && (
+        <button
+          onClick={() => { onSelectSentence(selectionBox.text); setSelectionBox(null); window.getSelection()?.removeAllRanges() }}
+          className="fixed z-50 -translate-x-1/2 -translate-y-full bg-indigo-600 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg shadow-lg hover:bg-indigo-700 cursor-pointer whitespace-nowrap"
+          style={{ left: selectionBox.x, top: selectionBox.y - 8 }}>
+          深讲这句话
+        </button>
+      )}
 
       {(recognitionError || statusMessage) && (
         <div className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-amber-50 dark:bg-zinc-900 border border-amber-200 dark:border-zinc-800 px-4 py-2 rounded-xl shadow-md flex items-center gap-2 z-20 text-xs animate-slide-up text-amber-700 dark:text-amber-400 max-w-[90%]">

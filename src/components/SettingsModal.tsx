@@ -12,6 +12,7 @@ interface SettingsModalProps {
   activeScenario: Scenario;
   onScenarioSelect: (scenario: Scenario) => void;
   serverConfig: ServerConfig | null;
+  serverConfigError?: boolean;
 }
 
 const PROVIDER_LABELS: Record<ProviderId, string> = {
@@ -51,6 +52,7 @@ export default function SettingsModal({
   activeScenario,
   onScenarioSelect,
   serverConfig,
+  serverConfigError,
 }: SettingsModalProps) {
   if (!isOpen) return null;
 
@@ -112,7 +114,9 @@ export default function SettingsModal({
                 </>
               ) : (
                 <div className="rounded-xl border border-dashed border-zinc-300 p-4 text-xs text-zinc-500 dark:border-zinc-700">
-                  正在读取服务端配置。如果这里长期为空，请确认 dev server 已启动且 <code>/api/server-config</code> 可访问。
+                  {serverConfigError
+                    ? '读取失败，请确认服务端已启动且 /api/server-config 可访问。'
+                    : '正在读取服务端配置。如果这里长期为空，请确认 dev server 已启动且 /api/server-config 可访问。'}
                 </div>
               )}
             </div>

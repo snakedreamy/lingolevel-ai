@@ -1,6 +1,6 @@
 // src/hooks/useChatSession.ts — moved from features/chat/
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { sendAnalyze, sendChat } from '../lib/api'
+import { sendAnalyze, streamChat } from '../lib/api'
 import { createMessageId } from '../lib/ids'
 import type { AnalysisHistoryEntry, AnalysisResult, DifficultyLevel, Message, Scenario } from '../types'
 
@@ -25,8 +25,10 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false)
   const sessionIdRef = useRef(0)
   const requestIdRef = useRef(0)
+  const abortRef = useRef<AbortController | null>(null)
 
   const resetConversation = useCallback(async () => {
+    abortRef.current?.abort()
     const sessionId = sessionIdRef.current + 1
     sessionIdRef.current = sessionId
     requestIdRef.current += 1
@@ -61,40 +63,59 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
     setIsChatLoading(true)
     setIsAnalysisLoading(true)
 
-    let assistantContent: string | null = null
+    const assistantId = createMessageId('assistant')
+    setMessages((prev) => [...prev, {
+      id: assistantId, role: 'assistant', content: '', timestamp: Date.now(), streaming: true,
+    }])
 
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    let assistantContent = ''
+    let isFallback = false
     try {
-      const chatResult = await sendChat({
-        messages: trimChatContext(nextMessages, maxContextMessages),
-        level: currentLevel,
-        scenarioInfo: activeScenario.id === 'free_chat' ? null : activeScenario,
-      })
-      if (sessionIdRef.current !== sessionId || requestIdRef.current !== requestId) return
-
-      assistantContent = chatResult.content
-      setMessages((prev) => [...prev, {
-        id: createMessageId('assistant'),
-        role: 'assistant',
-        content: chatResult.content,
-        timestamp: chatResult.timestamp || Date.now(),
-        isFallback: !!chatResult.isFallback,
-      }])
+      await streamChat(
+        {
+          messages: trimChatContext(nextMessages, maxContextMessages),
+          level: currentLevel,
+          scenarioInfo: activeScenario.id === 'free_chat' ? null : activeScenario,
+        },
+        {
+          onDelta: (delta) => {
+            if (sessionIdRef.current !== sessionId || requestIdRef.current !== requestId) return
+            assistantContent += delta
+            setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: assistantContent } : m))
+          },
+          onDone: ({ isFallback: fb, timestamp }) => {
+            if (sessionIdRef.current !== sessionId || requestIdRef.current !== requestId) return
+            isFallback = !!fb
+            setMessages((prev) => prev.map((m) => m.id === assistantId
+              ? { ...m, streaming: false, isFallback, timestamp: timestamp || m.timestamp } : m))
+          },
+          onError: () => {
+            if (sessionIdRef.current !== sessionId || requestIdRef.current !== requestId) return
+            setMessages((prev) => prev.map((m) => m.id === assistantId
+              ? { ...m, streaming: false, content: m.content || '抱歉，当前 AI 服务暂时不可用，请稍后重试。', isFallback: true }
+              : m))
+          },
+        },
+        controller.signal,
+      )
     } catch (err) {
+      if (controller.signal.aborted || (err instanceof Error && err.name === 'AbortError')) return
       if (sessionIdRef.current !== sessionId || requestIdRef.current !== requestId) return
       console.error(err)
       setAnalysis(null)
-      setMessages((prev) => [...prev, {
-        id: createMessageId('error'), role: 'assistant',
-        content: '抱歉，当前 AI 服务暂时不可用，请稍后重试。',
-        timestamp: Date.now(), isFallback: true,
-      }])
+      setMessages((prev) => prev.map((m) => m.id === assistantId
+        ? { ...m, streaming: false, content: '抱歉，当前 AI 服务暂时不可用，请稍后重试。', isFallback: true }
+        : m))
       setIsAnalysisLoading(false)
       return
     } finally {
       if (sessionIdRef.current === sessionId && requestIdRef.current === requestId) setIsChatLoading(false)
     }
 
-    if (assistantContent === null) {
+    if (!assistantContent) {
       if (sessionIdRef.current === sessionId && requestIdRef.current === requestId) setIsAnalysisLoading(false)
       return
     }

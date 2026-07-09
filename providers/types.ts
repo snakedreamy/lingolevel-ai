@@ -8,12 +8,20 @@ export interface ProviderChatInput {
   systemInstruction: string
   temperature?: number
   scenarioId?: string | null
+  /** Optional abort signal; the provider cancels the upstream fetch when aborted. */
+  signal?: AbortSignal
 }
 
 export interface ProviderChatOutput {
   /** True when the provider failed and a hard-coded fallback reply was returned. */
   content: string
   isFallback?: boolean
+}
+
+export interface ProviderChatStreamOutput {
+  /** Yields text deltas. On fallback, yields a single delta with the full fallback text. */
+  stream: AsyncIterable<{ delta: string }>
+  isFallback: boolean
 }
 
 export interface ProviderAnalyzeInput {
@@ -33,6 +41,7 @@ export interface ProviderAnalyzeOutput {
 
 export interface Provider {
   chat(input: ProviderChatInput): Promise<ProviderChatOutput>
+  chatStream(input: ProviderChatInput): Promise<ProviderChatStreamOutput>
   analyzeJSON(input: ProviderAnalyzeInput): Promise<ProviderAnalyzeOutput>
 }
 

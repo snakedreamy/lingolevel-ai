@@ -1,17 +1,12 @@
 // providers/openai-compatible.ts
 import type {
-  Provider, ProviderConfig, ProviderChatInput, ProviderAnalyzeInput
+  Provider, ProviderConfig, ProviderChatInput, ProviderChatStreamOutput, ProviderAnalyzeInput
 } from './types'
 import { callWithRetry } from './retry'
 import { fallbackChatReply, fallbackAnalyzeOutput } from './fallback'
 import { analysisJsonSchema, buildAnalysisUserPrompt } from './schema'
-import {
-  JSON_EXTRACT_HINT,
-  errorMessage,
-  extractJsonObject,
-  looksLikeErrorContent,
-  normalizeAnalysisShape,
-} from './util'
+import { JSON_EXTRACT_HINT, errorMessage, extractJsonObject, looksLikeErrorContent } from './util'
+import { normalizeAnalysisShape } from './normalize'
 
 export function createOpenAIProvider(cfg: ProviderConfig): Provider {
   const baseUrl = cfg.baseUrl.replace(/\/$/, '')
@@ -95,6 +90,49 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
     return content
   }
 
+  async function* runCompletionStream(
+    label: 'chat' | 'analyze',
+    body: unknown,
+    signal: AbortSignal,
+  ): AsyncGenerator<string> {
+    const url = `${baseUrl}/chat/completions`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cfg.apiKey}`,
+      },
+      body: JSON.stringify({ ...(body as object), stream: true }),
+      signal,
+    })
+    if (!res.ok) {
+      const err: unknown = Object.assign(new Error(`OpenAI HTTP ${res.status}`), { status: res.status })
+      throw err
+    }
+    const reader = res.body?.getReader()
+    if (!reader) throw new Error(`OpenAI ${label} returned no body`)
+    const decoder = new TextDecoder()
+    let buffer = ''
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data:')) continue
+        const data = trimmed.slice(5).trim()
+        if (data === '[DONE]') return
+        try {
+          const parsed = JSON.parse(data) as { choices?: { delta?: { content?: string } }[] }
+          const delta = parsed.choices?.[0]?.delta?.content
+          if (delta) yield delta
+        } catch { /* ignore malformed SSE lines */ }
+      }
+    }
+  }
+
   async function chat(input: ProviderChatInput) {
     const body = {
       model: cfg.chatModel,
@@ -117,6 +155,42 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
         content: fallbackChatReply(input.scenarioId),
         isFallback: true
       }
+    }
+  }
+
+  async function chatStream(input: ProviderChatInput): Promise<ProviderChatStreamOutput> {
+    const body = {
+      model: cfg.chatModel,
+      messages: [
+        { role: 'system', content: input.systemInstruction },
+        ...input.messages,
+      ],
+      temperature: input.temperature ?? 0.7,
+    }
+    const timeoutController = new AbortController()
+    const timer = setTimeout(() => timeoutController.abort(), cfg.timeoutMs)
+    const combined = input.signal
+      ? AbortSignal.any([timeoutController.signal, input.signal])
+      : timeoutController.signal
+    try {
+      const gen = runCompletionStream('chat', body, combined)
+      return {
+        stream: (async function* () {
+          for await (const delta of gen) yield { delta }
+        })(),
+        isFallback: false,
+      }
+    } catch (err) {
+      console.error('[openai.chatStream] falling back:', errorMessage(err))
+      const fallbackText = fallbackChatReply(input.scenarioId)
+      return {
+        stream: (async function* () {
+          yield { delta: fallbackText }
+        })(),
+        isFallback: true,
+      }
+    } finally {
+      clearTimeout(timer)
     }
   }
 
@@ -164,7 +238,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
     }
   }
 
-  return { chat, analyzeJSON }
+  return { chat, chatStream, analyzeJSON }
 }
 
 function readOpenAIContent(json: unknown): unknown {

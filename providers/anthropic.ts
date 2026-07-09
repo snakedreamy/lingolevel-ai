@@ -1,16 +1,11 @@
 import type {
-  Provider, ProviderConfig, ProviderChatInput, ProviderAnalyzeInput
+  Provider, ProviderConfig, ProviderChatInput, ProviderChatStreamOutput, ProviderAnalyzeInput
 } from './types'
 import { callWithRetry } from './retry'
 import { fallbackChatReply, fallbackAnalyzeOutput } from './fallback'
 import { buildAnalysisUserPrompt } from './schema'
-import {
-  JSON_EXTRACT_HINT,
-  errorMessage,
-  extractJsonObject,
-  looksLikeErrorContent,
-  normalizeAnalysisShape,
-} from './util'
+import { JSON_EXTRACT_HINT, errorMessage, extractJsonObject, looksLikeErrorContent } from './util'
+import { normalizeAnalysisShape } from './normalize'
 
 const ANTHROPIC_VERSION = '2023-06-01'
 
@@ -55,6 +50,62 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
     return parseResponse(json)
   }
 
+  async function* runCompletionStream(
+    label: 'chat' | 'analyze',
+    body: unknown,
+    signal: AbortSignal,
+  ): AsyncGenerator<string> {
+    const url = `${baseUrl}/v1/messages`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': cfg.apiKey,
+        'anthropic-version': ANTHROPIC_VERSION,
+      },
+      body: JSON.stringify({ ...(body as object), stream: true }),
+      signal,
+    })
+    if (!res.ok) {
+      let bodySummary = ''
+      try { bodySummary = (await res.text()).slice(0, 200) } catch { bodySummary = '<failed to read body>' }
+      const message = bodySummary ? `Anthropic HTTP ${res.status}: ${bodySummary}` : `Anthropic HTTP ${res.status}`
+      throw Object.assign(new Error(message), { status: res.status })
+    }
+    const reader = res.body?.getReader()
+    if (!reader) throw new Error(`Anthropic ${label} returned no body`)
+    const decoder = new TextDecoder()
+    let buffer = ''
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const events = buffer.split('\n\n')
+      buffer = events.pop() ?? ''
+      for (const evt of events) {
+        const line = evt.trim()
+        if (!line.startsWith('data:')) continue
+        const data = line.slice(5).trim()
+        try {
+          const parsed = JSON.parse(data) as {
+            type?: string
+            delta?: { type?: string; text?: string }
+            error?: { message?: string }
+          }
+          if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+            yield parsed.delta.text
+          }
+          if (parsed.type === 'error') {
+            throw new Error(`Anthropic stream error: ${parsed.error?.message ?? 'unknown'}`)
+          }
+        } catch (err) {
+          // Re-throw real stream errors; ignore JSON parse hiccups on partial lines.
+          if (err instanceof Error && err.message.startsWith('Anthropic stream error')) throw err
+        }
+      }
+    }
+  }
+
   async function chat(input: ProviderChatInput) {
     const body = {
       model: cfg.chatModel,
@@ -76,6 +127,41 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
         content: fallbackChatReply(input.scenarioId),
         isFallback: true
       }
+    }
+  }
+
+  async function chatStream(input: ProviderChatInput): Promise<ProviderChatStreamOutput> {
+    const body = {
+      model: cfg.chatModel,
+      max_tokens: 1024,
+      system: input.systemInstruction,
+      messages: input.messages,
+      temperature: input.temperature ?? 0.7,
+    }
+    const timeoutController = new AbortController()
+    const timer = setTimeout(() => timeoutController.abort(), cfg.timeoutMs)
+    const combined = input.signal
+      ? AbortSignal.any([timeoutController.signal, input.signal])
+      : timeoutController.signal
+    try {
+      const gen = runCompletionStream('chat', body, combined)
+      return {
+        stream: (async function* () {
+          for await (const delta of gen) yield { delta }
+        })(),
+        isFallback: false,
+      }
+    } catch (err) {
+      console.error('[anthropic.chatStream] falling back:', errorMessage(err))
+      const fallbackText = fallbackChatReply(input.scenarioId)
+      return {
+        stream: (async function* () {
+          yield { delta: fallbackText }
+        })(),
+        isFallback: true,
+      }
+    } finally {
+      clearTimeout(timer)
     }
   }
 
@@ -115,7 +201,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
     }
   }
 
-  return { chat, analyzeJSON }
+  return { chat, chatStream, analyzeJSON }
 }
 
 function readContentBlocks(json: unknown): unknown[] {

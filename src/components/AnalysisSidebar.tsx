@@ -321,8 +321,12 @@ export default function AnalysisSidebar({
               正在生成本轮纠错、词汇摘录与接话建议，请稍候…
             </div>
             <div className="space-y-4 animate-pulse">
-              {[20, 28, 32].map((h) => (
-                <div key={h} className={`h-${h} bg-zinc-100 dark:bg-zinc-900 rounded-xl`} />
+              {[
+                'h-20 bg-zinc-100 dark:bg-zinc-900 rounded-xl',
+                'h-28 bg-zinc-100 dark:bg-zinc-900 rounded-xl',
+                'h-32 bg-zinc-100 dark:bg-zinc-900 rounded-xl',
+              ].map((cls, i) => (
+                <div key={i} className={cls} />
               ))}
             </div>
           </div>

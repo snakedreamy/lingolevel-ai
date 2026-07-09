@@ -25,6 +25,7 @@ export function useBrowserPrefs() {
   const [prefs, setPrefs] = useState<BrowserPrefs>(() =>
     normalizeBrowserPrefs(loadStoredJson<unknown>(BROWSER_PREFS_KEY, null)))
   const [serverConfig, setServerConfig] = useState<ServerConfig | null>(null)
+  const [serverConfigError, setServerConfigError] = useState(false)
 
   useEffect(() => { saveStoredJson(BROWSER_PREFS_KEY, prefs) }, [prefs])
 
@@ -41,10 +42,10 @@ export function useBrowserPrefs() {
   useEffect(() => {
     let active = true
     fetchServerConfig()
-      .then((cfg) => { if (active) setServerConfig(cfg) })
-      .catch(() => { if (active) setServerConfig(null) })
+      .then((cfg) => { if (active) { setServerConfig(cfg); setServerConfigError(false) } })
+      .catch(() => { if (active) { setServerConfig(null); setServerConfigError(true) } })
     return () => { active = false }
   }, [])
 
-  return { prefs, setPrefs, serverConfig }
+  return { prefs, setPrefs, serverConfig, serverConfigError }
 }
