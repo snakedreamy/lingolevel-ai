@@ -112,6 +112,11 @@ export interface BrowserPrefs {
   scenarioId: string
   /** UI theme preference. */
   theme: 'light' | 'dark'
+  /**
+   * When true, the chat input only sends on Ctrl/Cmd+Enter; a bare Enter
+   * inserts a newline. Helps users who keep sending half-finished messages.
+   */
+  sendOnCtrlEnter: boolean
 }
 
 /**
@@ -127,5 +132,6 @@ export const BROWSER_PREFS_KEY = 'lingolevel_prefs'
 export const DEFAULT_BROWSER_PREFS: Readonly<BrowserPrefs> = {
   level: 'junior',
   scenarioId: 'free_chat',
-  theme: 'light'
+  theme: 'light',
+  sendOnCtrlEnter: false
 }

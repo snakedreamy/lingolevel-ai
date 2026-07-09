@@ -193,7 +193,7 @@ function renderClickableContent(text: string, onWord: (w: string) => void) {
 // ─── ChatInputBar ────────────────────────────────────────────────────────────
 
 function ChatInputBar({
-  isLoading, isRecording, inputText, inputRef, onInputChange, onKeyDown, onSubmit, onToggleRecord, onClearInput,
+  isLoading, isRecording, inputText, inputRef, onInputChange, onKeyDown, onSubmit, onToggleRecord, onClearInput, sendOnCtrlEnter = false,
 }: {
   isLoading: boolean
   isRecording: boolean
@@ -204,6 +204,7 @@ function ChatInputBar({
   onSubmit: (e: React.FormEvent) => void
   onToggleRecord: () => void
   onClearInput: () => void
+  sendOnCtrlEnter?: boolean
 }) {
   return (
     <div className="p-3 sm:p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950/80 backdrop-blur z-10 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4">
@@ -222,7 +223,7 @@ function ChatInputBar({
           <textarea ref={inputRef} rows={2} value={inputText}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder={isRecording ? '正在听写您的英文发音...' : '输入英文以练习聊天... (Shift+Enter 换行)'}
+            placeholder={isRecording ? '正在听写您的英文发音...' : (sendOnCtrlEnter ? '输入英文以练习聊天... (Ctrl+Enter 发送)' : '输入英文以练习聊天... (Shift+Enter 换行)')}
             className="w-full bg-zinc-50/70 dark:bg-zinc-900/60 text-[13px] border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none rounded-xl py-2 pl-3 pr-10 resize-none font-sans"
             disabled={isLoading} />
           {inputText.trim() && (
@@ -240,7 +241,7 @@ function ChatInputBar({
       </form>
       <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center mt-2.5 text-[10px] text-zinc-400">
         <span>点击反馈面板里的接话建议，可直接填入输入框。</span>
-        <span>按 <strong className="font-semibold text-zinc-600">Enter</strong> 发送</span>
+        <span>按 <strong className="font-semibold text-zinc-600">{sendOnCtrlEnter ? 'Ctrl+Enter' : 'Enter'}</strong> 发送</span>
       </div>
     </div>
   )
@@ -259,11 +260,13 @@ interface ChatWindowProps {
   setInputText: React.Dispatch<React.SetStateAction<string>>
   onWordClick: (word: string) => void
   onSelectSentence: (sentence: string) => void
+  /** When true, only Ctrl/Cmd+Enter sends; bare Enter inserts a newline. */
+  sendOnCtrlEnter?: boolean
 }
 
 export default function ChatWindow({
   messages, onSendMessage, isLoading, activeScenario, onResetChat, inputRef, inputText, setInputText,
-  onWordClick, onSelectSentence,
+  onWordClick, onSelectSentence, sendOnCtrlEnter = false,
 }: ChatWindowProps) {
   const [accent, setAccent] = useState<SpeechAccent>('us')
   const [speed, setSpeed] = useState(1.0)
@@ -344,7 +347,14 @@ export default function ChatWindow({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!inputText.trim() || isLoading) return; onSendMessage(inputText) }
+    // sendOnCtrlEnter 模式：仅 Ctrl/Cmd+Enter 发送，裸 Enter 换行
+    // 默认模式：裸 Enter 发送，Shift+Enter 换行
+    const isSendCombo = sendOnCtrlEnter ? (e.ctrlKey || e.metaKey) : !e.shiftKey
+    if (e.key === 'Enter' && isSendCombo) {
+      e.preventDefault()
+      if (!inputText.trim() || isLoading) return
+      onSendMessage(inputText)
+    }
   }
 
   return (
@@ -379,7 +389,8 @@ export default function ChatWindow({
 
       <ChatInputBar isLoading={isLoading} isRecording={isRecording} inputText={inputText}
         inputRef={inputRef} onInputChange={setInputText} onKeyDown={handleKeyDown}
-        onSubmit={handleSubmit} onToggleRecord={handleToggleRecord} onClearInput={() => setInputText('')} />
+        onSubmit={handleSubmit} onToggleRecord={handleToggleRecord} onClearInput={() => setInputText('')}
+        sendOnCtrlEnter={sendOnCtrlEnter} />
     </div>
   )
 }
