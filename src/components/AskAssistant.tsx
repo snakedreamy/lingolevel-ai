@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { HelpCircle, X, Send, Volume2, RotateCcw } from 'lucide-react'
 import type { AskContext, AskMessage } from '../types'
 import { speakText } from '../lib/speech'
+import { renderMarkdown } from '../lib/markdown'
 
 interface AskAssistantProps {
   isOpen: boolean
@@ -33,8 +34,11 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
   const ctxLabel = ctx?.word ? `单词：${ctx.word}` : ctx?.sentence ? `句子：${ctx.sentence}` : null
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div className="h-full w-full max-w-md bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+    // 非模态：抽屉悬浮在右侧，不遮罩/模糊主聊天区，点击外部不关闭，
+    // 用户可一边看主对话一边答疑。pointer-events-none 让外层不拦截主区点击，
+    // 内层抽屉 pointer-events-auto 重新启用交互。
+    <div className="fixed inset-0 z-40 flex justify-end pointer-events-none animate-fade-in">
+      <div className="h-full w-full max-w-md bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col pointer-events-auto">
         <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="rounded-lg bg-indigo-50 dark:bg-indigo-950/40 p-2 text-indigo-600 dark:text-indigo-400"><HelpCircle className="h-5 w-5" /></div>
@@ -47,7 +51,7 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
             {messages.length > 0 && (
               <button onClick={onReset} title="清空答疑" className="p-2 text-zinc-400 hover:text-rose-600 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"><RotateCcw className="h-4 w-4" /></button>
             )}
-            <button onClick={onClose} aria-label="关闭" className="p-2 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg"><X className="h-5 w-5" /></button>
+            <button onClick={onClose} aria-label="关闭" className="p-2 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg cursor-pointer"><X className="h-5 w-5" /></button>
           </div>
         </div>
 
@@ -66,10 +70,13 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
                     {m.context.word ? `单词：${m.context.word}` : `句子：${m.context.sentence}`}
                   </div>
                 )}
-                <p className="whitespace-pre-wrap break-words">
-                  {m.content || (m.streaming ? '正在思考…' : '')}
-                  {m.streaming && <span className="inline-block w-1.5 h-3.5 ml-0.5 bg-current animate-pulse align-middle" />}
-                </p>
+                <div className="break-words">
+                  {m.content
+                    ? (m.streaming ? (
+                        <span className="whitespace-pre-wrap">{m.content}<span className="inline-block w-1.5 h-3.5 ml-0.5 bg-current animate-pulse align-middle" /></span>
+                      ) : renderMarkdown(m.content))
+                    : (m.streaming ? <span className="inline-block w-1.5 h-3.5 ml-0.5 bg-current animate-pulse align-middle" /> : null)}
+                </div>
                 {m.role === 'assistant' && m.content && !m.streaming && (
                   <button onClick={() => { try { speakText({ text: m.content, accent: 'us', speed: 0.95, onStart: () => undefined, onEnd: () => undefined }) } catch {} }}
                     className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-zinc-400 hover:text-indigo-600"><Volume2 className="h-3 w-3" />朗读</button>
