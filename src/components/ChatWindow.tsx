@@ -290,6 +290,20 @@ export default function ChatWindow({
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, isLoading])
 
   useEffect(() => {
+    const onScroll = () => setSelectionBox(null)
+    const onSelectionChange = () => {
+      const sel = window.getSelection()
+      if (!sel || sel.isCollapsed) setSelectionBox(null)
+    }
+    window.addEventListener('scroll', onScroll, true)
+    document.addEventListener('selectionchange', onSelectionChange)
+    return () => {
+      window.removeEventListener('scroll', onScroll, true)
+      document.removeEventListener('selectionchange', onSelectionChange)
+    }
+  }, [])
+
+  useEffect(() => {
     recognitionRef.current = createSpeechRecognition(setInputText, setIsRecording, setRecognitionError)
   }, [setInputText])
 

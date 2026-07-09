@@ -64,27 +64,29 @@ export async function streamSSE(url: string, body: unknown, handlers: SSEHandler
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  const dispatch = (evt: string) => {
+    const line = evt.trim()
+    if (!line.startsWith('data:')) return
+    const data = line.slice(5).trim()
+    if (!data) return
+    try {
+      const parsed = JSON.parse(data) as { type: string; content?: string; isFallback?: boolean; timestamp?: number; message?: string }
+      if (parsed.type === 'delta' && typeof parsed.content === 'string') handlers.onDelta(parsed.content)
+      else if (parsed.type === 'done') handlers.onDone({ isFallback: parsed.isFallback, timestamp: parsed.timestamp })
+      else if (parsed.type === 'error') handlers.onError(parsed.message ?? 'UNKNOWN_ERROR')
+    } catch {
+      /* ignore malformed line */
+    }
+  }
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
     buffer += decoder.decode(value, { stream: true })
     const events = buffer.split('\n\n')
     buffer = events.pop() ?? ''
-    for (const evt of events) {
-      const line = evt.trim()
-      if (!line.startsWith('data:')) continue
-      const data = line.slice(5).trim()
-      if (!data) continue
-      try {
-        const parsed = JSON.parse(data) as { type: string; content?: string; isFallback?: boolean; timestamp?: number; message?: string }
-        if (parsed.type === 'delta' && typeof parsed.content === 'string') handlers.onDelta(parsed.content)
-        else if (parsed.type === 'done') handlers.onDone({ isFallback: parsed.isFallback, timestamp: parsed.timestamp })
-        else if (parsed.type === 'error') handlers.onError(parsed.message ?? 'UNKNOWN_ERROR')
-      } catch {
-        /* ignore malformed line */
-      }
-    }
+    for (const evt of events) dispatch(evt)
   }
+  if (buffer.trim()) dispatch(buffer)
 }
 
 export function streamChat(body: ChatRequest, handlers: SSEHandlers, signal?: AbortSignal) {

@@ -40,6 +40,18 @@ export function useAskAssistant(args: { currentLevel: DifficultyLevel }) {
         },
         controller.signal,
       )
+    } catch (err) {
+      const aborted = controller.signal.aborted || (err instanceof Error && err.name === 'AbortError')
+      setMessages((prev) => prev.map((m) => m.id === assistantId
+        ? {
+          ...m,
+          streaming: false,
+          content: aborted
+            ? (m.content || '')
+            : (m.content || '抱歉，答疑服务暂时不可用，请重试。'),
+          isFallback: !aborted,
+        }
+        : m))
     } finally {
       setIsLoading(false)
       abortRef.current = null
@@ -48,6 +60,7 @@ export function useAskAssistant(args: { currentLevel: DifficultyLevel }) {
 
   const stop = useCallback(() => {
     abortRef.current?.abort()
+    setMessages((prev) => prev.map((m) => m.streaming ? { ...m, streaming: false } : m))
   }, [])
 
   const reset = useCallback(() => {
