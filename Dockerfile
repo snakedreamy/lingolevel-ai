@@ -54,6 +54,9 @@ RUN apt-get update \
 # Copy the build output from the builder stage.
 COPY --from=builder --chown=lingolevel:lingolevel /app/dist ./dist
 
+# Ensure the server enters production mode (serves static dist/, no Vite dev middleware).
+ENV NODE_ENV=production
+
 # Drop privileges.
 USER lingolevel
 
