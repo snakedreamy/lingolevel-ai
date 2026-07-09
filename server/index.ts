@@ -34,6 +34,7 @@ async function createApp(): Promise<express.Express> {
   app.use(express.json({ limit: '1mb' }))
   app.post('/api/chat', apiLimiter)
   app.post('/api/analyze', apiLimiter)
+  app.post('/api/ask', apiLimiter)
   app.use('/api', createApiRouter({ provider, cfg }))
 
   if (process.env.NODE_ENV !== 'production') {
