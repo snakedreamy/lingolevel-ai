@@ -1,6 +1,6 @@
 // src/components/AnalysisSidebar.tsx
 // Merged: AnalysisSidebar + AnalysisTranslationCard + GrammarFeedbackCard + SuggestionListSection + VocabularyCardsSection
-import { ArrowLeft, ArrowRight, Lightbulb, TrendingUp, Volume2, BookmarkPlus, CheckCircle2, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Lightbulb, TrendingUp, Volume2, BookmarkPlus, CheckCircle2, ChevronRight, RefreshCw } from 'lucide-react'
 import type { AnalysisHistoryEntry, AnalysisResult, AssistantReplyInsight, GrammarCorrection, WordItem } from '../types'
 import { speakText } from '../lib/speech'
 
@@ -255,12 +255,13 @@ interface AnalysisSidebarProps {
   onPreviousAnalysis: () => void
   onNextAnalysis: () => void
   onLatestAnalysis: () => void
+  onRetryAnalysis: () => void
   embedded?: boolean
 }
 
 export default function AnalysisSidebar({
   analysis, analysisHistory, selectedAnalysisIndex, isLoading, onAddWord, isWordSaved,
-  onSelectSuggestion, onPreviousAnalysis, onNextAnalysis, onLatestAnalysis, embedded = false,
+  onSelectSuggestion, onPreviousAnalysis, onNextAnalysis, onLatestAnalysis, onRetryAnalysis, embedded = false,
 }: AnalysisSidebarProps) {
   const handleSpeak = (text: string) => {
     try { speakText({ text, accent: 'us', speed: 0.95, onStart: () => undefined, onEnd: () => undefined }) }
@@ -291,12 +292,20 @@ export default function AnalysisSidebar({
             <div className="rounded-full border border-zinc-200 bg-stone-50 px-2.5 py-1 text-[11px] font-medium text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
               第 {currentRound} / {analysisHistory.length} 轮{isViewingLatest ? ' · 最新' : ' · 回看中'}
             </div>
-            {!isViewingLatest && (
-              <button onClick={onLatestAnalysis}
-                className="rounded-full bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-white transition hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">
-                回到最新
+            <div className="flex items-center gap-1.5">
+              <button onClick={onRetryAnalysis} disabled={isLoading}
+                className="inline-flex items-center gap-1 rounded-full border border-zinc-200 px-2.5 py-1 text-[11px] font-medium text-zinc-600 transition hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-800 dark:text-zinc-300"
+                title="重新生成本轮分析">
+                <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+                重新分析
               </button>
-            )}
+              {!isViewingLatest && (
+                <button onClick={onLatestAnalysis}
+                  className="rounded-full bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-white transition hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">
+                  回到最新
+                </button>
+              )}
+            </div>
           </div>
           <div className="mt-2 flex items-center gap-2">
             {[

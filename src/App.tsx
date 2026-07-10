@@ -98,6 +98,7 @@ type AnalysisSidebarProps = {
   onPreviousAnalysis: () => void
   onNextAnalysis: () => void
   onLatestAnalysis: () => void
+  onRetryAnalysis: () => void
   onClose: () => void
 }
 
@@ -144,6 +145,9 @@ interface ChatSessionState {
   isAnalysisLoading: boolean
   resetConversation: () => Promise<void>
   sendMessage: (text: string) => Promise<void>
+  regeneratableAssistantId: string | null
+  regenerateLastReply: () => Promise<void>
+  retrySelectedAnalysis: () => void
   addSystemMessage: (content: string) => void
   showPreviousAnalysis: () => void
   showNextAnalysis: () => void
@@ -185,6 +189,7 @@ function AppShell({
   const {
     messages, analysis, analysisHistory, selectedAnalysisIndex,
     isChatLoading, isAnalysisLoading, resetConversation, sendMessage, addSystemMessage,
+    regeneratableAssistantId, regenerateLastReply, retrySelectedAnalysis,
     showPreviousAnalysis, showNextAnalysis, showLatestAnalysis,
   } = chat
 
@@ -212,6 +217,7 @@ function AppShell({
     onPreviousAnalysis: showPreviousAnalysis,
     onNextAnalysis: showNextAnalysis,
     onLatestAnalysis: showLatestAnalysis,
+    onRetryAnalysis: retrySelectedAnalysis,
   }
 
   return (
@@ -244,6 +250,8 @@ function AppShell({
               setInputText={setInputText}
               onWordClick={openAskWithWord}
               onSelectSentence={openAskWithSentence}
+              regeneratableAssistantId={regeneratableAssistantId}
+              onRegenerateMessage={() => { void regenerateLastReply() }}
               sendOnCtrlEnter={prefs.sendOnCtrlEnter}
             />
           </div>

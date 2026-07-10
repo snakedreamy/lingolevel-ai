@@ -89,8 +89,12 @@ export interface AnalysisResult {
 
 export interface AnalysisHistoryEntry {
   id: string;
+  userMessageId?: string;
+  assistantMessageId?: string;
   userMessage: string;
   assistantMessage: string;
+  level?: DifficultyLevel;
+  scenarioContext?: string;
   analysis: AnalysisResult;
   createdAt: number;
 }

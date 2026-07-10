@@ -64,11 +64,14 @@ function ChatToolbar({
 // ─── ChatMessageList ─────────────────────────────────────────────────────────
 
 function ChatMessageList({
-  messages, isLoading, isSpeakingId, onSpeakMessage, onCopyMessage, messagesEndRef, onWordClick,
+  messages, isLoading, isSpeakingId, regeneratableAssistantId, onRegenerateMessage,
+  onSpeakMessage, onCopyMessage, messagesEndRef, onWordClick,
 }: {
   messages: Message[]
   isLoading: boolean
   isSpeakingId: string | null
+  regeneratableAssistantId: string | null
+  onRegenerateMessage: () => void
   onSpeakMessage: (text: string, id: string) => void
   onCopyMessage: (text: string, e: React.MouseEvent) => void
   messagesEndRef: React.RefObject<HTMLDivElement | null>
@@ -115,6 +118,15 @@ function ChatMessageList({
                     )}
                   </div>
                   <div className="flex items-center gap-1.5">
+                    {!isUser && message.id === regeneratableAssistantId && (
+                      <button onClick={onRegenerateMessage}
+                        className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[9px] font-semibold text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-indigo-600 dark:hover:bg-zinc-800"
+                        title={message.isFallback ? '重试回复' : '换一个回答'}
+                        aria-label={message.isFallback ? '重试回复' : '换一个回答'}>
+                        <RefreshCw className="h-3 w-3" />
+                        {message.isFallback ? '重试' : '换一个'}
+                      </button>
+                    )}
                     <button onClick={() => onSpeakMessage(message.content, message.id)}
                       className={`p-1 rounded transition-colors ${isUser ? 'hover:bg-indigo-500 text-indigo-200 hover:text-white' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-indigo-600'} ${isSpeakingId === message.id ? 'animate-pulse text-rose-500! dark:text-rose-400!' : ''}`}
                       title="朗读">
@@ -260,13 +272,15 @@ interface ChatWindowProps {
   setInputText: React.Dispatch<React.SetStateAction<string>>
   onWordClick: (word: string) => void
   onSelectSentence: (sentence: string) => void
+  regeneratableAssistantId: string | null
+  onRegenerateMessage: () => void
   /** When true, only Ctrl/Cmd+Enter sends; bare Enter inserts a newline. */
   sendOnCtrlEnter?: boolean
 }
 
 export default function ChatWindow({
   messages, onSendMessage, isLoading, activeScenario, onResetChat, inputRef, inputText, setInputText,
-  onWordClick, onSelectSentence, sendOnCtrlEnter = false,
+  onWordClick, onSelectSentence, regeneratableAssistantId, onRegenerateMessage, sendOnCtrlEnter = false,
 }: ChatWindowProps) {
   const [accent, setAccent] = useState<SpeechAccent>('us')
   const [speed, setSpeed] = useState(1.0)
@@ -364,6 +378,7 @@ export default function ChatWindow({
 
       <div className="min-h-0 flex-1 flex flex-col" onMouseUp={handleSelection}>
         <ChatMessageList messages={messages} isLoading={isLoading} isSpeakingId={isSpeakingId}
+          regeneratableAssistantId={regeneratableAssistantId} onRegenerateMessage={onRegenerateMessage}
           onSpeakMessage={handleSpeakText} onCopyMessage={handleCopyText} messagesEndRef={messagesEndRef}
           onWordClick={onWordClick} />
       </div>
