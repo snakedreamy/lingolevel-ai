@@ -31,11 +31,12 @@ export async function fetchServerConfig(): Promise<ServerConfig> {
   return (await response.json()) as ServerConfig
 }
 
-export async function sendAnalyze(request: AnalyzeRequest): Promise<AnalysisResult> {
+export async function sendAnalyze(request: AnalyzeRequest, signal?: AbortSignal): Promise<AnalysisResult> {
   const response = await fetch("/api/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
+    signal,
   })
   if (!response.ok) {
     throw new Error("ANALYZE_FAILED")
@@ -59,12 +60,13 @@ export async function streamSSE(url: string, body: unknown, handlers: SSEHandler
   })
   if (!res.ok || !res.body) {
     handlers.onError('REQUEST_FAILED')
-    return
+    throw new Error('REQUEST_FAILED')
   }
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
   let gotDone = false
+  let terminalError: Error | null = null
   const dispatch = (evt: string) => {
     const line = evt.trim()
     if (!line.startsWith('data:')) return
@@ -77,7 +79,11 @@ export async function streamSSE(url: string, body: unknown, handlers: SSEHandler
         handlers.onDone({ isFallback: parsed.isFallback, timestamp: parsed.timestamp })
         gotDone = true
       }
-      else if (parsed.type === 'error') handlers.onError(parsed.message ?? 'UNKNOWN_ERROR')
+      else if (parsed.type === 'error') {
+        const message = parsed.message ?? 'UNKNOWN_ERROR'
+        handlers.onError(message)
+        terminalError = new Error(message)
+      }
     } catch {
       /* ignore malformed line */
     }
@@ -89,9 +95,17 @@ export async function streamSSE(url: string, body: unknown, handlers: SSEHandler
     const events = buffer.split('\n\n')
     buffer = events.pop() ?? ''
     for (const evt of events) dispatch(evt)
+    if (terminalError) {
+      await reader.cancel().catch(() => undefined)
+      throw terminalError
+    }
   }
   if (buffer.trim()) dispatch(buffer)
-  if (!gotDone) handlers.onError('STREAM_CLOSED_UNEXPECTEDLY')
+  if (terminalError) throw terminalError
+  if (!gotDone) {
+    handlers.onError('STREAM_CLOSED_UNEXPECTEDLY')
+    throw new Error('STREAM_CLOSED_UNEXPECTEDLY')
+  }
 }
 
 export function streamChat(body: ChatRequest, handlers: SSEHandlers, signal?: AbortSignal) {

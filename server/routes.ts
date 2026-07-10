@@ -1,5 +1,6 @@
 // server/routes.ts
 import { Router } from 'express'
+import type { Request, Response } from 'express'
 import type { Provider } from '../providers'
 import type { ServerConfig } from '../providers'
 import { loadServerConfigFromEnv } from '../providers'
@@ -20,8 +21,22 @@ function logRequest(args: {
   console.log(errorMsg ? `${base} error=${JSON.stringify(errorMsg)}` : base)
 }
 
-function writeSSE(res: any, payload: unknown): void {
+function writeSSE(res: Response, payload: unknown): void {
+  if (res.destroyed || res.writableEnded) return
   res.write(`data: ${JSON.stringify(payload)}\n\n`)
+}
+
+function abortWhenClientDisconnects(req: Request, res: Response): AbortController {
+  const controller = new AbortController()
+  const abort = () => {
+    if (!res.writableEnded) controller.abort()
+  }
+  // `req.close` can mean that the request body has merely finished, depending
+  // on the client/runtime. `req.aborted` and an unfinished response closing are
+  // the signals that actually mean the SSE consumer went away.
+  req.once('aborted', abort)
+  res.once('close', abort)
+  return controller
 }
 
 export function createApiRouter(args: { provider: Provider; cfg: ServerConfig }): Router {
@@ -64,8 +79,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     res.setHeader('Connection', 'keep-alive')
     res.setHeader('X-Accel-Buffering', 'no') // disable nginx buffering
 
-    const abortController = new AbortController()
-    req.on('close', () => abortController.abort())
+    const abortController = abortWhenClientDisconnects(req, res)
 
     let isFallback = false
     try {
@@ -79,15 +93,16 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
         scenarioId: typeof scenarioInfo?.id === 'string' ? scenarioInfo.id : 'free_chat',
         signal: abortController.signal,
       })
-      isFallback = result.isFallback
       for await (const { delta } of result.stream) {
         if (abortController.signal.aborted) break
         writeSSE(res, { type: 'delta', content: delta })
       }
+      isFallback = result.isFallback
+      if (abortController.signal.aborted) return
       writeSSE(res, { type: 'done', isFallback, timestamp: Date.now() })
       logRequest({ endpoint: 'chat', provider: cfg.provider, model: cfg.chatModel, status: 200, latencyMs: Date.now() - start, fallback: isFallback })
     } catch (error) {
-      writeSSE(res, { type: 'error', message: 'CHAT_FAILED' })
+      if (!abortController.signal.aborted) writeSSE(res, { type: 'error', message: 'CHAT_FAILED' })
       logRequest({ endpoint: 'chat', provider: cfg.provider, model: cfg.chatModel, status: 500, latencyMs: Date.now() - start, fallback: true, errorMsg: errorMessage(error) })
     } finally {
       res.end()
@@ -138,8 +153,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     res.setHeader('Connection', 'keep-alive')
     res.setHeader('X-Accel-Buffering', 'no')
 
-    const abortController = new AbortController()
-    req.on('close', () => abortController.abort())
+    const abortController = abortWhenClientDisconnects(req, res)
 
     try {
       const result = await provider.chatStream({
@@ -153,10 +167,11 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
         if (abortController.signal.aborted) break
         writeSSE(res, { type: 'delta', content: delta })
       }
+      if (abortController.signal.aborted) return
       writeSSE(res, { type: 'done', isFallback: result.isFallback })
       logRequest({ endpoint: 'ask', provider: cfg.provider, model: cfg.chatModel, status: 200, latencyMs: Date.now() - start, fallback: result.isFallback })
     } catch (error) {
-      writeSSE(res, { type: 'error', message: 'ASK_FAILED' })
+      if (!abortController.signal.aborted) writeSSE(res, { type: 'error', message: 'ASK_FAILED' })
       logRequest({ endpoint: 'ask', provider: cfg.provider, model: cfg.chatModel, status: 500, latencyMs: Date.now() - start, fallback: true, errorMsg: errorMessage(error) })
     } finally {
       res.end()

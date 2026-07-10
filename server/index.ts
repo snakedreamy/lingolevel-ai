@@ -9,7 +9,9 @@ import { errorMessage } from '../providers/util'
 import { buildApiLimiter } from './middleware/apiLimiter'
 import { createApiRouter } from './routes'
 
-dotenv.config({ path: ['.env', '.env.local'] })
+// Local development overrides the generic .env file, matching the documented
+// convention. Existing shell variables still win because override stays false.
+dotenv.config({ path: ['.env.local', '.env'] })
 
 function parsePort(raw: string | undefined): number {
   const value = Number(raw ?? '59100')

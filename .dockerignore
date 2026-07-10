@@ -1,37 +1,29 @@
-# Build artifacts and dependencies
+# Dependencies and generated files
 node_modules
 dist
 build
 coverage
 .cache
 .npm
-.next
-__pycache__
-
-# Local env files (NEVER bake secrets into an image)
-.env
-.env.local
-.env.*.local
-*.env.local
-
-# Logs
 *.log
-npm-debug.log*
 
-# OS / editor cruft
+# Local configuration and secrets
+.env*
+
+# Repository and development files
+.git
+.github
+.gitignore
+.dockerignore
+Dockerfile
+README.md
+LICENSE
+docs
+
+# Editors, OS files, and local tooling
 .DS_Store
-.idea
 .vscode
-*.swp
-
-# Tests / fixtures with potentially sensitive data
-**/__manual_test.ts
-
-# Git + docs are fine, but exclude everything GitHub Actions doesn't need
-# to ship inside the image. We only need src + server.ts + providers + package*.json.
-# Uncomment to minimize further:
-# docs
-# .github
-# README.md
-# .gitignore
-# Dockerfile
+.idea
+.claude
+.superpowers
+.playwright-mcp

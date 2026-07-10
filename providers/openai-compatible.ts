@@ -167,31 +167,42 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
       ],
       temperature: input.temperature ?? 0.7,
     }
-    const timeoutController = new AbortController()
-    const timer = setTimeout(() => timeoutController.abort(), cfg.timeoutMs)
-    const combined = input.signal
-      ? AbortSignal.any([timeoutController.signal, input.signal])
-      : timeoutController.signal
-    try {
-      const gen = runCompletionStream('chat', body, combined)
-      return {
-        stream: (async function* () {
-          for await (const delta of gen) yield { delta }
-        })(),
-        isFallback: false,
-      }
-    } catch (err) {
-      console.error('[openai.chatStream] falling back:', errorMessage(err))
-      const fallbackText = fallbackChatReply(input.scenarioId)
-      return {
-        stream: (async function* () {
-          yield { delta: fallbackText }
-        })(),
-        isFallback: true,
-      }
-    } finally {
-      clearTimeout(timer)
+    // The upstream request is lazy: it only starts when the returned stream is
+    // consumed. Keep the timeout and error boundary inside that same lifecycle;
+    // otherwise a `finally` in chatStream would clear the timer immediately and
+    // errors thrown while iterating would bypass the fallback path.
+    const output: ProviderChatStreamOutput = {
+      stream: undefined as never,
+      isFallback: false,
     }
+    output.stream = (async function* () {
+      const timeoutController = new AbortController()
+      const timer = setTimeout(() => timeoutController.abort(), cfg.timeoutMs)
+      const combined = input.signal
+        ? AbortSignal.any([timeoutController.signal, input.signal])
+        : timeoutController.signal
+      let emitted = false
+
+      try {
+        for await (const delta of runCompletionStream('chat', body, combined)) {
+          emitted = true
+          yield { delta }
+        }
+        if (!emitted) throw new Error('OpenAI chat stream returned empty content')
+      } catch (err) {
+        // A real client disconnect should stop work silently. Before the first
+        // token, other failures can still be replaced by a coherent fallback.
+        // Once partial content was emitted, mixing in an unrelated fallback
+        // would corrupt the answer, so let the route emit a structured error.
+        if (input.signal?.aborted || emitted) throw err
+        console.error('[openai.chatStream] falling back:', errorMessage(err))
+        output.isFallback = true
+        yield { delta: fallbackChatReply(input.scenarioId) }
+      } finally {
+        clearTimeout(timer)
+      }
+    })()
+    return output
   }
 
   async function analyzeJSON(input: ProviderAnalyzeInput) {

@@ -344,13 +344,17 @@ export default function AnalysisSidebar({
           <div className="space-y-5 animate-fade-in">
             {analysis.isFallback && (
               <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-[11px] leading-relaxed text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
-                当前 AI 服务繁忙，已切换到备用分析模式，本轮评分和建议仅供参考。
+                当前分析服务暂时不可用，本轮未进行语法评分、纠错、翻译或词汇提取，请稍后继续练习或重试。
               </div>
             )}
-            <GrammarFeedbackCard corrections={analysis.grammarCorrections} onSpeakText={handleSpeak} isFallback={analysis.isFallback === true} />
-            <AnalysisTranslationCard translation={analysis.translation} assistantReplyInsight={analysis.assistantReplyInsight} isFallback={analysis.isFallback === true} />
-            <SuggestionListSection suggestions={analysis.suggestions} onSelectSuggestion={onSelectSuggestion} />
-            <VocabularyCardsSection keyWords={analysis.keyWords} isWordSaved={isWordSaved} onAddWord={onAddWord} onSpeakText={handleSpeak} />
+            {!analysis.isFallback && (
+              <>
+                <GrammarFeedbackCard corrections={analysis.grammarCorrections} onSpeakText={handleSpeak} />
+                <AnalysisTranslationCard translation={analysis.translation} assistantReplyInsight={analysis.assistantReplyInsight} />
+                <SuggestionListSection suggestions={analysis.suggestions} onSelectSuggestion={onSelectSuggestion} />
+                <VocabularyCardsSection keyWords={analysis.keyWords} isWordSaved={isWordSaved} onAddWord={onAddWord} onSpeakText={handleSpeak} />
+              </>
+            )}
           </div>
         )}
       </div>

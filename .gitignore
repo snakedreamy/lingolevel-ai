@@ -1,18 +1,21 @@
+# Dependencies and generated files
 node_modules/
-build/
 dist/
+build/
 coverage/
-.DS_Store
-*.log
-.env*
-!.env.example
-*.local
 *.tsbuildinfo
+*.log
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Editors, OS files, and local tooling
+.DS_Store
 .vscode/
 .idea/
 .claude/
-# Internal refactor / agent working notes — never publish
-docs/
 .superpowers/
 .playwright-mcp/
-*.png
+docs/

@@ -138,31 +138,34 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
       messages: input.messages,
       temperature: input.temperature ?? 0.7,
     }
-    const timeoutController = new AbortController()
-    const timer = setTimeout(() => timeoutController.abort(), cfg.timeoutMs)
-    const combined = input.signal
-      ? AbortSignal.any([timeoutController.signal, input.signal])
-      : timeoutController.signal
-    try {
-      const gen = runCompletionStream('chat', body, combined)
-      return {
-        stream: (async function* () {
-          for await (const delta of gen) yield { delta }
-        })(),
-        isFallback: false,
-      }
-    } catch (err) {
-      console.error('[anthropic.chatStream] falling back:', errorMessage(err))
-      const fallbackText = fallbackChatReply(input.scenarioId)
-      return {
-        stream: (async function* () {
-          yield { delta: fallbackText }
-        })(),
-        isFallback: true,
-      }
-    } finally {
-      clearTimeout(timer)
+    const output: ProviderChatStreamOutput = {
+      stream: undefined as never,
+      isFallback: false,
     }
+    output.stream = (async function* () {
+      const timeoutController = new AbortController()
+      const timer = setTimeout(() => timeoutController.abort(), cfg.timeoutMs)
+      const combined = input.signal
+        ? AbortSignal.any([timeoutController.signal, input.signal])
+        : timeoutController.signal
+      let emitted = false
+
+      try {
+        for await (const delta of runCompletionStream('chat', body, combined)) {
+          emitted = true
+          yield { delta }
+        }
+        if (!emitted) throw new Error('Anthropic chat stream returned empty content')
+      } catch (err) {
+        if (input.signal?.aborted || emitted) throw err
+        console.error('[anthropic.chatStream] falling back:', errorMessage(err))
+        output.isFallback = true
+        yield { delta: fallbackChatReply(input.scenarioId) }
+      } finally {
+        clearTimeout(timer)
+      }
+    })()
+    return output
   }
 
   async function analyzeJSON(input: ProviderAnalyzeInput) {

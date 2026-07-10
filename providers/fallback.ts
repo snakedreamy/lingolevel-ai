@@ -41,54 +41,25 @@ export function fallbackChatReply(scenarioId?: string | null): string {
   return list[idx]
 }
 
-const FALLBACK_WORDS = [
-  { word: 'practice',     phonetic: '/ˈpræktɪs/',     definition: 'v./n. 练习；实践', exampleEn: 'We need more practice to speak English fluently.', exampleZh: '我们需要更多练习才能流利地对话。' },
-  { word: 'conversation', phonetic: '/ˌkɒnvəˈseɪʃn/', definition: 'n. 交谈，会话', exampleEn: 'I had a great conversation with my English coach.', exampleZh: '我和我的英语教练进行了一次绝佳的谈话。' },
-  { word: 'expression',   phonetic: '/ɪkˈspreʃn/',     definition: 'n. 表达，词组，表情', exampleEn: 'This is a native and elegant expression.', exampleZh: '这是一个地道且优雅的表达方式。' }
-]
-
 export function fallbackAnalyzeResult(
-  userMessage: string,
-  assistantMessage: string | undefined,
-  level: string
+  _userMessage: string,
+  _assistantMessage: string | undefined,
+  _level: string
 ): AnalysisResult {
-  let suggestions = [
-    "Let's practice together! [让我们一起练习吧！]",
-    "Sure, thank you! [好的，谢谢你！]",
-    "How are you doing today? [你今天过得怎么样？]"
-  ]
-  if (level === 'kindergarten' || level === 'primary_low') {
-    suggestions = ["Yes! [好的！]", "I like this. [我喜欢这个。]", "Look! [你看！]"]
-  } else if (level === 'senior' || level === 'college' || level === 'ielts') {
-    suggestions = [
-      "That is a very persuasive point. [这是一个非常具有说服力的观点。]",
-      "Personally, I believe consistency matters. [就我个人而言，我认为坚持不懈至关重要。]",
-      "Could you elaborate more on this topic? [您能就这个话题作进一步阐述吗？]"
-    ]
-  }
-
+  // Do not invent a correction, score, translation, vocabulary, or follow-up
+  // suggestion when the analysis model is unavailable. A fabricated 100/100
+  // is actively harmful in a learning product, so the UI presents an explicit
+  // "not assessed" state for this deliberately empty payload.
   return {
-    translation: assistantMessage
-      ? `[AI智能匹配对照翻译] AI: "${assistantMessage}" -> 您的英语口语交流进行得很顺利！(系统检测到AI服务繁忙，已自动启用备用回复)`
-      : `[对照翻译] -> 口语模拟器已准备就绪，练习您的第一句话吧！`,
-    grammarCorrections: [
-      {
-        original: userMessage || 'No message',
-        corrected: userMessage || 'No message',
-        explanation: '您的发音以及遣词造句十分通顺健康，请大胆开口说，继续保持！',
-        politeForm: userMessage || 'No message',
-        score: 100
-      }
-    ],
+    translation: '',
+    grammarCorrections: [],
     assistantReplyInsight: {
-      structure: assistantMessage
-        ? '它先接住当前话题，再给你一个可以继续回答的问题。'
-        : '开场白先帮你开口，重点是先整句模仿再往下接。',
-      grammar: '优先模仿这轮里最容易直接复用的短句或问句，不必硬找复杂语法点。',
-      whyThisReply: '先回答它最后那个问题，再补一条自己的信息，通常就是最顺的接法。'
+      structure: '',
+      grammar: '',
+      whyThisReply: '',
     },
-    keyWords: FALLBACK_WORDS,
-    suggestions
+    keyWords: [],
+    suggestions: [],
   }
 }
 

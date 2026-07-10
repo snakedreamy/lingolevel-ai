@@ -26,12 +26,19 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
   const sessionIdRef = useRef(0)
   const requestIdRef = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
+  const analysisQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const analysisAbortControllersRef = useRef(new Set<AbortController>())
+  const pendingAnalysisIdsRef = useRef(new Set<string>())
 
   const resetConversation = useCallback(async () => {
     abortRef.current?.abort()
     const sessionId = sessionIdRef.current + 1
     sessionIdRef.current = sessionId
     requestIdRef.current += 1
+    analysisQueueRef.current = Promise.resolve()
+    for (const controller of analysisAbortControllersRef.current) controller.abort()
+    analysisAbortControllersRef.current.clear()
+    pendingAnalysisIdsRef.current.clear()
     setMessages([{
       id: createMessageId('starter'),
       role: 'assistant',
@@ -61,7 +68,6 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
     const nextMessages = [...messages, { id: createMessageId('user'), role: 'user' as const, content: text, timestamp: Date.now() }]
     setMessages(nextMessages)
     setIsChatLoading(true)
-    setIsAnalysisLoading(true)
 
     const assistantId = createMessageId('assistant')
     setMessages((prev) => [...prev, {
@@ -109,48 +115,65 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
       setMessages((prev) => prev.map((m) => m.id === assistantId
         ? { ...m, streaming: false, content: '抱歉，当前 AI 服务暂时不可用，请稍后重试。', isFallback: true }
         : m))
-      setIsAnalysisLoading(false)
       return
     } finally {
       if (sessionIdRef.current === sessionId && requestIdRef.current === requestId) setIsChatLoading(false)
     }
 
     if (!assistantContent) {
-      if (sessionIdRef.current === sessionId && requestIdRef.current === requestId) setIsAnalysisLoading(false)
       return
     }
 
-    try {
-      const nextAnalysis = await sendAnalyze({
-        userMessage: text,
-        assistantMessage: assistantContent,
-        level: currentLevel,
-        scenarioContext: activeScenario.id === 'free_chat'
-          ? undefined
-          : `${activeScenario.englishName} — ${activeScenario.description}`,
-      })
-      if (sessionIdRef.current !== sessionId || requestIdRef.current !== requestId) return
+    const analysisId = createMessageId('analysis')
+    const turnCreatedAt = Date.now()
+    pendingAnalysisIdsRef.current.add(analysisId)
+    setIsAnalysisLoading(true)
 
-      const historyEntry: AnalysisHistoryEntry = {
-        id: createMessageId('analysis'),
-        userMessage: text,
-        assistantMessage: assistantContent,
-        analysis: nextAnalysis,
-        createdAt: Date.now(),
+    // Analysis is background work. Keep chat responsive, but serialize analyses
+    // so every completed turn is recorded in order instead of invalidating the
+    // previous result when the learner sends the next message quickly.
+    const runAnalysis = async () => {
+      const controller = new AbortController()
+      analysisAbortControllersRef.current.add(controller)
+      try {
+        if (sessionIdRef.current !== sessionId) return
+        const nextAnalysis = await sendAnalyze({
+          userMessage: text,
+          assistantMessage: assistantContent,
+          level: currentLevel,
+          scenarioContext: activeScenario.id === 'free_chat'
+            ? undefined
+            : `${activeScenario.englishName} — ${activeScenario.description}`,
+        }, controller.signal)
+        if (sessionIdRef.current !== sessionId) return
+
+        const historyEntry: AnalysisHistoryEntry = {
+          id: analysisId,
+          userMessage: text,
+          assistantMessage: assistantContent,
+          analysis: nextAnalysis,
+          createdAt: turnCreatedAt,
+        }
+        setAnalysis(nextAnalysis)
+        setAnalysisHistory((prev) => {
+          const next = [...prev, historyEntry]
+          setSelectedAnalysisIndex(next.length - 1)
+          return next
+        })
+      } catch (err) {
+        const aborted = controller.signal.aborted || (err instanceof Error && err.name === 'AbortError')
+        if (!aborted && sessionIdRef.current === sessionId) {
+          console.error('Failed to analyze chat response', err)
+        }
+      } finally {
+        analysisAbortControllersRef.current.delete(controller)
+        pendingAnalysisIdsRef.current.delete(analysisId)
+        if (sessionIdRef.current === sessionId) {
+          setIsAnalysisLoading(pendingAnalysisIdsRef.current.size > 0)
+        }
       }
-      setAnalysis(nextAnalysis)
-      setAnalysisHistory((prev) => {
-        const next = [...prev, historyEntry]
-        setSelectedAnalysisIndex(next.length - 1)
-        return next
-      })
-    } catch (err) {
-      if (sessionIdRef.current !== sessionId || requestIdRef.current !== requestId) return
-      console.error('Failed to analyze chat response', err)
-      setIsAnalysisLoading(false)
-    } finally {
-      if (sessionIdRef.current === sessionId && requestIdRef.current === requestId) setIsAnalysisLoading(false)
     }
+    analysisQueueRef.current = analysisQueueRef.current.then(runAnalysis, runAnalysis)
   }, [activeScenario, currentLevel, isChatLoading, maxContextMessages, messages])
 
   const showAnalysisAtIndex = useCallback((index: number) => {

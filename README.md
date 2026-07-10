@@ -21,7 +21,6 @@ An interactive AI English coach designed for Chinese learners with adaptive diff
   - `providers/index.ts` — factory: build provider from `process.env`
 - **Server** (`server/`): Express on the Vite dev middleware. `server/index.ts` is the entry; `server/routes.ts` mounts `GET /api/server-config` (echoes active provider / model / base URL — **no API key**), the streaming `POST /api/chat` and `POST /api/ask` (Server-Sent Events: `data: {"type":"delta"|"done"|"error",...}`), and the non-streaming `POST /api/analyze`. The active provider and model names are selected at boot from `.env.local` / `process.env`. `server/prompts.ts` holds the system-prompt composition, `server/middleware/` holds the rate limiter.
 - **Frontend** (`src/`): React + Vite SPA. The browser persists only non-sensitive learning preferences such as level, scenario, and theme under `lingolevel_prefs`. Active provider / model / base URL are fetched separately from `GET /api/server-config` and are never merged into browser-owned prefs. **No API keys, tokens, or secrets ever touch the browser** — the server is the only thing that talks to upstream LLMs.
-- **Tooling** (`scripts/smoke.sh`, `providers/__manual_test.ts`): a curl-based smoke test and a tsx-runnable manual test, both non-zero-exit on failure. These are intentionally committed verification assets for local/manual checks, not production runtime code.
 - **Runtime tuning via `.env.local`**: provider/model/base URL, outbound timeout, and chat context window are all server-owned runtime settings. The browser only reads a sanitized summary from `/api/server-config`.
 
 ## Run Locally
@@ -85,7 +84,7 @@ If you point `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL` at a third-party proxy or 
   DeepSeek, OpenRouter, and Ollama are listed below because we have
   confidence in their protocol conformance. Treat any other
   `BASE_URL` as "use at your own risk" and verify with
-  `npx tsx providers/__manual_test.ts` before relying on it.
+  a small real-world conversation before relying on it.
 
 > **Note for users on third-party relay proxies**: Some relays only support OpenAI-compatible Chat Completions, even when advertising both protocols. If `PROVIDER=anthropic` returns `unknown provider for model ...` from the relay, switch `PROVIDER=openai` and use the relay's model name in `OPENAI_*_MODEL`. The Anthropic adapter in this codebase is still functional for direct Anthropic API access.
 
@@ -167,8 +166,6 @@ lingolevel-ai/
 │   ├── types.ts                # frontend types incl. BrowserPrefs
 │   ├── index.css               # global styles
 │   └── main.tsx                # entry point
-├── scripts/
-│   └── smoke.sh                # curl-based post-startup smoke test (chat/ask SSE + analyze)
 ├── vite.config.ts
 ├── index.html
 ├── tsconfig.json
@@ -192,15 +189,3 @@ lingolevel-ai/
 - `npm run lint` — type-check only
 
 The settings panel will also show the active request timeout and context-window size reported by `/api/server-config`, so you can verify the server really booted with the `.env.local` values you expect.
-
-## Verifying
-
-```bash
-# After npm run dev is up:
-./scripts/smoke.sh 59100
-
-# Manual provider exercise (needs valid credentials in .env.local):
-npx tsx providers/__manual_test.ts
-```
-
-Both scripts exit non-zero on failure.
