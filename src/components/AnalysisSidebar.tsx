@@ -48,9 +48,9 @@ function GrammarFeedbackCard({ corrections, onSpeakText, isFallback = false }: {
   isFallback?: boolean
 }) {
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 space-y-3">
-      <div className="flex justify-between items-center pb-2 border-b border-zinc-100 dark:border-zinc-800">
-        <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded uppercase font-mono">
+    <section className="space-y-3 border-b border-zinc-200 pb-5 dark:border-zinc-800">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">
           你的这句先看这里
         </span>
         {isFallback && <span className="text-[10px] text-amber-600 dark:text-amber-400">参考模式</span>}
@@ -106,7 +106,7 @@ function GrammarFeedbackCard({ corrections, onSpeakText, isFallback = false }: {
           <span>这轮表达没有明显语法问题，继续保持！</span>
         </div>
       )}
-    </div>
+    </section>
   )
 }
 
@@ -121,7 +121,7 @@ const DEFAULT_INSIGHT: AssistantReplyInsight = {
 function InsightLine({ label, value }: { label: string; value: string }) {
   const content = value.trim() || '本轮暂无可直接复用的提示。'
   return (
-    <div className="space-y-1 rounded-xl border border-zinc-200/80 bg-white/70 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950/30">
+    <div className="space-y-1 border-l-2 border-zinc-200 py-0.5 pl-3 dark:border-zinc-700">
       <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400">{label}</p>
       <p className="text-[11px] leading-relaxed text-zinc-700 dark:text-zinc-300">{content}</p>
     </div>
@@ -135,14 +135,14 @@ function AnalysisTranslationCard({ translation, assistantReplyInsight, isFallbac
 }) {
   const insight = assistantReplyInsight ?? DEFAULT_INSIGHT
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 space-y-3">
+    <section className="space-y-3 border-b border-zinc-200 pb-5 dark:border-zinc-800">
       <div className="space-y-1">
-        <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded uppercase font-mono">对照翻译</span>
+        <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">对照翻译</span>
         <p className="text-[12px] leading-relaxed text-zinc-700 dark:text-zinc-300 whitespace-pre-line pt-1">{translation}</p>
       </div>
       <div className="border-t border-zinc-200/80 pt-3 dark:border-zinc-800">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded uppercase font-mono">这句怎么学</span>
+          <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">这句怎么学</span>
           {isFallback && <span className="text-[10px] text-amber-700 dark:text-amber-300">参考说明</span>}
         </div>
         <div className="space-y-2.5">
@@ -151,7 +151,7 @@ function AnalysisTranslationCard({ translation, assistantReplyInsight, isFallbac
           <InsightLine label="你下一句最容易往哪里接" value={insight.whyThisReply} />
         </div>
       </div>
-    </div>
+    </section>
   )
 }
 
@@ -164,8 +164,8 @@ function SuggestionListSection({ suggestions, onSelectSuggestion }: {
   if (suggestions.length === 0) return null
 
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5">
-      <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded uppercase font-mono">接下来你可以说</span>
+    <section className="border-b border-zinc-200 pb-5 dark:border-zinc-800">
+      <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">接下来你可以说</span>
       <ul className="mt-3 space-y-2">
         {suggestions.map((suggestion, i) => {
           const match = suggestion.match(/^(.*?)\s*\[([^\]]+)\]$/)
@@ -187,7 +187,7 @@ function SuggestionListSection({ suggestions, onSelectSuggestion }: {
           )
         })}
       </ul>
-    </div>
+    </section>
   )
 }
 
@@ -196,19 +196,19 @@ function SuggestionListSection({ suggestions, onSelectSuggestion }: {
 function VocabularyCardsSection({ keyWords, isWordSaved, onAddWord, onSpeakText }: {
   keyWords: AnalysisResult['keyWords']
   isWordSaved: (word: string) => boolean
-  onAddWord: (word: WordItem) => boolean
+  onAddWord: (word: WordItem) => void
   onSpeakText: (text: string) => void
 }) {
   if (keyWords.length === 0) return null
 
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5">
-      <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded uppercase font-mono">本轮词汇摘录</span>
-      <div className="mt-3 space-y-2.5">
+    <section>
+      <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">本轮词汇摘录</span>
+      <div className="mt-2">
         {keyWords.filter((kw) => kw.word).map((kw) => {
           const saved = isWordSaved(kw.word)
           return (
-            <div key={kw.word} className="rounded-xl border border-zinc-100 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/50 px-3 py-2.5">
+            <div key={kw.word} className="border-t border-zinc-200 py-3 first:border-t-0 dark:border-zinc-800">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100">{kw.word}</span>
@@ -238,7 +238,7 @@ function VocabularyCardsSection({ keyWords, isWordSaved, onAddWord, onSpeakText 
           )
         })}
       </div>
-    </div>
+    </section>
   )
 }
 
@@ -249,7 +249,7 @@ interface AnalysisSidebarProps {
   analysisHistory: AnalysisHistoryEntry[]
   selectedAnalysisIndex: number
   isLoading: boolean
-  onAddWord: (word: WordItem) => boolean
+  onAddWord: (word: WordItem) => void
   isWordSaved: (word: string) => boolean
   onSelectSuggestion: (text: string) => void
   onPreviousAnalysis: () => void
@@ -274,7 +274,7 @@ export default function AnalysisSidebar({
 
   const shellClass = embedded
     ? 'min-h-0 flex flex-1 flex-col overflow-hidden bg-white dark:bg-zinc-950'
-    : 'h-full min-h-0 flex flex-col overflow-hidden border-t border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950 lg:border-t-0 lg:border-l'
+    : 'h-full min-h-0 flex flex-col overflow-hidden border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 lg:border-t-0 lg:border-l'
 
   return (
     <div className={shellClass}>
@@ -370,7 +370,7 @@ export default function AnalysisSidebar({
 
       {!embedded && (
         <div className="p-3 bg-stone-50 dark:bg-zinc-900/60 border-t border-zinc-200 dark:border-zinc-800 text-[10px] text-zinc-400 text-center flex items-center justify-center gap-1">
-          <TrendingUp className="h-3.5 w-3.5 text-indigo-600 animate-pulse" />
+          <TrendingUp className="h-3.5 w-3.5 text-indigo-600" />
           <span>每次发送后，AI 会自动更新纠错、翻译与接话建议。</span>
         </div>
       )}

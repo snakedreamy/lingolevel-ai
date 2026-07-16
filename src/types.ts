@@ -57,6 +57,32 @@ export interface WordItem {
   addTime: number;
 }
 
+export type FillBlankFocus = 'mixed' | 'vocabulary' | 'grammar'
+
+export const FILL_BLANK_MIN_COUNT = 3
+export const FILL_BLANK_MAX_COUNT = 20
+
+/** A single AI-generated cloze card. `sentence` contains exactly one {{blank}} marker. */
+export interface FillBlankCard {
+  id: string
+  sentence: string
+  translation: string
+  answer: string
+  phonetic: string
+  partOfSpeech: string
+  definition: string
+  hint: string
+  grammarPoint: string
+  structure: string
+  explanation: string
+}
+
+export interface FillBlankProgress {
+  input: string
+  attempts: number
+  status: 'answering' | 'correct' | 'revealed'
+}
+
 export interface GrammarCorrection {
   original: string;
   corrected: string;

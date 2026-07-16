@@ -1,8 +1,11 @@
 // providers/retry.ts
+import { setTimeout as delay } from 'node:timers/promises'
+
 export interface RetryOptions {
   retries?: number           // default 3
   initialDelayMs?: number    // default 1000
   timeoutMs?: number         // default 30000
+  signal?: AbortSignal
 }
 
 export async function callWithRetry<T>(
@@ -16,20 +19,25 @@ export async function callWithRetry<T>(
   let lastErr: unknown
   let attempts = 0
   for (let i = 0; i < retries; i++) {
+    opts.signal?.throwIfAborted()
     attempts = i + 1
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
+    const signal = opts.signal
+      ? AbortSignal.any([controller.signal, opts.signal])
+      : controller.signal
     try {
-      const result = await fn(controller.signal)
-      clearTimeout(timer)
+      const result = await fn(signal)
       return result
     } catch (err) {
-      clearTimeout(timer)
       lastErr = err
+      if (opts.signal?.aborted) throw err
       if (!isTransient(err) || i === retries - 1) break
-      const delay = Math.min(initialDelay * 2 ** i, 8000)
-      console.warn(`[retry] attempt ${i + 1}/${retries} failed, backing off ${delay}ms`)
-      await new Promise((r) => setTimeout(r, delay))
+      const delayMs = Math.min(initialDelay * 2 ** i, 8000)
+      console.warn(`[retry] attempt ${i + 1}/${retries} failed, backing off ${delayMs}ms`)
+      await delay(delayMs, undefined, { signal: opts.signal })
+    } finally {
+      clearTimeout(timer)
     }
   }
   const wrapped = new Error(

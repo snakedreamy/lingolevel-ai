@@ -7,6 +7,8 @@ export interface ProviderChatInput {
   messages: ChatMessage[]
   systemInstruction: string
   temperature?: number
+  /** Optional response budget for structured or longer one-shot generations. */
+  maxTokens?: number
   scenarioId?: string | null
   /** Optional abort signal; the provider cancels the upstream fetch when aborted. */
   signal?: AbortSignal

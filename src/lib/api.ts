@@ -1,4 +1,4 @@
-import type { AnalysisResult, AskContext, DifficultyLevel, ProviderId, Scenario } from "../types"
+import type { AnalysisResult, AskContext, DifficultyLevel, FillBlankCard, FillBlankFocus, ProviderId, Scenario } from "../types"
 
 export interface ServerConfig {
   provider: ProviderId
@@ -120,4 +120,31 @@ export interface AskRequest {
 
 export function streamAsk(body: AskRequest, handlers: SSEHandlers, signal?: AbortSignal) {
   return streamSSE('/api/ask', body, handlers, signal)
+}
+
+export interface GenerateFillBlankRequest {
+  count: number
+  level: DifficultyLevel
+  focus: FillBlankFocus
+  scenario?: Pick<Scenario, 'name' | 'englishName' | 'description'>
+  recentSentences: string[]
+}
+
+export interface GenerateFillBlankResponse {
+  cards: FillBlankCard[]
+  isFallback?: boolean
+}
+
+export async function generateFillBlank(
+  request: GenerateFillBlankRequest,
+  signal?: AbortSignal,
+): Promise<GenerateFillBlankResponse> {
+  const response = await fetch('/api/fill-blank', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+    signal,
+  })
+  if (!response.ok) throw new Error('FILL_BLANK_GENERATION_FAILED')
+  return (await response.json()) as GenerateFillBlankResponse
 }

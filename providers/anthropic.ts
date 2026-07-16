@@ -109,7 +109,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
   async function chat(input: ProviderChatInput) {
     const body = {
       model: cfg.chatModel,
-      max_tokens: 1024,
+      max_tokens: input.maxTokens ?? 1024,
       system: input.systemInstruction,
       messages: input.messages,
       temperature: input.temperature ?? 0.7
@@ -117,11 +117,12 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
     try {
       const text = await callWithRetry(
         (signal) => runCompletion('chat', body, signal, parseChatText),
-        { timeoutMs: cfg.timeoutMs }
+        { timeoutMs: cfg.timeoutMs, signal: input.signal }
       )
 
       return { content: text || 'I am listening. Go ahead!' }
     } catch (err) {
+      if (input.signal?.aborted) throw err
       console.error('[anthropic.chat] falling back:', errorMessage(err))
       return {
         content: fallbackChatReply(input.scenarioId),
@@ -133,7 +134,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
   async function chatStream(input: ProviderChatInput): Promise<ProviderChatStreamOutput> {
     const body = {
       model: cfg.chatModel,
-      max_tokens: 1024,
+      max_tokens: input.maxTokens ?? 1024,
       system: input.systemInstruction,
       messages: input.messages,
       temperature: input.temperature ?? 0.7,

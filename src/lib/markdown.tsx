@@ -120,7 +120,11 @@ function renderInline(text: string, keyBase: string): React.ReactNode[] {
       nodes.push(<code key={`${keyBase}-c-${k}`} className="px-1 py-0.5 rounded bg-zinc-200/70 dark:bg-zinc-700/60 font-mono text-[0.9em]">{tok.slice(1, -1)}</code>)
     } else if (tok.startsWith('[')) {
       const lm = tok.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
-      if (lm) nodes.push(<a key={`${keyBase}-a-${k}`} href={lm[2]} target="_blank" rel="noreferrer" className="text-indigo-600 dark:text-indigo-400 underline">{lm[1]}</a>)
+      const href = lm?.[2]?.trim()
+      if (lm && href && /^(https?:\/\/|mailto:)/i.test(href)) {
+        nodes.push(<a key={`${keyBase}-a-${k}`} href={href} target="_blank" rel="noreferrer" className="text-indigo-600 dark:text-indigo-400 underline">{lm[1]}</a>)
+      }
+      else if (lm) nodes.push(lm[1])
       else nodes.push(tok)
     } else if (tok.startsWith('**')) {
       nodes.push(<strong key={`${keyBase}-b-${k}`} className="font-bold">{tok.slice(2, -2)}</strong>)

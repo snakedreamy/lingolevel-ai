@@ -39,12 +39,13 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
     // 用户可一边看主对话一边答疑。pointer-events-none 让外层不拦截主区点击，
     // 内层抽屉 pointer-events-auto 重新启用交互。
     <div className="fixed inset-0 z-40 flex justify-end pointer-events-none animate-fade-in">
-      <div className="h-full w-full max-w-md bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col pointer-events-auto">
+      <aside role="complementary" aria-labelledby="ask-assistant-title"
+        className="h-full w-full max-w-md bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col pointer-events-auto">
         <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="rounded-lg bg-indigo-50 dark:bg-indigo-950/40 p-2 text-indigo-600 dark:text-indigo-400"><HelpCircle className="h-5 w-5" /></div>
             <div>
-              <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">答疑助手</h2>
+              <h2 id="ask-assistant-title" className="text-sm font-bold text-zinc-900 dark:text-zinc-100">答疑助手</h2>
               <p className="text-[11px] text-zinc-500">用中文问拼写、语法、用法，AI 用中文答</p>
             </div>
           </div>
@@ -108,7 +109,7 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
             </button>
           </div>
         </div>
-      </div>
+      </aside>
     </div>
   )
 }

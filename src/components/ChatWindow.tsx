@@ -21,13 +21,9 @@ function ChatToolbar({
     <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between z-10">
       <div className="min-w-0 flex items-center gap-3">
         <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <span className="text-xs bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider scale-90 origin-left">
-              {activeScenario.name}
-            </span>
-          </div>
+          <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">练习场景 · {activeScenario.name}</p>
           <p className="text-[11px] text-zinc-400 mt-0.5 line-clamp-1">
-            Active Context: {activeScenario.description}
+            {activeScenario.description}
           </p>
         </div>
       </div>
@@ -64,11 +60,10 @@ function ChatToolbar({
 // ─── ChatMessageList ─────────────────────────────────────────────────────────
 
 function ChatMessageList({
-  messages, isLoading, isSpeakingId, regeneratableAssistantId, onRegenerateMessage,
+  messages, isSpeakingId, regeneratableAssistantId, onRegenerateMessage,
   onSpeakMessage, onCopyMessage, messagesEndRef, onWordClick,
 }: {
   messages: Message[]
-  isLoading: boolean
   isSpeakingId: string | null
   regeneratableAssistantId: string | null
   onRegenerateMessage: () => void
@@ -82,10 +77,10 @@ function ChatMessageList({
       {messages.length === 0 && (
         <div className="h-full flex flex-col items-center justify-center text-center py-16 text-zinc-400 max-w-sm mx-auto">
           <div className="p-4 bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-full mb-4">
-            <Languages className="h-8 w-8 text-indigo-600 dark:text-indigo-400 animate-bounce" />
+            <Languages className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
           </div>
-          <p className="font-bold text-zinc-800 dark:text-zinc-200 text-sm">开始您的沉浸式英语之旅</p>
-          <p className="text-xs text-zinc-500 mt-2">在底部文本框打字，或开启麦克风朗读；发送后可用反馈面板中的智能建议继续接话。</p>
+          <p className="font-bold text-zinc-800 dark:text-zinc-200 text-sm">发送一句英文开始练习</p>
+          <p className="text-xs text-zinc-500 mt-2">可以直接打字，也可以开启麦克风。发送后会得到纠错、翻译和接话建议。</p>
         </div>
       )}
 
@@ -109,13 +104,8 @@ function ChatMessageList({
                 <div className="flex justify-between items-start gap-3 mb-1">
                   <div className="flex items-center gap-1.5">
                     <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full ${isUser ? 'bg-indigo-500/65 text-white' : message.isFallback ? 'bg-amber-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
-                      {isUser ? 'You' : message.isFallback ? 'AI (Backup)' : 'AI Coach'}
+                      {isUser ? 'You' : message.isFallback ? 'AI · 备用回复' : 'AI Coach'}
                     </span>
-                    {!isUser && message.isFallback && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 bg-amber-50/90 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 rounded-full border border-amber-100 dark:border-amber-900 animate-pulse">
-                        ⚠️ 备用回复
-                      </span>
-                    )}
                   </div>
                   <div className="flex items-center gap-1.5">
                     {!isUser && message.id === regeneratableAssistantId && (
@@ -163,24 +153,6 @@ function ChatMessageList({
           </div>
         )
       })}
-
-      {isLoading && (
-        <div className="flex w-full justify-start animate-fade-in">
-          <div className="max-w-[92%] sm:max-w-[80%] flex flex-col items-start">
-            <div className="rounded-2xl rounded-tl-none px-4 py-3 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-500 text-xs shadow-xs">
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] font-extrabold uppercase px-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded p-0.5">AI Coach</span>
-                <p className="text-[11px] text-zinc-400 italic">正在生成回复...</p>
-              </div>
-              <div className="flex items-center gap-1 mt-3">
-                {[0, 150, 300].map((d) => (
-                  <span key={d} className="w-2 h-2 rounded-full bg-indigo-600 animate-bounce" style={{ animationDelay: `${d}ms` }} />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div ref={messagesEndRef} />
     </div>
@@ -372,12 +344,12 @@ export default function ChatWindow({
   }
 
   return (
-    <div className="h-full flex flex-col bg-stone-50/40 dark:bg-zinc-900/30 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm overflow-hidden relative">
+    <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-stone-50/40 dark:border-zinc-800 dark:bg-zinc-900/30">
       <ChatToolbar activeScenario={activeScenario} accent={accent} speed={speed}
         onAccentChange={setAccent} onSpeedChange={setSpeed} onResetChat={onResetChat} />
 
       <div className="min-h-0 flex-1 flex flex-col" onMouseUp={handleSelection}>
-        <ChatMessageList messages={messages} isLoading={isLoading} isSpeakingId={isSpeakingId}
+        <ChatMessageList messages={messages} isSpeakingId={isSpeakingId}
           regeneratableAssistantId={regeneratableAssistantId} onRegenerateMessage={onRegenerateMessage}
           onSpeakMessage={handleSpeakText} onCopyMessage={handleCopyText} messagesEndRef={messagesEndRef}
           onWordClick={onWordClick} />
@@ -394,7 +366,7 @@ export default function ChatWindow({
 
       {(recognitionError || statusMessage) && (
         <div className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-amber-50 dark:bg-zinc-900 border border-amber-200 dark:border-zinc-800 px-4 py-2 rounded-xl shadow-md flex items-center gap-2 z-20 text-xs animate-slide-up text-amber-700 dark:text-amber-400 max-w-[90%]">
-          <HelpCircle className="h-4 w-4 flex-shrink-0 animate-bounce" />
+          <HelpCircle className="h-4 w-4 flex-shrink-0" />
           <span>{recognitionError ?? statusMessage}</span>
           {recognitionError && (
             <button onClick={() => setRecognitionError(null)} className="text-[10px] underline font-bold pl-2 cursor-pointer">我已知晓</button>

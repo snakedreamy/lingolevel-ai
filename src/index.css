@@ -19,3 +19,43 @@ html, body, #root {
     max-height: 100dvh;
   }
 }
+
+@keyframes fill-blank-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fill-blank-loading {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+  100% { transform: translateX(300%); }
+}
+
+.fill-blank-enter { animation: fill-blank-enter 320ms cubic-bezier(.2,.8,.2,1) both; }
+.fill-blank-feedback { animation: fill-blank-enter 240ms ease-out both; }
+.fill-blank-loading { animation: fill-blank-loading 1.6s ease-in-out infinite; }
+.animate-fade-in { animation: fade-in 180ms ease-out both; }
+.animate-slide-up { animation: slide-up 220ms cubic-bezier(.2,.8,.2,1) both; }
+
+:where(button, input, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid rgb(79 70 229);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill-blank-enter,
+  .fill-blank-feedback,
+  .fill-blank-loading,
+  .animate-fade-in,
+  .animate-slide-up { animation: none; }
+}

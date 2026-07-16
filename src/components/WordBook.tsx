@@ -42,7 +42,7 @@ function WordBookListView({ wordList, onRemoveWord, onSpeakWord }: {
             <p className="text-zinc-500 dark:text-zinc-400 mt-1">{item.exampleZh}</p>
           </div>
           <div className="text-[9px] text-zinc-400 mt-3 flex justify-between items-center bg-stone-50 dark:bg-zinc-800 px-2 py-0.5 rounded">
-            <span>Added in Chat</span>
+            <span>收录于练习</span>
             <span>{new Date(item.addTime).toLocaleDateString()}</span>
           </div>
         </div>
@@ -169,7 +169,8 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-0 sm:items-center sm:p-4 animate-fade-in">
-      <div className="w-full max-w-4xl bg-white dark:bg-zinc-950 rounded-t-3xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col h-[92dvh] sm:h-[85vh]">
+      <div role="dialog" aria-modal="true" aria-labelledby="wordbook-title"
+        className="w-full max-w-4xl bg-white dark:bg-zinc-950 rounded-t-3xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col h-[92dvh] sm:h-[85vh]">
         {/* Header */}
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-100 dark:border-zinc-800 bg-stone-50/80 dark:bg-zinc-900/50 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -177,7 +178,7 @@ export default function WordBook({ isOpen, onClose, wordList, onRemoveWord, onCl
               <BookMarked className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100">我的生词本</h2>
+              <h2 id="wordbook-title" className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100">我的生词本</h2>
               <p className="hidden text-xs text-zinc-500 sm:block">聊天时一键加星的词汇，可用清单或抽卡复习。</p>
             </div>
           </div>

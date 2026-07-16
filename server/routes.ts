@@ -4,13 +4,22 @@ import type { Request, Response } from 'express'
 import type { Provider } from '../providers'
 import type { ServerConfig } from '../providers'
 import { loadServerConfigFromEnv } from '../providers'
-import { errorMessage } from '../providers/util'
+import { errorMessage, extractJsonObject } from '../providers/util'
 import {
   composeScenarioInstruction,
   getLevelSystemPrompt,
   composeAskSystemPrompt,
   buildAskUserPrompt,
 } from './prompts'
+import {
+  buildFillBlankPrompt,
+  completeSentence,
+  fallbackFillBlankCards,
+  normalizeGeneratedCards,
+  selectUniqueCards,
+} from './fillBlank'
+import type { FillBlankFocus } from '../src/types'
+import { FILL_BLANK_MAX_COUNT, FILL_BLANK_MIN_COUNT } from '../src/types'
 
 function logRequest(args: {
   endpoint: string; provider: string; model: string; status: number
@@ -131,6 +140,72 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
       logRequest({ endpoint: 'analyze', provider: cfg.provider, model: cfg.analyzeModel, status: 500, latencyMs: Date.now() - start, retry: 3, fallback: true, errorMsg: errorMessage(error) })
       res.status(500).json({ error: 'ANALYZE_FAILED' })
     }
+  })
+
+  // POST /api/fill-blank — generate a deduplicated cloze practice set.
+  router.post('/fill-blank', async (req, res) => {
+    const start = Date.now()
+    const rawCount = Number(req.body?.count)
+    if (!Number.isInteger(rawCount) || rawCount < FILL_BLANK_MIN_COUNT || rawCount > FILL_BLANK_MAX_COUNT) {
+      return res.status(400).json({ error: `count must be an integer between ${FILL_BLANK_MIN_COUNT} and ${FILL_BLANK_MAX_COUNT}` })
+    }
+    const level = typeof req.body?.level === 'string' ? req.body.level : 'junior'
+    const focus: FillBlankFocus = ['mixed', 'vocabulary', 'grammar'].includes(req.body?.focus)
+      ? req.body.focus
+      : 'mixed'
+    const recentSentences = Array.isArray(req.body?.recentSentences)
+      ? req.body.recentSentences.filter((item: unknown): item is string => typeof item === 'string').slice(-100)
+      : []
+    const scenario = typeof req.body?.scenario === 'object' && req.body.scenario !== null
+      ? {
+          name: typeof req.body.scenario.name === 'string' ? req.body.scenario.name : undefined,
+          englishName: typeof req.body.scenario.englishName === 'string' ? req.body.scenario.englishName : undefined,
+          description: typeof req.body.scenario.description === 'string' ? req.body.scenario.description : undefined,
+        }
+      : undefined
+    const abortController = abortWhenClientDisconnects(req, res)
+    let generated = [] as ReturnType<typeof normalizeGeneratedCards>
+    let isFallback = false
+    // minimal-debt: the current 20-card cap needs at most two sequential calls;
+    // if the cap grows beyond 20, move this to bounded parallel generation.
+    const batchSize = 10
+    for (let offset = 0; offset < rawCount; offset += batchSize) {
+      if (abortController.signal.aborted) return
+      const count = Math.min(batchSize, rawCount - offset)
+      const avoidList = [...recentSentences, ...generated.map(completeSentence)]
+      const prompts = buildFillBlankPrompt({ count, level, focus, scenario, recentSentences: avoidList })
+      try {
+        const output = await provider.chat({
+          messages: [{ role: 'user', content: prompts.userPrompt }],
+          systemInstruction: prompts.systemInstruction,
+          temperature: 0.85,
+          maxTokens: Math.min(4096, 768 + count * 256),
+          scenarioId: null,
+          signal: abortController.signal,
+        })
+        const batch = output.isFallback
+          ? []
+          : normalizeGeneratedCards(JSON.parse(extractJsonObject(output.content)))
+        generated = [...generated, ...batch]
+        if (output.isFallback || batch.length < count) isFallback = true
+      } catch (error) {
+        if (abortController.signal.aborted) return
+        isFallback = true
+        console.warn(`[fill-blank] invalid model output; using verified backup cards: ${errorMessage(error)}`)
+      }
+    }
+    if (abortController.signal.aborted) return
+    const cards = selectUniqueCards({
+      generated,
+      fallback: fallbackFillBlankCards(level),
+      count: rawCount,
+      recentSentences,
+    })
+    if (selectUniqueCards({ generated, fallback: [], count: rawCount, recentSentences }).length < rawCount) {
+      isFallback = true
+    }
+    logRequest({ endpoint: 'fill-blank', provider: cfg.provider, model: cfg.chatModel, status: 200, latencyMs: Date.now() - start, fallback: isFallback })
+    res.json({ cards, isFallback })
   })
 
   // POST /api/ask — SSE streaming tutor answers

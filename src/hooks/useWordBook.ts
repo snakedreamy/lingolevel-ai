@@ -54,20 +54,17 @@ export function useWordBook() {
     return key ? wordLookup[key] === true : false
   }
 
-  const addWord = (word: WordItem): boolean => {
+  const addWord = (word: WordItem): void => {
     const item = normalizeWordItem(word)
-    if (!item) return false
+    if (!item) return
     const key = normalizeLookupWord(item.word)
-    if (!key) return false
-    let added = false
+    if (!key) return
     setSavedWords((prev) => {
-      if (prev.some((w) => normalizeLookupWord(w.word) === key)) { saveStoredJson(WORDBOOK_KEY, prev); return prev }
-      added = true
+      if (prev.some((w) => normalizeLookupWord(w.word) === key)) return prev
       const next = [item, ...prev]
       saveStoredJson(WORDBOOK_KEY, next)
       return next
     })
-    return added
   }
 
   const removeWord = (word: string) => {
@@ -82,5 +79,5 @@ export function useWordBook() {
 
   const clearAllWords = () => { setSavedWords([]); removeStoredValue(WORDBOOK_KEY) }
 
-  return { savedWords, addWord, removeWord, clearAllWords, hasWord, hasAnyWords: savedWords.length > 0 }
+  return { savedWords, addWord, removeWord, clearAllWords, hasWord }
 }

@@ -37,6 +37,7 @@ async function createApp(): Promise<express.Express> {
   app.post('/api/chat', apiLimiter)
   app.post('/api/analyze', apiLimiter)
   app.post('/api/ask', apiLimiter)
+  app.post('/api/fill-blank', apiLimiter)
   app.use('/api', createApiRouter({ provider, cfg }))
 
   if (process.env.NODE_ENV !== 'production') {
