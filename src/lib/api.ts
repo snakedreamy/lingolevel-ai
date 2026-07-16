@@ -6,7 +6,10 @@ export interface ServerConfig {
   analyzeModel: string
   baseUrl: string
   requestTimeoutMs: number
+  maxOutputTokens: number
   maxContextMessages: number
+  fillBlankBatchSize: number
+  fillBlankAttempts: number
 }
 
 export interface ChatRequest {
@@ -133,6 +136,7 @@ export interface GenerateFillBlankRequest {
 export interface GenerateFillBlankResponse {
   cards: FillBlankCard[]
   isFallback?: boolean
+  fallbackCount?: number
 }
 
 export async function generateFillBlank(

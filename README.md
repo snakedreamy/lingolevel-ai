@@ -39,8 +39,9 @@ By default the server runs on `http://localhost:59100`. To change the port, edit
 
 Other useful runtime knobs in `.env.local`:
 
-- `REQUEST_TIMEOUT_MS` — how long chat/analyze requests may wait for the upstream model
+- `REQUEST_TIMEOUT_MS` / `MAX_OUTPUT_TOKENS` — shared request timeout and output budget for every AI task
 - `MAX_CONTEXT_MESSAGES` — how many recent user/assistant turns are sent back to the model as memory
+- `FILL_BLANK_BATCH_SIZE` / `FILL_BLANK_ATTEMPTS` — fill-blank batching and structured-output validation attempts; these do not limit model capacity
 
 The server prints its URL on startup (default `http://localhost:59100`).
 

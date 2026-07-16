@@ -30,6 +30,7 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; scenario: S
   const [currentIndex, setCurrentIndex] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [isFallback, setIsFallback] = useState(false)
+  const [fallbackCount, setFallbackCount] = useState(0)
   const controllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => () => controllerRef.current?.abort(), [])
@@ -44,6 +45,8 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; scenario: S
     controllerRef.current = controller
     setPhase('loading')
     setError(null)
+    setIsFallback(false)
+    setFallbackCount(0)
     try {
       const history = loadHistory()
       const result = await generateFillBlank({
@@ -65,6 +68,7 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; scenario: S
       setProgress(initialProgress)
       setCurrentIndex(0)
       setIsFallback(!!result.isFallback)
+      setFallbackCount(Math.max(0, Number(result.fallbackCount) || 0))
       setPhase('active')
       saveStoredJson(HISTORY_KEY, [
         ...history,
@@ -126,6 +130,8 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; scenario: S
     setProgress({})
     setCurrentIndex(0)
     setError(null)
+    setIsFallback(false)
+    setFallbackCount(0)
     setPhase('setup')
   }, [])
 
@@ -139,6 +145,6 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; scenario: S
 
   return {
     phase, count, setCount, focus, setFocus, cards, progress, currentCard, currentProgress,
-    currentIndex, error, isFallback, stats, start, updateInput, submit, reveal, next, resetToSetup,
+    currentIndex, error, isFallback, fallbackCount, stats, start, updateInput, submit, reveal, next, resetToSetup,
   }
 }

@@ -141,12 +141,12 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
         ...input.messages
       ],
       temperature: input.temperature ?? 0.7,
-      ...(input.maxTokens ? { max_tokens: input.maxTokens } : {}),
+      max_tokens: cfg.maxOutputTokens,
     }
     try {
       const text = await callWithRetry(
         (signal) => runCompletion('chat', body, signal),
-        { timeoutMs: cfg.timeoutMs, signal: input.signal }
+        { timeoutMs: cfg.timeoutMs, retries: input.maxAttempts, signal: input.signal }
       )
 
       return { content: text || 'I am listening. Go ahead!' }
@@ -168,7 +168,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
         ...input.messages,
       ],
       temperature: input.temperature ?? 0.7,
-      ...(input.maxTokens ? { max_tokens: input.maxTokens } : {}),
+      max_tokens: cfg.maxOutputTokens,
     }
     // The upstream request is lazy: it only starts when the returned stream is
     // consumed. Keep the timeout and error boundary inside that same lifecycle;
@@ -211,6 +211,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
   async function analyzeJSON(input: ProviderAnalyzeInput) {
     const body = {
       model: cfg.analyzeModel,
+      max_tokens: cfg.maxOutputTokens,
       messages: [
         { 
           role: 'system', 

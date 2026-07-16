@@ -166,46 +166,61 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     const abortController = abortWhenClientDisconnects(req, res)
     let generated = [] as ReturnType<typeof normalizeGeneratedCards>
     let isFallback = false
-    // minimal-debt: the current 20-card cap needs at most two sequential calls;
-    // if the cap grows beyond 20, move this to bounded parallel generation.
-    const batchSize = 10
+    const batchSize = cfg.fillBlankBatchSize
     for (let offset = 0; offset < rawCount; offset += batchSize) {
       if (abortController.signal.aborted) return
       const count = Math.min(batchSize, rawCount - offset)
       const avoidList = [...recentSentences, ...generated.map(completeSentence)]
       const prompts = buildFillBlankPrompt({ count, level, focus, scenario, recentSentences: avoidList })
-      try {
-        const output = await provider.chat({
-          messages: [{ role: 'user', content: prompts.userPrompt }],
-          systemInstruction: prompts.systemInstruction,
-          temperature: 0.85,
-          maxTokens: Math.min(4096, 768 + count * 256),
-          scenarioId: null,
-          signal: abortController.signal,
-        })
-        const batch = output.isFallback
-          ? []
-          : normalizeGeneratedCards(JSON.parse(extractJsonObject(output.content)))
-        generated = [...generated, ...batch]
-        if (output.isFallback || batch.length < count) isFallback = true
-      } catch (error) {
-        if (abortController.signal.aborted) return
-        isFallback = true
-        console.warn(`[fill-blank] invalid model output; using verified backup cards: ${errorMessage(error)}`)
+      let batch = [] as ReturnType<typeof normalizeGeneratedCards>
+      for (let attempt = 1; attempt <= cfg.fillBlankAttempts && batch.length < count; attempt++) {
+        try {
+          const output = await provider.chat({
+            messages: [{ role: 'user', content: prompts.userPrompt }],
+            systemInstruction: prompts.systemInstruction,
+            temperature: 0.65,
+            maxAttempts: 1,
+            scenarioId: null,
+            signal: abortController.signal,
+          })
+          const candidate = output.isFallback
+            ? []
+            : normalizeGeneratedCards(JSON.parse(extractJsonObject(output.content)), focus)
+          batch = selectUniqueCards({
+            generated: [...batch, ...candidate],
+            fallback: [],
+            count,
+            recentSentences: avoidList,
+          })
+          if (output.isFallback) {
+            console.warn(`[fill-blank] provider fallback on structured attempt ${attempt}/${cfg.fillBlankAttempts}`)
+          } else if (candidate.length < count) {
+            console.warn(
+              `[fill-blank] structured attempt ${attempt}/${cfg.fillBlankAttempts} accepted ${candidate.length}/${count} teaching-complete cards`
+            )
+          }
+        } catch (error) {
+          if (abortController.signal.aborted) return
+          console.warn(`[fill-blank] invalid structured output on attempt ${attempt}/${cfg.fillBlankAttempts}: ${errorMessage(error)}`)
+        }
       }
+      generated = [...generated, ...batch]
+      if (batch.length < count) isFallback = true
     }
     if (abortController.signal.aborted) return
     const cards = selectUniqueCards({
       generated,
-      fallback: fallbackFillBlankCards(level),
+      fallback: fallbackFillBlankCards(level, focus),
       count: rawCount,
       recentSentences,
     })
-    if (selectUniqueCards({ generated, fallback: [], count: rawCount, recentSentences }).length < rawCount) {
+    const generatedCount = selectUniqueCards({ generated, fallback: [], count: rawCount, recentSentences }).length
+    const fallbackCount = Math.max(0, rawCount - generatedCount)
+    if (fallbackCount > 0) {
       isFallback = true
     }
     logRequest({ endpoint: 'fill-blank', provider: cfg.provider, model: cfg.chatModel, status: 200, latencyMs: Date.now() - start, fallback: isFallback })
-    res.json({ cards, isFallback })
+    res.json({ cards, isFallback, fallbackCount })
   })
 
   // POST /api/ask — SSE streaming tutor answers

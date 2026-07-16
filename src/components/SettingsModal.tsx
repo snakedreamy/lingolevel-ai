@@ -98,7 +98,10 @@ export default function SettingsModal({
                     <ConfigRow label="Chat model" value={serverConfig.chatModel} />
                     <ConfigRow label="Analyze model" value={serverConfig.analyzeModel} />
                     <ConfigRow label="Request timeout" value={`${Math.round(serverConfig.requestTimeoutMs / 1000)} 秒`} />
+                    <ConfigRow label="Max output" value={`${serverConfig.maxOutputTokens} tokens`} />
                     <ConfigRow label="Context window" value={`最近 ${serverConfig.maxContextMessages} 句`} />
+                    <ConfigRow label="Fill-blank batch" value={`${serverConfig.fillBlankBatchSize} 题 / 次`} />
+                    <ConfigRow label="Fill-blank validation" value={`${serverConfig.fillBlankAttempts} 次`} />
                   </div>
                   <p className="border-t border-zinc-200 py-3 text-[10.5px] leading-5 text-zinc-500 dark:border-zinc-800">
                     API Key 仅由服务端读取，对应变量为 <code>{PROVIDER_API_KEY_ENV[serverConfig.provider]}</code>。修改 .env.local 后需重启服务。

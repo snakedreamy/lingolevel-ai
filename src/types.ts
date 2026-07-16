@@ -62,6 +62,25 @@ export type FillBlankFocus = 'mixed' | 'vocabulary' | 'grammar'
 export const FILL_BLANK_MIN_COUNT = 3
 export const FILL_BLANK_MAX_COUNT = 20
 
+export interface FillBlankBreakdownItem {
+  /** Exact, consecutive words from the completed sentence. */
+  text: string
+  /** The job this chunk performs in this sentence, such as subject or predicate. */
+  role: string
+  /** Sentence-specific Chinese explanation of meaning and function. */
+  explanation: string
+}
+
+export interface FillBlankImitationGuide {
+  /** Concrete replacement steps that preserve the learned structure. */
+  steps: string[]
+  /** A new English sentence using the same pattern. */
+  example: string
+  translation: string
+  /** A likely error and its correction. */
+  caution: string
+}
+
 /** A single AI-generated cloze card. `sentence` contains exactly one {{blank}} marker. */
 export interface FillBlankCard {
   id: string
@@ -75,6 +94,9 @@ export interface FillBlankCard {
   grammarPoint: string
   structure: string
   explanation: string
+  focusType: Exclude<FillBlankFocus, 'mixed'>
+  breakdown: FillBlankBreakdownItem[]
+  imitation: FillBlankImitationGuide
 }
 
 export interface FillBlankProgress {

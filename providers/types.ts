@@ -7,8 +7,8 @@ export interface ProviderChatInput {
   messages: ChatMessage[]
   systemInstruction: string
   temperature?: number
-  /** Optional response budget for structured or longer one-shot generations. */
-  maxTokens?: number
+  /** Maximum transport attempts; structured callers may own their own retry loop. */
+  maxAttempts?: number
   scenarioId?: string | null
   /** Optional abort signal; the provider cancels the upstream fetch when aborted. */
   signal?: AbortSignal
@@ -53,4 +53,5 @@ export interface ProviderConfig {
   chatModel: string
   analyzeModel: string
   timeoutMs: number
+  maxOutputTokens: number
 }

@@ -28,15 +28,27 @@ interface ResolvedProviderEnv {
   chatModel: string
   analyzeModel: string
   timeoutMs: number
+  maxOutputTokens: number
   maxContextMessages: number
+  fillBlankBatchSize: number
+  fillBlankAttempts: number
+}
+
+function readPositiveInteger(name: string, fallback: number): number {
+  const raw = process.env[name] ?? String(fallback)
+  const value = Number(raw)
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name} must be a positive integer (got "${raw}")`)
+  }
+  return value
 }
 
 /**
- * Internal helper: read and validate the 4 provider-specific env vars plus
- * PROVIDER and REQUEST_TIMEOUT_MS.
+ * Internal helper: read and validate provider and generation environment
+ * variables in one place.
  *
  * @throws if PROVIDER is missing/invalid, any required env var is empty, or
- *   REQUEST_TIMEOUT_MS is not a positive finite number.
+ *   a numeric setting is not a positive integer.
  */
 function resolveProviderEnv(): ResolvedProviderEnv {
   const provider = (process.env.PROVIDER ?? '').toLowerCase()
@@ -66,19 +78,11 @@ function resolveProviderEnv(): ResolvedProviderEnv {
     throw new Error(`${analyzeModelVar} must be set to a real model id, not the .env.example placeholder`)
   }
 
-  const timeoutRaw = Number(process.env.REQUEST_TIMEOUT_MS ?? '30000')
-  if (!Number.isFinite(timeoutRaw) || timeoutRaw <= 0) {
-    throw new Error(
-      `REQUEST_TIMEOUT_MS must be a positive finite number (got "${process.env.REQUEST_TIMEOUT_MS ?? '30000'}")`
-    )
-  }
-
-  const maxContextMessagesRaw = Number(process.env.MAX_CONTEXT_MESSAGES ?? '12')
-  if (!Number.isInteger(maxContextMessagesRaw) || maxContextMessagesRaw <= 0) {
-    throw new Error(
-      `MAX_CONTEXT_MESSAGES must be a positive integer (got "${process.env.MAX_CONTEXT_MESSAGES ?? '12'}")`
-    )
-  }
+  const timeoutRaw = readPositiveInteger('REQUEST_TIMEOUT_MS', 180_000)
+  const maxOutputTokens = readPositiveInteger('MAX_OUTPUT_TOKENS', 32_768)
+  const maxContextMessagesRaw = readPositiveInteger('MAX_CONTEXT_MESSAGES', 12)
+  const fillBlankBatchSize = readPositiveInteger('FILL_BLANK_BATCH_SIZE', 10)
+  const fillBlankAttempts = readPositiveInteger('FILL_BLANK_ATTEMPTS', 2)
 
   return {
     provider,
@@ -87,7 +91,10 @@ function resolveProviderEnv(): ResolvedProviderEnv {
     chatModel,
     analyzeModel,
     timeoutMs: timeoutRaw,
-    maxContextMessages: maxContextMessagesRaw
+    maxOutputTokens,
+    maxContextMessages: maxContextMessagesRaw,
+    fillBlankBatchSize,
+    fillBlankAttempts,
   }
 }
 
@@ -99,7 +106,8 @@ export function loadProviderFromEnv(): Provider {
     baseUrl: env.baseUrl,
     chatModel: env.chatModel,
     analyzeModel: env.analyzeModel,
-    timeoutMs: env.timeoutMs
+    timeoutMs: env.timeoutMs,
+    maxOutputTokens: env.maxOutputTokens,
   })
 }
 
@@ -109,7 +117,10 @@ export interface ServerConfig {
   analyzeModel: string
   baseUrl: string
   requestTimeoutMs: number
+  maxOutputTokens: number
   maxContextMessages: number
+  fillBlankBatchSize: number
+  fillBlankAttempts: number
 }
 
 /**
@@ -136,7 +147,10 @@ export function loadServerConfigFromEnv(): ServerConfig {
     analyzeModel: env.analyzeModel,
     baseUrl: env.baseUrl,
     requestTimeoutMs: env.timeoutMs,
-    maxContextMessages: env.maxContextMessages
+    maxOutputTokens: env.maxOutputTokens,
+    maxContextMessages: env.maxContextMessages,
+    fillBlankBatchSize: env.fillBlankBatchSize,
+    fillBlankAttempts: env.fillBlankAttempts,
     // Deliberately NO apiKey, NO apiKeyPreview, NO keyHint, NO anything-key.
   }
 }

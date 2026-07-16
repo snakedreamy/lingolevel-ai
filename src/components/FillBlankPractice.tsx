@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft, ArrowRight, BookOpenCheck, Check, CheckCircle2,
-  CircleHelp, Lightbulb, LoaderCircle, Minus, Plus, RotateCcw, Sparkles,
-  Target, TextCursorInput, Volume2, XCircle,
+  CircleHelp, Lightbulb, ListTree, LoaderCircle, Minus, PenLine, Plus, RotateCcw, Sparkles,
+  Target, TextCursorInput, TriangleAlert, Volume2, XCircle,
 } from 'lucide-react'
 import { LEVELS } from '../data/levels'
 import { useFillBlankPractice } from '../hooks/useFillBlankPractice'
@@ -21,10 +21,19 @@ interface FillBlankPracticeProps {
   onBackToChat: () => void
 }
 
-const FOCUS_OPTIONS: Array<{ id: FillBlankFocus; label: string; detail: string }> = [
-  { id: 'mixed', label: '综合', detail: '词汇与语法均衡' },
-  { id: 'vocabulary', label: '词汇', detail: '词义与固定搭配' },
-  { id: 'grammar', label: '语法', detail: '时态与句子结构' },
+const FOCUS_OPTIONS: Array<{ id: FillBlankFocus; label: string; detail: string; scope: string }> = [
+  {
+    id: 'mixed', label: '综合', detail: '一组中同时练词汇选择和语法形式',
+    scope: '约一半考实词与搭配，另一半考时态、介词、连接词或动词形式，适合日常综合复习。',
+  },
+  {
+    id: 'vocabulary', label: '词汇', detail: '只把名词、实义动词、形容词或副词设为空格',
+    scope: '依靠上下文判断词义与固定搭配，不会用冠词、代词或纯语法功能词充当答案。',
+  },
+  {
+    id: 'grammar', label: '语法', detail: '专门判断词形、时态和句子连接关系',
+    scope: '重点练动词形式、介词、连词、冠词、情态动词与从句连接，并解释为什么不能用常见错误形式。',
+  },
 ]
 
 function fullSentence(card: FillBlankCard) {
@@ -69,6 +78,7 @@ function SetupView({
   onLevelChange: (level: DifficultyLevel) => void
   onStart: () => void
 }) {
+  const activeFocus = FOCUS_OPTIONS.find((option) => option.id === focus) ?? FOCUS_OPTIONS[0]
   return (
     <div className="fill-blank-enter mx-auto h-full w-full max-w-6xl overflow-y-auto rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
       <header className="flex items-center justify-between gap-6 border-b border-zinc-200 px-5 py-5 dark:border-zinc-800 sm:px-8 sm:py-7">
@@ -78,7 +88,7 @@ function SetupView({
           </div>
           <div>
             <h2 className="text-xl font-black tracking-tight text-zinc-950 dark:text-white sm:text-2xl">生成填词练习</h2>
-            <p className="mt-1 text-xs leading-5 text-zinc-500 sm:text-sm">选择数量与重点，AI 会按当前难度生成中英双语句子。</p>
+            <p className="mt-1 text-xs leading-5 text-zinc-500 sm:text-sm">选择数量与重点；每题完成后都会逐块拆句，并指导你替换信息造新句。</p>
           </div>
         </div>
         <p className="hidden max-w-sm text-right text-lg font-semibold leading-relaxed text-zinc-700 dark:text-zinc-200 md:block">
@@ -134,17 +144,20 @@ function SetupView({
             <p id="fill-focus-settings" className="text-xs font-bold tracking-widest text-zinc-400 uppercase">练习内容</p>
             <h3 className="mt-1 text-base font-bold text-zinc-900 dark:text-zinc-100">选择本组学习重点</h3>
             <span className="mb-2.5 mt-6 block text-sm font-bold text-zinc-800 dark:text-zinc-200">练习重点</span>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid gap-2 sm:grid-cols-3">
               {FOCUS_OPTIONS.map((option) => (
-                <button key={option.id} type="button" onClick={() => setFocus(option.id)}
-                  className={`min-h-16 rounded-xl border px-2 py-2.5 text-left transition ${focus === option.id
+                <button key={option.id} type="button" aria-pressed={focus === option.id} onClick={() => setFocus(option.id)}
+                  className={`min-h-20 rounded-xl border px-3 py-3 text-left transition ${focus === option.id
                     ? 'border-indigo-500 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300 dark:ring-indigo-900'
                     : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-300'}`}>
                   <span className="block text-xs font-bold">{option.label}</span>
-                  <span className="mt-1 hidden text-[10px] leading-tight text-zinc-500 sm:block">{option.detail}</span>
+                  <span className="mt-1.5 block text-[10.5px] leading-4 text-zinc-500 dark:text-zinc-400">{option.detail}</span>
                 </button>
               ))}
             </div>
+            <p className="mt-3 border-l-2 border-indigo-500 pl-3 text-xs leading-5 text-zinc-600 dark:text-zinc-300">
+              <strong className="font-bold text-zinc-900 dark:text-zinc-100">{activeFocus.label}模式：</strong>{activeFocus.scope}
+            </p>
           </div>
 
           <div className="mt-6 flex items-center gap-2 border-t border-zinc-200 pt-5 text-xs text-zinc-500 dark:border-zinc-800">
@@ -169,7 +182,7 @@ function LoadingView({ count }: { count: number }) {
           <LoaderCircle className="h-8 w-8 animate-spin" />
         </div>
         <h2 className="mt-6 text-xl font-bold text-zinc-950 dark:text-white">正在准备 {count} 个新语境</h2>
-        <p className="mt-2 text-sm leading-6 text-zinc-500">AI 正在匹配难度、检查重复并整理语法讲解…</p>
+        <p className="mt-2 text-sm leading-6 text-zinc-500">AI 正在匹配难度、检查重复，并为每句话准备拆解与仿写步骤…</p>
         <div className="mx-auto mt-7 h-1.5 max-w-52 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
           <div className="fill-blank-loading h-full w-1/2 rounded-full bg-indigo-500" />
         </div>
@@ -311,7 +324,9 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-7 sm:px-9 sm:py-10 lg:px-14">
           <div className="mx-auto max-w-3xl">
             {practice.isFallback && practice.currentIndex === 0 && (
-              <p className="mb-5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/20 dark:text-amber-300">AI 暂时响应较慢，本组已使用经过校验的同级备用题目。</p>
+              <p className="mb-5 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700 dark:bg-amber-950/20 dark:text-amber-300">
+                本组有 {practice.fallbackCount || '部分'} 题的 AI 生成结果不完整，已用同级备用题补齐；可以正常练习。
+              </p>
             )}
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold tracking-[0.14em] text-indigo-600 uppercase dark:text-indigo-400">Fill in the blank</span>
@@ -354,27 +369,76 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
                   <div><p className="text-sm font-bold">{item.status === 'correct' ? (item.attempts ? '纠正成功，记住这个语境。' : '回答正确！') : `答案是 ${card.answer}`}</p><p className="mt-1 text-xs opacity-80">{card.explanation}</p></div>
                 </div>
 
-                <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <p className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">Word</p>
-                    <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
-                      <strong className="text-xl text-zinc-950 dark:text-white">{card.answer}</strong>
-                      <span className="text-xs text-zinc-400">{card.phonetic}</span>
-                      <span className="text-[10px] font-bold text-indigo-500">{card.partOfSpeech}</span>
+                <section className="mt-6" aria-labelledby="fill-answer-teaching">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p id="fill-answer-teaching" className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">答案与用法</p>
+                      <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
+                        <strong className="text-2xl text-zinc-950 dark:text-white">{card.answer}</strong>
+                        <span className="text-xs text-zinc-400">{card.phonetic}</span>
+                        <span className="text-[10px] font-bold text-indigo-500">{card.partOfSpeech}</span>
+                      </div>
+                      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{card.definition}</p>
                     </div>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{card.definition}</p>
-                    <div className="mt-3 flex gap-4">
-                      <button type="button" disabled={saved} onClick={() => props.onAddWord({ word: card.answer, phonetic: card.phonetic, translation: card.definition, exampleEn: fullSentence(card), exampleZh: card.translation, addTime: Date.now() })}
-                        className="text-xs font-bold text-indigo-600 disabled:text-emerald-600 dark:text-indigo-400">{saved ? '已在生词本' : '+ 加入生词本'}</button>
-                      <button type="button" onClick={() => props.onAskWord(card.answer)} className="text-xs font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200">问老师</button>
+                    <span className="border-l-2 border-indigo-500 pl-2 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
+                      本题考查：{card.focusType === 'grammar' ? '语法形式' : '词义与搭配'}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex gap-4">
+                    <button type="button" disabled={saved} onClick={() => props.onAddWord({ word: card.answer, phonetic: card.phonetic, translation: card.definition, exampleEn: fullSentence(card), exampleZh: card.translation, addTime: Date.now() })}
+                      className="text-xs font-bold text-indigo-600 disabled:text-emerald-600 dark:text-indigo-400">{saved ? '已在生词本' : '+ 加入生词本'}</button>
+                    <button type="button" onClick={() => props.onAskWord(card.answer)} className="text-xs font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200">问老师</button>
+                  </div>
+                </section>
+
+                <section className="mt-7 border-t border-zinc-200 pt-6 dark:border-zinc-800" aria-labelledby="fill-sentence-breakdown">
+                  <div className="flex items-center gap-2">
+                    <ListTree className="h-4 w-4 text-indigo-500" />
+                    <h3 id="fill-sentence-breakdown" className="text-sm font-bold text-zinc-950 dark:text-white">逐块拆开这句话</h3>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500">不是只记句型名称：先看每一块在这句话里表达什么，再理解它们为什么按这个顺序连接。</p>
+                  <div className="mt-4 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+                    {card.breakdown.map((chunk, index) => (
+                      <div key={`${chunk.text}-${index}`} className="grid gap-1 py-3 sm:grid-cols-[minmax(8rem,0.9fr)_minmax(7rem,0.7fr)_2fr] sm:gap-4">
+                        <p className="text-sm font-bold text-zinc-950 dark:text-white">{chunk.text}</p>
+                        <p className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">{chunk.role}</p>
+                        <p className="text-xs leading-5 text-zinc-600 dark:text-zinc-300">{chunk.explanation}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="mt-7 border-t border-zinc-200 pt-6 dark:border-zinc-800" aria-labelledby="fill-imitation-guide">
+                  <div className="flex items-center gap-2">
+                    <PenLine className="h-4 w-4 text-indigo-500" />
+                    <h3 id="fill-imitation-guide" className="text-sm font-bold text-zinc-950 dark:text-white">照着结构造自己的句子</h3>
+                  </div>
+                  <div className="mt-4 border-l-2 border-indigo-500 pl-4">
+                    <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{card.grammarPoint}</p>
+                    <p className="mt-1 text-xs leading-5 text-zinc-500">可复用骨架：{card.structure}</p>
+                  </div>
+                  <ol className="mt-4 space-y-3">
+                    {card.imitation.steps.map((step, index) => (
+                      <li key={index} className="flex gap-3 text-xs leading-5 text-zinc-700 dark:text-zinc-300">
+                        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-zinc-100 text-[10px] font-bold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{index + 1}</span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  {card.imitation.example && (
+                    <div className="mt-5 bg-zinc-50 px-4 py-3 dark:bg-zinc-950/60">
+                      <p className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">换一组信息后的例句</p>
+                      <p className="mt-1.5 text-sm font-bold text-zinc-900 dark:text-zinc-100">{card.imitation.example}</p>
+                      {card.imitation.translation && <p className="mt-1 text-xs text-zinc-500">{card.imitation.translation}</p>}
                     </div>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">Pattern</p>
-                    <p className="mt-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">{card.grammarPoint}</p>
-                    <p className="mt-1 text-xs leading-5 text-zinc-500">{card.structure}</p>
-                  </div>
-                </div>
+                  )}
+                  {card.imitation.caution && (
+                    <div className="mt-4 flex items-start gap-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
+                      <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                      <p><strong>造句前检查：</strong>{card.imitation.caution}</p>
+                    </div>
+                  )}
+                </section>
               </div>
             )}
           </div>

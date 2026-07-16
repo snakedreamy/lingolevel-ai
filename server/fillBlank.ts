@@ -1,7 +1,43 @@
 import { randomUUID } from 'node:crypto'
-import type { FillBlankCard, FillBlankFocus } from '../src/types'
+import type { FillBlankBreakdownItem, FillBlankCard, FillBlankFocus, FillBlankImitationGuide } from '../src/types'
 
 type CardSeed = Omit<FillBlankCard, 'id'>
+
+const IMITATION_REPLACEMENTS: Array<{ en: RegExp; enValue: string; zh: RegExp; zhValue: string }> = [
+  { en: /\bhome\b/i, enValue: 'the library', zh: /家里|家中/, zhValue: '图书馆' },
+  { en: /\bmilk\b/i, enValue: 'juice', zh: /牛奶/, zhValue: '果汁' },
+  { en: /\bapples\b/i, enValue: 'oranges', zh: /苹果/, zhValue: '橙子' },
+  { en: /\bbrother\b/i, enValue: 'cousin', zh: /哥哥/, zhValue: '表哥' },
+  { en: /\byesterday\b/i, enValue: 'last weekend', zh: /昨天/, zhValue: '上周末' },
+  { en: /\bdesk\b/i, enValue: 'shelf', zh: /桌子/, zhValue: '架子' },
+  { en: /\blunch\b/i, enValue: 'dinner', zh: /午饭/, zhValue: '晚饭' },
+  { en: /\bpencils\b/i, enValue: 'notebooks', zh: /铅笔/, zhValue: '笔记本' },
+  { en: /\bbaby\b/i, enValue: 'puppy', zh: /宝宝/, zhValue: '小狗' },
+  { en: /\btea\b/i, enValue: 'juice', zh: /茶/, zhValue: '果汁' },
+  { en: /school bag/i, enValue: 'jacket', zh: /书包/, zhValue: '夹克' },
+  { en: /\bfootball\b/i, enValue: 'basketball', zh: /足球/, zhValue: '篮球' },
+  { en: /\bschool\b/i, enValue: 'the library', zh: /学校|上学/, zhValue: '图书馆' },
+  { en: /\borange\b/i, enValue: 'sandwich', zh: /橙子/, zhValue: '三明治' },
+  { en: /\bbanana\b/i, enValue: 'apple', zh: /香蕉/, zhValue: '苹果' },
+  { en: /\bnoodles\b/i, enValue: 'soup', zh: /面条/, zhValue: '汤' },
+  { en: /\bdoor\b/i, enValue: 'window', zh: /门/, zhValue: '窗户' },
+  { en: /\bwater\b/i, enValue: 'tea', zh: /水/, zhValue: '茶' },
+  { en: /\bnovel\b/i, enValue: 'article', zh: /小说/, zhValue: '文章' },
+  { en: /\bmeeting\b/i, enValue: 'match', zh: /会议/, zhValue: '比赛' },
+  { en: /\bpark\b/i, enValue: 'café', zh: /公园/, zhValue: '咖啡馆' },
+  { en: /\bbus\b/i, enValue: 'train', zh: /公交车/, zhValue: '火车' },
+  { en: /\bapp\b/i, enValue: 'camera', zh: /应用/, zhValue: '相机' },
+  { en: /\bspace\b/i, enValue: 'history', zh: /太空/, zhValue: '历史' },
+  { en: /\bbook\b/i, enValue: 'podcast', zh: /书|本书/, zhValue: '播客' },
+  { en: /\bfilm\b/i, enValue: 'concert', zh: /电影/, zhValue: '音乐会' },
+  { en: /\btrain\b/i, enValue: 'flight', zh: /火车/, zhValue: '航班' },
+  { en: /\bquestion\b/i, enValue: 'instructions', zh: /题目|问题/, zhValue: '说明' },
+  { en: /\bBeijing\b/, enValue: 'Shanghai', zh: /北京/, zhValue: '上海' },
+  { en: /\bproposal\b/i, enValue: 'plan', zh: /提议/, zhValue: '计划' },
+  { en: /\bresearch\b/i, enValue: 'report', zh: /研究/, zhValue: '报告' },
+  { en: /\bcompany\b/i, enValue: 'school', zh: /公司/, zhValue: '学校' },
+  { en: /\bproject\b/i, enValue: 'team', zh: /项目/, zhValue: '团队' },
+]
 
 const LEVEL_GUIDANCE: Record<string, string> = {
   kindergarten: 'ages 3-6; 3-6 words; concrete nouns and simple be/do sentences',
@@ -14,9 +50,9 @@ const LEVEL_GUIDANCE: Record<string, string> = {
 }
 
 const FOCUS_GUIDANCE: Record<FillBlankFocus, string> = {
-  mixed: 'balance useful vocabulary, collocations, sentence structure and grammar',
-  vocabulary: 'prioritize useful words and collocations whose meaning can be inferred from context',
-  grammar: 'prioritize function words, verb forms and grammar patterns while keeping one-word answers',
+  mixed: 'Mix both target types: about half vocabulary/collocation choices and half grammar/form choices. Set focusType accurately on each card.',
+  vocabulary: 'Every card must have focusType "vocabulary". The answer must be a content word (noun, lexical verb, adjective or adverb) selected through meaning or a useful collocation. Do not use articles, pronouns, auxiliaries or conjunctions as blanks.',
+  grammar: 'Every card must have focusType "grammar". Test a grammatical decision such as a verb form, tense marker, modal, preposition, conjunction, article or clause connector. Contrast the correct form with the likely wrong form.',
 }
 
 export function buildFillBlankPrompt(args: {
@@ -46,14 +82,18 @@ Requirements for every card:
 - "phonetic" is the answer's IPA; "partOfSpeech" and "definition" are concise Chinese learning notes.
 - "hint" helps recall the word but must not reveal its spelling.
 - "grammarPoint" names the grammar/collocation; "structure" breaks down the sentence pattern; "explanation" explains in concise Simplified Chinese why the answer fits.
+- "focusType" is exactly "vocabulary" or "grammar" and matches what the blank actually tests.
+- "breakdown" contains 3-6 ordered chunks that together cover the entire completed sentence. Each "text" quotes exact consecutive words from this sentence; "role" names its specific job; "explanation" explains in Simplified Chinese what that exact chunk means and why it is placed there. Do not use vague labels without explaining the current sentence.
+- "imitation.steps" contains 2-4 concrete replacement steps for making a learner's own sentence from this exact pattern. "imitation.example" is a new English example using the same pattern, with its Chinese "translation". "imitation.caution" gives one likely error and the corrected form.
 - Vary subjects, sentence openings, tenses and contexts. Do not repeat a sentence or merely swap one noun.
 - Do not reproduce or closely paraphrase any sentence in the avoid list.
+- Keep every teaching field concise. The goal is a usable lesson, not a long essay.
 
 Avoid list:
 ${avoid}
 
 Return this shape:
-{"cards":[{"sentence":"... {{blank}} ...","translation":"...","answer":"...","phonetic":"/.../","partOfSpeech":"...","definition":"...","hint":"...","grammarPoint":"...","structure":"...","explanation":"..."}]}`,
+{"cards":[{"sentence":"... {{blank}} ...","translation":"...","answer":"...","phonetic":"/.../","partOfSpeech":"...","definition":"...","hint":"...","grammarPoint":"...","structure":"...","explanation":"...","focusType":"vocabulary","breakdown":[{"text":"exact words","role":"具体作用","explanation":"这部分在本句中的含义和位置"}],"imitation":{"steps":["先保留……","再替换……"],"example":"A new sentence.","translation":"一个新句子。","caution":"常见错误 → 正确形式"}}]}`,
   }
 }
 
@@ -131,7 +171,96 @@ function seed(
   partOfSpeech: string, definition: string, hint: string, grammarPoint: string,
   structure: string, explanation: string,
 ): CardSeed {
-  return { sentence, translation, answer, phonetic, partOfSpeech, definition, hint, grammarPoint, structure, explanation }
+  const teaching = buildFallbackTeaching({ sentence, translation, answer, partOfSpeech, definition, grammarPoint, structure, explanation })
+  return {
+    sentence, translation, answer, phonetic, partOfSpeech, definition, hint, grammarPoint, structure, explanation,
+    focusType: inferFallbackFocus(partOfSpeech, grammarPoint),
+    ...teaching,
+  }
+}
+
+function inferFallbackFocus(partOfSpeech: string, grammarPoint: string): FillBlankCard['focusType'] {
+  return /介词|连词|助动词|冠词|代词|时态|语态|从句|主谓|情态|倒装|句型|分词|不定式/.test(`${partOfSpeech} ${grammarPoint}`)
+    ? 'grammar'
+    : 'vocabulary'
+}
+
+function buildFallbackTeaching(args: {
+  sentence: string
+  translation: string
+  answer: string
+  partOfSpeech: string
+  definition: string
+  grammarPoint: string
+  structure: string
+  explanation: string
+}): { breakdown: FillBlankBreakdownItem[]; imitation: FillBlankImitationGuide } {
+  const [before, after] = args.sentence.split('{{blank}}')
+  const breakdown: FillBlankBreakdownItem[] = []
+  if (before.trim()) {
+    breakdown.push({
+      text: before.trim(),
+      role: '答案前的语境',
+      explanation: '先确认这里已经给出的主语、动作状态或句子关系，它决定空格需要承担什么作用。',
+    })
+  }
+  breakdown.push({
+    text: args.answer,
+    role: `${args.partOfSpeech} · 本题关键`,
+    explanation: `${args.definition}。${args.explanation}`,
+  })
+  if (after.trim()) {
+    breakdown.push({
+      text: after.trim(),
+      role: '答案后的信息',
+      explanation: '这一部分补充对象、状态、地点、时间或原因，用来反向验证答案是否同时符合语义和结构。',
+    })
+  }
+  const completed = args.sentence.replace('{{blank}}', args.answer)
+  const replacement = IMITATION_REPLACEMENTS.find((item) => item.en.test(completed) && item.zh.test(args.translation))
+  const example = replacement ? completed.replace(replacement.en, replacement.enValue) : ''
+  const exampleTranslation = replacement ? args.translation.replace(replacement.zh, replacement.zhValue) : ''
+  return {
+    breakdown,
+    imitation: {
+      steps: [
+        `先保留骨架“${args.structure}”。`,
+        '把主语换成自己、家人或熟悉的人，并同步检查谓语形式。',
+        `再替换答案附近的动作、对象、地点或时间，最后按“${args.grammarPoint}”检查。`,
+      ],
+      example,
+      translation: exampleTranslation,
+      caution: `不要只替换单词而忽略主谓一致、时态或固定搭配；写完后按“${args.grammarPoint}”复查。`,
+    },
+  }
+}
+
+function normalizeBreakdown(value: unknown): FillBlankBreakdownItem[] {
+  if (!Array.isArray(value)) return []
+  return value.slice(0, 6).flatMap((item) => {
+    if (typeof item !== 'object' || item === null) return []
+    const entry = item as Record<string, unknown>
+    const text = clean(entry.text, '')
+    const role = clean(entry.role, '')
+    const explanation = clean(entry.explanation, '')
+    return text && role && explanation ? [{ text, role, explanation }] : []
+  })
+}
+
+function normalizeImitation(value: unknown): FillBlankImitationGuide {
+  if (typeof value !== 'object' || value === null) {
+    return { steps: [], example: '', translation: '', caution: '' }
+  }
+  const entry = value as Record<string, unknown>
+  const steps = Array.isArray(entry.steps)
+    ? entry.steps.map((step) => clean(step, '')).filter(Boolean).slice(0, 4)
+    : []
+  return {
+    steps,
+    example: clean(entry.example, ''),
+    translation: clean(entry.translation, ''),
+    caution: clean(entry.caution, ''),
+  }
 }
 
 function clean(value: unknown, fallback: string): string {
@@ -146,7 +275,7 @@ export function completeSentence(card: Pick<FillBlankCard, 'sentence' | 'answer'
   return card.sentence.replace('{{blank}}', card.answer)
 }
 
-export function normalizeGeneratedCards(raw: unknown): FillBlankCard[] {
+export function normalizeGeneratedCards(raw: unknown, requestedFocus: FillBlankFocus = 'mixed'): FillBlankCard[] {
   if (typeof raw !== 'object' || raw === null || !Array.isArray((raw as { cards?: unknown }).cards)) return []
   const cards: FillBlankCard[] = []
   const seen = new Set<string>()
@@ -164,28 +293,43 @@ export function normalizeGeneratedCards(raw: unknown): FillBlankCard[] {
     const key = sentenceKey(sentence.replace('{{blank}}', answer))
     if (!key || seen.has(key)) continue
     seen.add(key)
+    const partOfSpeech = clean(value.partOfSpeech, '单词')
+    const definition = clean(value.definition, '结合句子理解词义')
+    const grammarPoint = clean(value.grammarPoint, '句子语境')
+    const structure = clean(value.structure, '结合主语、谓语和上下文判断')
+    const explanation = clean(value.explanation, '该词在语义和句子结构上都符合此处用法。')
+    const focusType = value.focusType === 'grammar' || value.focusType === 'vocabulary'
+      ? value.focusType
+      : requestedFocus === 'grammar' ? 'grammar' : 'vocabulary'
+    if (requestedFocus !== 'mixed' && focusType !== requestedFocus) continue
+    const breakdown = normalizeBreakdown(value.breakdown)
+    const imitation = normalizeImitation(value.imitation)
+    const breakdownCoversSentence = sentenceKey(breakdown.map((chunk) => chunk.text).join(' ')) === key
+    const teachingIsComplete = breakdown.length >= 3 && breakdownCoversSentence && imitation.steps.length >= 2
+      && imitation.example && imitation.translation && imitation.caution
+    if (!teachingIsComplete) continue
     cards.push({
       id: randomUUID(), sentence, answer,
       translation: clean(value.translation, '请结合英文句子理解句意。'),
-      phonetic: clean(value.phonetic, ''),
-      partOfSpeech: clean(value.partOfSpeech, '单词'),
-      definition: clean(value.definition, '结合句子理解词义'),
+      phonetic: clean(value.phonetic, ''), partOfSpeech, definition,
       hint: clean(value.hint, `共 ${answer.length} 个字母`),
-      grammarPoint: clean(value.grammarPoint, '句子语境'),
-      structure: clean(value.structure, '结合主语、谓语和上下文判断'),
-      explanation: clean(value.explanation, '该词在语义和句子结构上都符合此处用法。'),
+      grammarPoint, structure, explanation, focusType,
+      breakdown, imitation,
     })
   }
   return cards
 }
 
-export function fallbackFillBlankCards(level: string): FillBlankCard[] {
+export function fallbackFillBlankCards(level: string, focus: FillBlankFocus = 'mixed'): FillBlankCard[] {
   const bank = level === 'kindergarten' || level === 'primary_low'
     ? BEGINNER_BANK
     : level === 'senior' || level === 'college' || level === 'ielts'
       ? ADVANCED_BANK
       : BASIC_BANK
-  return bank.map((card) => ({ ...card, id: randomUUID() }))
+  const ordered = focus === 'mixed'
+    ? bank
+    : [...bank.filter((card) => card.focusType === focus), ...bank.filter((card) => card.focusType !== focus)]
+  return ordered.map((card) => ({ ...card, id: randomUUID() }))
 }
 
 export function selectUniqueCards(args: {

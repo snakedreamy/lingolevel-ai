@@ -109,7 +109,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
   async function chat(input: ProviderChatInput) {
     const body = {
       model: cfg.chatModel,
-      max_tokens: input.maxTokens ?? 1024,
+      max_tokens: cfg.maxOutputTokens,
       system: input.systemInstruction,
       messages: input.messages,
       temperature: input.temperature ?? 0.7
@@ -117,7 +117,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
     try {
       const text = await callWithRetry(
         (signal) => runCompletion('chat', body, signal, parseChatText),
-        { timeoutMs: cfg.timeoutMs, signal: input.signal }
+        { timeoutMs: cfg.timeoutMs, retries: input.maxAttempts, signal: input.signal }
       )
 
       return { content: text || 'I am listening. Go ahead!' }
@@ -134,7 +134,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
   async function chatStream(input: ProviderChatInput): Promise<ProviderChatStreamOutput> {
     const body = {
       model: cfg.chatModel,
-      max_tokens: input.maxTokens ?? 1024,
+      max_tokens: cfg.maxOutputTokens,
       system: input.systemInstruction,
       messages: input.messages,
       temperature: input.temperature ?? 0.7,
@@ -172,7 +172,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
   async function analyzeJSON(input: ProviderAnalyzeInput) {
     const body = {
       model: cfg.analyzeModel,
-      max_tokens: 4096,
+      max_tokens: cfg.maxOutputTokens,
       system: 'You are an expert English-Chinese Bilingual Teacher. Always return a valid JSON object matching the documented shape (translation, grammarCorrections, assistantReplyInsight, keyWords, suggestions).',
       messages: [
         { role: 'user', content: buildAnalysisUserPrompt(input.level, input.userMessage, input.assistantMessage, input.scenarioContext) + JSON_EXTRACT_HINT }
