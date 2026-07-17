@@ -10,16 +10,11 @@ interface ScenarioCardsProps {
 export default function ScenarioCards({ activeScenarioId, onScenarioSelect }: ScenarioCardsProps) {
   return (
     <section className="w-full border-t border-zinc-200 pt-5 dark:border-zinc-800">
-      <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
+      <div className="mb-3 flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
           <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
             对话与练习场景
           </h3>
-        </div>
-        <span className="text-xs text-zinc-500">
-          点击后立即切换当前主题
-        </span>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">

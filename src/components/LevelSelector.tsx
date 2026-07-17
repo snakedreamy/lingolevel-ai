@@ -10,14 +10,11 @@ interface LevelSelectorProps {
 export default function LevelSelector({ currentLevel, onLevelChange }: LevelSelectorProps) {
   return (
     <section className="w-full">
-      <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
+      <div className="mb-3 flex items-center gap-2">
         <GraduationCap className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
         <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
           学习难度
         </h3>
-        </div>
-        <p className="text-xs text-zinc-500">切换后，AI 会立即调整用词与句型</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { HelpCircle, X, Send, Volume2, RotateCcw } from 'lucide-react'
+import { HelpCircle, X, Send, RotateCcw } from 'lucide-react'
 import type { AskContext, AskMessage } from '../types'
-import { speakText } from '../lib/speech'
+import type { SpeechPlayer } from '../lib/speech'
 import { renderMarkdown } from '../lib/markdown'
+import SpeechButton from './SpeechButton'
 
 interface AskAssistantProps {
   isOpen: boolean
@@ -13,9 +14,10 @@ interface AskAssistantProps {
   onAsk: (question: string, context?: AskContext) => void
   onReset: () => void
   sendOnCtrlEnter?: boolean
+  speech: SpeechPlayer
 }
 
-export default function AskAssistant({ isOpen, onClose, messages, isLoading, initialContext, onAsk, onReset, sendOnCtrlEnter = false }: AskAssistantProps) {
+export default function AskAssistant({ isOpen, onClose, messages, isLoading, initialContext, onAsk, onReset, sendOnCtrlEnter = false, speech }: AskAssistantProps) {
   const [question, setQuestion] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const [ctx, setCtx] = useState<AskContext | null>(initialContext)
@@ -44,10 +46,7 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
         <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="rounded-lg bg-indigo-50 dark:bg-indigo-950/40 p-2 text-indigo-600 dark:text-indigo-400"><HelpCircle className="h-5 w-5" /></div>
-            <div>
-              <h2 id="ask-assistant-title" className="text-sm font-bold text-zinc-900 dark:text-zinc-100">答疑助手</h2>
-              <p className="text-[11px] text-zinc-500">用中文问拼写、语法、用法，AI 用中文答</p>
-            </div>
+            <h2 id="ask-assistant-title" className="text-sm font-bold text-zinc-900 dark:text-zinc-100">答疑助手</h2>
           </div>
           <div className="flex items-center gap-1">
             {messages.length > 0 && (
@@ -61,8 +60,7 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center text-zinc-400">
               <HelpCircle className="h-10 w-10 mb-3" />
-              <p className="text-xs">遇到不会拼的单词、不理解的语法？</p>
-              <p className="text-xs mt-1">点击 AI 回复里的单词，或选中一句话，也能直接在这里提问。</p>
+              <p className="max-w-xs text-xs leading-5">直接提问，或从对话中的单词、句子发起答疑。</p>
             </div>
           ) : messages.map((m) => (
             <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -80,8 +78,11 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
                     : (m.streaming ? <span className="inline-block w-1.5 h-3.5 ml-0.5 bg-current animate-pulse align-middle" /> : null)}
                 </div>
                 {m.role === 'assistant' && m.content && !m.streaming && (
-                  <button onClick={() => { try { speakText({ text: m.content, accent: 'us', speed: 0.95, onStart: () => undefined, onEnd: () => undefined }) } catch {} }}
-                    className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-zinc-400 hover:text-indigo-600"><Volume2 className="h-3 w-3" />朗读</button>
+                  <div className="mt-1.5">
+                    <SpeechButton active={speech.activeId === `ask:${m.id}`}
+                      onClick={() => speech.toggle(`ask:${m.id}`, m.content, '答疑回复')}
+                      label="答疑回复" showText />
+                  </div>
                 )}
               </div>
             </div>

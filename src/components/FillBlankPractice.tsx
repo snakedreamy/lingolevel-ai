@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft, ArrowRight, BookOpenCheck, Check, CheckCircle2,
   CircleHelp, Lightbulb, ListTree, LoaderCircle, Minus, PenLine, Plus, RotateCcw, Sparkles,
-  Target, TextCursorInput, TriangleAlert, Volume2, XCircle,
+  Target, TextCursorInput, TriangleAlert, XCircle,
 } from 'lucide-react'
 import { LEVELS } from '../data/levels'
 import { useFillBlankPractice } from '../hooks/useFillBlankPractice'
-import { speakText } from '../lib/speech'
+import type { SpeechPlayer } from '../lib/speech'
 import { FILL_BLANK_MAX_COUNT, FILL_BLANK_MIN_COUNT } from '../types'
 import type { DifficultyLevel, FillBlankCard, FillBlankFocus, Scenario } from '../types'
+import SpeechButton from './SpeechButton'
 
 interface FillBlankPracticeProps {
   active: boolean
@@ -18,6 +19,7 @@ interface FillBlankPracticeProps {
   onLevelChange: (level: DifficultyLevel) => void
   onAskWord: (word: string) => void
   onBackToChat: () => void
+  speech: SpeechPlayer
 }
 
 const FOCUS_OPTIONS: Array<{ id: FillBlankFocus; label: string; detail: string; scope: string }> = [
@@ -37,14 +39,6 @@ const FOCUS_OPTIONS: Array<{ id: FillBlankFocus; label: string; detail: string; 
 
 function fullSentence(card: FillBlankCard) {
   return card.sentence.replace('{{blank}}', card.answer)
-}
-
-function playSentence(text: string) {
-  try {
-    speakText({ text, accent: 'us', speed: 0.9, onStart: () => undefined, onEnd: () => undefined })
-  } catch {
-    // Speech is an enhancement; unsupported browsers can continue the exercise.
-  }
 }
 
 function Sentence({ card, reveal }: { card: FillBlankCard; reveal: boolean }) {
@@ -80,31 +74,21 @@ function SetupView({
   const activeFocus = FOCUS_OPTIONS.find((option) => option.id === focus) ?? FOCUS_OPTIONS[0]
   return (
     <div className="fill-blank-enter mx-auto h-full w-full max-w-6xl overflow-y-auto rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-      <header className="flex items-center justify-between gap-6 border-b border-zinc-200 px-5 py-5 dark:border-zinc-800 sm:px-8 sm:py-7">
+      <header className="flex items-center border-b border-zinc-200 px-5 py-5 dark:border-zinc-800 sm:px-8 sm:py-6">
         <div className="flex items-start gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
             <TextCursorInput className="h-5 w-5" />
           </div>
-          <div>
-            <h2 className="text-xl font-black tracking-tight text-zinc-950 dark:text-white sm:text-2xl">生成填词练习</h2>
-            <p className="mt-1 text-xs leading-5 text-zinc-500 sm:text-sm">选择数量与重点；每题完成后都会逐块拆句，并指导你替换信息造新句。</p>
-          </div>
+          <h2 className="text-xl font-black tracking-tight text-zinc-950 dark:text-white sm:text-2xl">生成填词练习</h2>
         </div>
-        <p className="hidden max-w-sm text-right text-lg font-semibold leading-relaxed text-zinc-700 dark:text-zinc-200 md:block">
-          Context makes words <span className="inline-block min-w-[4.5rem] border-b-2 border-indigo-500 text-center text-indigo-600 dark:text-indigo-300">stick</span>.
-        </p>
       </header>
 
       <div className="grid gap-8 p-5 sm:p-8 lg:grid-cols-2 lg:gap-12 lg:p-10">
         <section className="space-y-6" aria-labelledby="fill-basic-settings">
+          <h3 id="fill-basic-settings" className="text-base font-bold text-zinc-900 dark:text-zinc-100">基础设置</h3>
           <div>
-            <p id="fill-basic-settings" className="text-xs font-bold tracking-widest text-zinc-400 uppercase">基础设置</p>
-            <h3 className="mt-1 text-base font-bold text-zinc-900 dark:text-zinc-100">控制本组难度与长度</h3>
-          </div>
-          <div>
-            <div className="mb-2.5 flex items-center justify-between">
+            <div className="mb-2.5">
               <label htmlFor="fill-level" className="text-sm font-bold text-zinc-800 dark:text-zinc-200">当前难度</label>
-              <span className="text-xs text-zinc-500">AI 会同步调整词汇和句型</span>
             </div>
             <select id="fill-level" value={level} onChange={(event) => onLevelChange(event.target.value as DifficultyLevel)}
               className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-800 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:[color-scheme:dark] dark:focus:ring-indigo-900">
@@ -140,9 +124,7 @@ function SetupView({
 
         <section className="flex flex-col" aria-labelledby="fill-focus-settings">
           <div>
-            <p id="fill-focus-settings" className="text-xs font-bold tracking-widest text-zinc-400 uppercase">练习内容</p>
-            <h3 className="mt-1 text-base font-bold text-zinc-900 dark:text-zinc-100">选择本组学习重点</h3>
-            <span className="mb-2.5 mt-6 block text-sm font-bold text-zinc-800 dark:text-zinc-200">练习重点</span>
+            <h3 id="fill-focus-settings" className="mb-3 text-base font-bold text-zinc-900 dark:text-zinc-100">练习重点</h3>
             <div className="grid gap-2 sm:grid-cols-3">
               {FOCUS_OPTIONS.map((option) => (
                 <button key={option.id} type="button" aria-pressed={focus === option.id} onClick={() => setFocus(option.id)}
@@ -181,7 +163,6 @@ function LoadingView({ count }: { count: number }) {
           <LoaderCircle className="h-8 w-8 animate-spin" />
         </div>
         <h2 className="mt-6 text-xl font-bold text-zinc-950 dark:text-white">正在准备 {count} 个新语境</h2>
-        <p className="mt-2 text-sm leading-6 text-zinc-500">AI 正在匹配难度、检查重复，并为每句话准备拆解与仿写步骤…</p>
         <div className="mx-auto mt-7 h-1.5 max-w-52 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
           <div className="fill-blank-loading h-full w-1/2 rounded-full bg-indigo-500" />
         </div>
@@ -229,9 +210,7 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
         <div className="mx-auto max-w-3xl">
           <div className="flex items-start justify-between gap-4 border-b border-zinc-200 pb-7 dark:border-zinc-800">
             <div>
-              <p className="text-xs font-bold tracking-widest text-indigo-600 uppercase dark:text-indigo-400">本组完成</p>
-              <h2 className="mt-2 text-3xl font-black tracking-tight text-zinc-950 dark:text-white">你完成了 {practice.stats.total} 个句子</h2>
-              <p className="mt-2 text-sm text-zinc-500">先看容易出错的词，再开始下一组。</p>
+              <h2 className="text-3xl font-black tracking-tight text-zinc-950 dark:text-white">你完成了 {practice.stats.total} 个句子</h2>
             </div>
             <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-full border-4 border-indigo-100 text-indigo-600 dark:border-indigo-950 dark:text-indigo-400">
               <span className="text-2xl font-black">{score}</span><span className="text-[9px] font-bold">首答分</span>
@@ -250,8 +229,13 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
               <div className="mt-4 divide-y divide-zinc-100 dark:divide-zinc-800">
                 {reviewCards.map((card) => (
                   <div key={card.id} className="py-4 sm:flex sm:items-start sm:justify-between sm:gap-5">
-                    <div>
-                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{fullSentence(card)}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-1.5">
+                        <p className="min-w-0 flex-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">{fullSentence(card)}</p>
+                        <SpeechButton active={props.speech.activeId === `fill:${card.id}:review`}
+                          onClick={() => props.speech.toggle(`fill:${card.id}:review`, fullSentence(card), '复习句子')}
+                          label="复习句子" />
+                      </div>
                       <p className="mt-1 text-xs text-zinc-500">{card.translation}</p>
                     </div>
                     <div className="mt-2 shrink-0 text-left sm:mt-0 sm:text-right">
@@ -277,6 +261,7 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
   const item = practice.currentProgress
   if (!card || !item) return null
   const settled = item.status !== 'answering'
+  const sentenceSpeechId = `fill:${card.id}:sentence`
 
   const handleSubmit = () => {
     const result = practice.submit()
@@ -326,16 +311,17 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
                 本组有 {practice.fallbackCount || '部分'} 题的 AI 生成结果不完整，已用同级备用题补齐；可以正常练习。
               </p>
             )}
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold tracking-[0.14em] text-indigo-600 uppercase dark:text-indigo-400">Fill in the blank</span>
-              <button type="button" onClick={() => playSentence(settled ? fullSentence(card) : card.sentence.replace('{{blank}}', 'blank'))}
-                className="grid h-9 w-9 place-items-center rounded-full border border-zinc-200 text-zinc-500 transition hover:border-indigo-300 hover:text-indigo-600 dark:border-zinc-700" aria-label="朗读句子">
-                <Volume2 className="h-4 w-4" />
-              </button>
-            </div>
-
             <div className="mt-7 min-h-32 sm:mt-10 sm:min-h-44">
-              <Sentence card={card} reveal={settled} />
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1"><Sentence card={card} reveal={settled} /></div>
+                <SpeechButton active={props.speech.activeId === sentenceSpeechId}
+                  onClick={() => props.speech.toggle(
+                    sentenceSpeechId,
+                    settled ? fullSentence(card) : card.sentence.replace('{{blank}}', ' '),
+                    settled ? '完整句子' : '题干',
+                  )}
+                  label={settled ? '完整句子' : '题干'} size="md" />
+              </div>
               <p className="mt-5 text-sm leading-6 text-zinc-500 sm:text-base">{card.translation}</p>
             </div>
 
@@ -345,7 +331,7 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
                 <div className={`mt-2 flex items-center rounded-xl border bg-zinc-50 pr-2 transition focus-within:ring-2 dark:bg-zinc-950 ${answerError ? 'border-rose-400 focus-within:ring-rose-100 dark:focus-within:ring-rose-950' : 'border-zinc-200 focus-within:border-indigo-500 focus-within:ring-indigo-100 dark:border-zinc-700 dark:focus-within:ring-indigo-950'}`}>
                   <input ref={inputRef} id="fill-answer" value={item.input} onChange={(event) => { practice.updateInput(event.target.value); setAnswerError(false) }}
                     onKeyDown={(event) => { if (event.key === 'Enter') handleSubmit() }} autoComplete="off" autoCapitalize="none" spellCheck={false}
-                    placeholder="Type one word…" className="h-13 min-w-0 flex-1 bg-transparent px-4 text-base font-semibold text-zinc-900 outline-none placeholder:font-normal placeholder:text-zinc-400 dark:text-white" />
+                    placeholder="输入答案" className="h-13 min-w-0 flex-1 bg-transparent px-4 text-base font-semibold text-zinc-900 outline-none placeholder:font-normal placeholder:text-zinc-400 dark:text-white" />
                   <button type="button" onClick={handleSubmit} disabled={!item.input.trim()}
                     className="h-9 rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:disabled:bg-zinc-700">检查</button>
                 </div>
@@ -375,6 +361,9 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
                         <strong className="text-2xl text-zinc-950 dark:text-white">{card.answer}</strong>
                         <span className="text-xs text-zinc-400">{card.phonetic}</span>
                         <span className="text-[10px] font-bold text-indigo-500">{card.partOfSpeech}</span>
+                        <SpeechButton active={props.speech.activeId === `fill:${card.id}:answer`}
+                          onClick={() => props.speech.toggle(`fill:${card.id}:answer`, card.answer, card.answer)}
+                          label={card.answer} />
                       </div>
                       <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{card.definition}</p>
                     </div>
@@ -390,13 +379,17 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
                 <section className="mt-7 border-t border-zinc-200 pt-6 dark:border-zinc-800" aria-labelledby="fill-sentence-breakdown">
                   <div className="flex items-center gap-2">
                     <ListTree className="h-4 w-4 text-indigo-500" />
-                    <h3 id="fill-sentence-breakdown" className="text-sm font-bold text-zinc-950 dark:text-white">逐块拆开这句话</h3>
+                    <h3 id="fill-sentence-breakdown" className="text-sm font-bold text-zinc-950 dark:text-white">句子拆解</h3>
                   </div>
-                  <p className="mt-1 text-xs leading-5 text-zinc-500">不是只记句型名称：先看每一块在这句话里表达什么，再理解它们为什么按这个顺序连接。</p>
                   <div className="mt-4 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
                     {card.breakdown.map((chunk, index) => (
                       <div key={`${chunk.text}-${index}`} className="grid gap-1 py-3 sm:grid-cols-[minmax(8rem,0.9fr)_minmax(7rem,0.7fr)_2fr] sm:gap-4">
-                        <p className="text-sm font-bold text-zinc-950 dark:text-white">{chunk.text}</p>
+                        <div className="flex min-w-0 items-start gap-1">
+                          <p className="min-w-0 flex-1 text-sm font-bold text-zinc-950 dark:text-white">{chunk.text}</p>
+                          <SpeechButton active={props.speech.activeId === `fill:${card.id}:chunk:${index}`}
+                            onClick={() => props.speech.toggle(`fill:${card.id}:chunk:${index}`, chunk.text, '句子片段')}
+                            label="句子片段" />
+                        </div>
                         <p className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">{chunk.role}</p>
                         <p className="text-xs leading-5 text-zinc-600 dark:text-zinc-300">{chunk.explanation}</p>
                       </div>
@@ -407,11 +400,11 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
                 <section className="mt-7 border-t border-zinc-200 pt-6 dark:border-zinc-800" aria-labelledby="fill-imitation-guide">
                   <div className="flex items-center gap-2">
                     <PenLine className="h-4 w-4 text-indigo-500" />
-                    <h3 id="fill-imitation-guide" className="text-sm font-bold text-zinc-950 dark:text-white">照着结构造自己的句子</h3>
+                    <h3 id="fill-imitation-guide" className="text-sm font-bold text-zinc-950 dark:text-white">仿写</h3>
                   </div>
                   <div className="mt-4 border-l-2 border-indigo-500 pl-4">
                     <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{card.grammarPoint}</p>
-                    <p className="mt-1 text-xs leading-5 text-zinc-500">可复用骨架：{card.structure}</p>
+                    <p className="mt-1 text-xs leading-5 text-zinc-500">句型：{card.structure}</p>
                   </div>
                   <ol className="mt-4 space-y-3">
                     {card.imitation.steps.map((step, index) => (
@@ -423,15 +416,20 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
                   </ol>
                   {card.imitation.example && (
                     <div className="mt-5 bg-zinc-50 px-4 py-3 dark:bg-zinc-950/60">
-                      <p className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">换一组信息后的例句</p>
-                      <p className="mt-1.5 text-sm font-bold text-zinc-900 dark:text-zinc-100">{card.imitation.example}</p>
+                      <p className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">仿写示例</p>
+                      <div className="mt-1.5 flex items-start gap-2">
+                        <p className="min-w-0 flex-1 text-sm font-bold text-zinc-900 dark:text-zinc-100">{card.imitation.example}</p>
+                        <SpeechButton active={props.speech.activeId === `fill:${card.id}:imitation`}
+                          onClick={() => props.speech.toggle(`fill:${card.id}:imitation`, card.imitation.example, '仿写例句')}
+                          label="仿写例句" />
+                      </div>
                       {card.imitation.translation && <p className="mt-1 text-xs text-zinc-500">{card.imitation.translation}</p>}
                     </div>
                   )}
                   {card.imitation.caution && (
                     <div className="mt-4 flex items-start gap-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
                       <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-                      <p><strong>造句前检查：</strong>{card.imitation.caution}</p>
+                      <p><strong>注意：</strong>{card.imitation.caution}</p>
                     </div>
                   )}
                 </section>

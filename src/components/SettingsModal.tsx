@@ -53,10 +53,7 @@ export default function SettingsModal({
             <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
               <Settings2 className="h-5 w-5" />
             </div>
-            <div>
-              <h2 id="settings-title" className="text-base font-bold sm:text-lg">学习设置</h2>
-              <p className="text-xs text-zinc-500">难度、场景、模型与输入习惯</p>
-            </div>
+            <h2 id="settings-title" className="text-base font-bold sm:text-lg">学习设置</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="关闭设置"
             className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800">
@@ -71,18 +68,17 @@ export default function SettingsModal({
           <section className="border-t border-zinc-200 pt-5 dark:border-zinc-800">
             <div className="mb-3 flex items-center gap-2">
               <Bot className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-              <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-200">当前模型</h3>
+              <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-200">模型</h3>
             </div>
-            <label htmlFor="active-model" className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">用于后续 AI 请求</label>
+            <label htmlFor="active-model" className="sr-only">后续请求使用的模型</label>
             <select id="active-model" value={currentModelId} disabled={!serverConfig}
               onChange={(event) => onModelChange(event.target.value)}
-              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 font-mono text-xs font-semibold text-zinc-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:[color-scheme:dark] dark:focus:ring-indigo-900">
+              className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 font-mono text-xs font-semibold text-zinc-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:[color-scheme:dark] dark:focus:ring-indigo-900">
               <option value="" className="bg-white text-zinc-950 dark:bg-zinc-900 dark:text-zinc-100">按任务使用服务端默认模型</option>
               {serverConfig?.availableModels.map((model) => (
                 <option key={model} value={model} className="bg-white text-zinc-950 dark:bg-zinc-900 dark:text-zinc-100">{model}</option>
               ))}
             </select>
-            <p className="mt-2 text-[11px] leading-5 text-zinc-500">切换只影响之后发起的对话、分析、答疑和填词请求；可选范围由服务端配置决定。</p>
           </section>
 
           <section className="border-t border-zinc-200 pt-5 dark:border-zinc-800">
@@ -93,7 +89,7 @@ export default function SettingsModal({
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Ctrl+Enter 发送</p>
-                <p className="mt-1 text-[11px] leading-5 text-zinc-500">开启后，直接回车用于换行；Ctrl+Enter（Mac 上 Cmd+Enter）才发送。</p>
+                <p className="mt-1 text-[11px] leading-5 text-zinc-500">开启后，Enter 换行，Ctrl/Cmd+Enter 发送。</p>
               </div>
               <button type="button" role="switch" aria-label="切换 Ctrl+Enter 发送" aria-checked={sendOnCtrlEnter}
                 onClick={onToggleSendOnCtrlEnter}

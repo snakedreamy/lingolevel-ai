@@ -1,8 +1,9 @@
 // src/components/AnalysisSidebar.tsx
 // Merged: AnalysisSidebar + AnalysisTranslationCard + GrammarFeedbackCard + SuggestionListSection + VocabularyCardsSection
-import { ArrowLeft, ArrowRight, Lightbulb, TrendingUp, Volume2, CheckCircle2, ChevronRight, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Lightbulb, CheckCircle2, ChevronRight, RefreshCw } from 'lucide-react'
 import type { AnalysisHistoryEntry, AnalysisResult, AssistantReplyInsight, GrammarCorrection } from '../types'
-import { speakText } from '../lib/speech'
+import type { SpeechPlayer } from '../lib/speech'
+import SpeechButton from './SpeechButton'
 
 // ─── GrammarFeedbackCard ─────────────────────────────────────────────────────
 
@@ -10,24 +11,24 @@ function deriveLearningFocus(correction: GrammarCorrection) {
   const lowerCombined = `${correction.explanation} ${correction.corrected}`.toLowerCase()
 
   if (lowerCombined.includes('过去式') || lowerCombined.includes('past tense') || lowerCombined.includes('tense')) {
-    return { label: '本轮重点：动词时态', rule: '描述昨天、上周等已发生的事时，动词通常需要变成过去式（如 go → went，eat → ate）。' }
+    return { label: '重点：动词时态', rule: '描述昨天、上周等已发生的事时，动词通常需要变成过去式（如 go → went，eat → ate）。' }
   }
   if (lowerCombined.includes('your') || lowerCombined.includes('所有格') || lowerCombined.includes('possessive')) {
-    return { label: '本轮重点：your / my 所有格', rule: '放在名词前时用 your / my / his，而不是 you / I / he。' }
+    return { label: '重点：your / my 所有格', rule: '放在名词前时用 your / my / his，而不是 you / I / he。' }
   }
   if (lowerCombined.includes('介词') || lowerCombined.includes('preposition')) {
-    return { label: '本轮重点：固定搭配', rule: '介词搭配通常需要整块记忆，例如 interested in、good at、arrive at/in。' }
+    return { label: '重点：固定搭配', rule: '介词搭配通常需要整块记忆，例如 interested in、good at、arrive at/in。' }
   }
   if (lowerCombined.includes('主谓') || lowerCombined.includes('subject') || lowerCombined.includes('agreement')) {
-    return { label: '本轮重点：主谓一致', rule: '第三人称单数主语（he/she/it）后面的动词需要加 -s/-es。' }
+    return { label: '重点：主谓一致', rule: '第三人称单数主语（he/she/it）后面的动词需要加 -s/-es。' }
   }
   if (lowerCombined.includes('冠词') || lowerCombined.includes('article')) {
-    return { label: '本轮重点：冠词用法', rule: '特指用 the，泛指可数单数用 a/an，泛指复数或不可数通常不加冠词。' }
+    return { label: '重点：冠词用法', rule: '特指用 the，泛指可数单数用 a/an，泛指复数或不可数通常不加冠词。' }
   }
   if (correction.original.trim() === correction.corrected.trim()) {
-    return { label: '本轮重点：直接套用高频句', rule: '像 Hi!、Thank you.、What is your name? 这种高频短句，先整句记住，再换其中一个词最容易开口。' }
+    return { label: '重点：高频整句', rule: '像 Hi!、Thank you.、What is your name? 这种高频短句，先整句记住，再换其中一个词最容易开口。' }
   }
-  return { label: '本轮重点：先模仿再替换', rule: '先把更正句整句读顺，再替换一个时间、地点或人物信息，最容易形成自己的表达。' }
+  return { label: '重点：模仿与替换', rule: '先把更正句整句读顺，再替换一个时间、地点或人物信息，最容易形成自己的表达。' }
 }
 
 function containsChinese(text: string) { return /[一-鿿]/.test(text) }
@@ -42,16 +43,17 @@ function resolveExplanation(correction: GrammarCorrection, focus: ReturnType<typ
   return `优先记住这条规则：${focus.rule}`
 }
 
-function GrammarFeedbackCard({ corrections, onSpeakText, isFallback = false }: {
+function GrammarFeedbackCard({ corrections, speech, speechScope, isFallback = false }: {
   corrections: GrammarCorrection[]
-  onSpeakText: (text: string) => void
+  speech: SpeechPlayer
+  speechScope: string
   isFallback?: boolean
 }) {
   return (
     <section className="space-y-3 border-b border-zinc-200 pb-5 dark:border-zinc-800">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">
-          你的这句先看这里
+          表达反馈
         </span>
         {isFallback && <span className="text-[10px] text-amber-600 dark:text-amber-400">参考模式</span>}
       </div>
@@ -60,6 +62,8 @@ function GrammarFeedbackCard({ corrections, onSpeakText, isFallback = false }: {
         const focus = deriveLearningFocus(correction)
         const explanation = resolveExplanation(correction, focus)
         const isCorrect = correction.original.trim() === correction.corrected.trim() && correction.score >= 90
+        const correctedSpeechId = `${speechScope}:correction:${i}:corrected`
+        const politeSpeechId = `${speechScope}:correction:${i}:polite`
 
         return (
           <div key={i} className="space-y-2">
@@ -67,6 +71,9 @@ function GrammarFeedbackCard({ corrections, onSpeakText, isFallback = false }: {
               <span className={`text-[10px] font-bold ${isCorrect ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
                 {isCorrect ? '✓ 这句没问题' : `✗ 评分 ${correction.score}/100`}
               </span>
+              {isCorrect && <SpeechButton active={speech.activeId === correctedSpeechId}
+                onClick={() => speech.toggle(correctedSpeechId, correction.corrected, '你的句子')}
+                label="你的句子" />}
             </div>
 
             {!isCorrect && (
@@ -79,16 +86,20 @@ function GrammarFeedbackCard({ corrections, onSpeakText, isFallback = false }: {
                   <span className="text-[10px] font-bold text-emerald-600 w-12 shrink-0 pt-0.5">更正</span>
                   <div className="flex items-center gap-2">
                     <p className="text-[12px] font-semibold text-emerald-700 dark:text-emerald-400">{correction.corrected}</p>
-                    <button onClick={() => onSpeakText(correction.corrected)}
-                      className="p-0.5 text-zinc-400 hover:text-indigo-600 transition" title="朗读">
-                      <Volume2 className="h-3 w-3" />
-                    </button>
+                    <SpeechButton active={speech.activeId === correctedSpeechId}
+                      onClick={() => speech.toggle(correctedSpeechId, correction.corrected, '更正句')}
+                      label="更正句" />
                   </div>
                 </div>
                 {correction.politeForm && correction.politeForm !== correction.corrected && (
                   <div className="flex items-start gap-2">
                     <span className="text-[10px] font-bold text-indigo-500 w-12 shrink-0 pt-0.5">地道</span>
-                    <p className="text-[12px] text-indigo-600 dark:text-indigo-400">{correction.politeForm}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[12px] text-indigo-600 dark:text-indigo-400">{correction.politeForm}</p>
+                      <SpeechButton active={speech.activeId === politeSpeechId}
+                        onClick={() => speech.toggle(politeSpeechId, correction.politeForm ?? '', '地道表达')}
+                        label="地道表达" />
+                    </div>
                   </div>
                 )}
               </div>
@@ -103,7 +114,7 @@ function GrammarFeedbackCard({ corrections, onSpeakText, isFallback = false }: {
       }) : (
         <div className="flex items-center gap-2 text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/20 rounded-lg px-3 py-2">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
-          <span>这轮表达没有明显语法问题，继续保持！</span>
+          <span>未发现明显语法问题。</span>
         </div>
       )}
     </section>
@@ -146,9 +157,9 @@ function AnalysisTranslationCard({ translation, assistantReplyInsight, isFallbac
           {isFallback && <span className="text-[10px] text-amber-700 dark:text-amber-300">参考说明</span>}
         </div>
         <div className="space-y-2.5">
-          <InsightLine label="它这句在干什么" value={insight.structure} />
-          <InsightLine label="你可以直接套用哪种说法" value={insight.grammar} />
-          <InsightLine label="你下一句最容易往哪里接" value={insight.whyThisReply} />
+          <InsightLine label="作用" value={insight.structure} />
+          <InsightLine label="可套用表达" value={insight.grammar} />
+          <InsightLine label="接话方向" value={insight.whyThisReply} />
         </div>
       </div>
     </section>
@@ -157,32 +168,37 @@ function AnalysisTranslationCard({ translation, assistantReplyInsight, isFallbac
 
 // ─── SuggestionListSection ───────────────────────────────────────────────────
 
-function SuggestionListSection({ suggestions, onSelectSuggestion }: {
+function SuggestionListSection({ suggestions, onSelectSuggestion, speech, speechScope }: {
   suggestions: string[]
   onSelectSuggestion: (text: string) => void
+  speech: SpeechPlayer
+  speechScope: string
 }) {
   if (suggestions.length === 0) return null
 
   return (
     <section className="border-b border-zinc-200 pb-5 dark:border-zinc-800">
-      <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">接下来你可以说</span>
+      <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">接话建议</span>
       <ul className="mt-3 space-y-2">
         {suggestions.map((suggestion, i) => {
           const match = suggestion.match(/^(.*?)\s*\[([^\]]+)\]$/)
           const english = match ? match[1].trim() : suggestion
           const chinese = match ? match[2].trim() : ''
+          const speechId = `${speechScope}:suggestion:${i}`
           return (
-            <li key={i}>
-              <button onClick={() => onSelectSuggestion(english)}
-                className="w-full text-left rounded-xl border border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-600 bg-stone-50/50 dark:bg-zinc-900/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 px-3 py-2.5 transition group">
+            <li key={i} className="flex items-center rounded-xl border border-zinc-200 bg-stone-50/50 pr-1.5 transition hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:border-indigo-600 dark:hover:bg-indigo-950/20">
+              <button onClick={() => onSelectSuggestion(english)} className="group min-w-0 flex-1 px-3 py-2.5 text-left">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-[12px] font-semibold text-zinc-800 dark:text-zinc-200 group-hover:text-indigo-700 dark:group-hover:text-indigo-300">{english}</p>
                     {chinese && <p className="text-[10.5px] text-zinc-500 dark:text-zinc-400 mt-0.5">{chinese}</p>}
                   </div>
                   <ChevronRight className="h-3.5 w-3.5 text-zinc-400 group-hover:text-indigo-500 shrink-0 mt-0.5" />
                 </div>
               </button>
+              <SpeechButton active={speech.activeId === speechId}
+                onClick={() => speech.toggle(speechId, english, '接话建议')}
+                label="接话建议" />
             </li>
           )
         })}
@@ -193,37 +209,45 @@ function SuggestionListSection({ suggestions, onSelectSuggestion }: {
 
 // ─── VocabularyCardsSection ──────────────────────────────────────────────────
 
-function VocabularyCardsSection({ keyWords, onSpeakText }: {
+function VocabularyCardsSection({ keyWords, speech, speechScope }: {
   keyWords: AnalysisResult['keyWords']
-  onSpeakText: (text: string) => void
+  speech: SpeechPlayer
+  speechScope: string
 }) {
   if (keyWords.length === 0) return null
 
   return (
     <section>
-      <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">本轮词汇摘录</span>
+      <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">词汇</span>
       <div className="mt-2">
-        {keyWords.filter((kw) => kw.word).map((kw) => (
+        {keyWords.filter((kw) => kw.word).map((kw, index) => {
+          const wordSpeechId = `${speechScope}:word:${index}`
+          const exampleSpeechId = `${speechScope}:word:${index}:example`
+          return (
             <div key={kw.word} className="border-t border-zinc-200 py-3 first:border-t-0 dark:border-zinc-800">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100">{kw.word}</span>
-                  <button onClick={() => onSpeakText(kw.word)}
-                    className="p-0.5 text-zinc-400 hover:text-indigo-600 transition" title="朗读">
-                    <Volume2 className="h-3 w-3" />
-                  </button>
+                  <SpeechButton active={speech.activeId === wordSpeechId}
+                    onClick={() => speech.toggle(wordSpeechId, kw.word, kw.word)} label={kw.word} />
                   {kw.phonetic && <span className="text-[10px] font-mono text-zinc-400">{kw.phonetic}</span>}
                 </div>
               </div>
               <p className="text-[11px] text-indigo-700 dark:text-indigo-400 font-semibold mt-1">{kw.definition}</p>
               {kw.exampleEn && (
-                <div className="mt-1.5 text-[10.5px] text-zinc-500 dark:text-zinc-400">
-                  <span className="italic">"{kw.exampleEn}"</span>
-                  {kw.exampleZh && <span className="block mt-0.5">{kw.exampleZh}</span>}
+                <div className="mt-1.5 flex items-start gap-1 text-[10.5px] text-zinc-500 dark:text-zinc-400">
+                  <div className="min-w-0 flex-1">
+                    <span className="italic">"{kw.exampleEn}"</span>
+                    {kw.exampleZh && <span className="block mt-0.5">{kw.exampleZh}</span>}
+                  </div>
+                  <SpeechButton active={speech.activeId === exampleSpeechId}
+                    onClick={() => speech.toggle(exampleSpeechId, kw.exampleEn, '词汇例句')}
+                    label="词汇例句" />
                 </div>
               )}
             </div>
-        ))}
+          )
+        })}
       </div>
     </section>
   )
@@ -241,21 +265,18 @@ interface AnalysisSidebarProps {
   onNextAnalysis: () => void
   onLatestAnalysis: () => void
   onRetryAnalysis: () => void
+  speech: SpeechPlayer
   embedded?: boolean
 }
 
 export default function AnalysisSidebar({
   analysis, analysisHistory, selectedAnalysisIndex, isLoading,
-  onSelectSuggestion, onPreviousAnalysis, onNextAnalysis, onLatestAnalysis, onRetryAnalysis, embedded = false,
+  onSelectSuggestion, onPreviousAnalysis, onNextAnalysis, onLatestAnalysis, onRetryAnalysis, speech, embedded = false,
 }: AnalysisSidebarProps) {
-  const handleSpeak = (text: string) => {
-    try { speakText({ text, accent: 'us', speed: 0.95, onStart: () => undefined, onEnd: () => undefined }) }
-    catch (err) { console.error(err) }
-  }
-
   const hasHistory = analysisHistory.length > 0
   const isViewingLatest = hasHistory && selectedAnalysisIndex === analysisHistory.length - 1
   const currentRound = hasHistory ? selectedAnalysisIndex + 1 : 0
+  const speechScope = `analysis:${analysisHistory[selectedAnalysisIndex]?.id ?? selectedAnalysisIndex}`
 
   const shellClass = embedded
     ? 'min-h-0 flex flex-1 flex-col overflow-hidden bg-white dark:bg-zinc-950'
@@ -264,10 +285,8 @@ export default function AnalysisSidebar({
   return (
     <div className={shellClass}>
       {!embedded && (
-        <div className="border-b border-zinc-200 bg-stone-50/60 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900/40 sm:px-4 sm:py-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">Feedback</p>
-          <h3 className="mt-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">这句怎么学</h3>
-          <p className="mt-1 text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">只保留对开口有帮助的内容：哪里要改、哪句能直接套、下一句怎么接。</p>
+        <div className="border-b border-zinc-200 bg-stone-50/60 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900/40 sm:px-4">
+          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">学习反馈</h3>
         </div>
       )}
 
@@ -312,7 +331,7 @@ export default function AnalysisSidebar({
         {isLoading ? (
           <div className="space-y-4">
             <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2.5 text-[11px] leading-relaxed text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/20 dark:text-indigo-200">
-              正在生成本轮纠错、词汇摘录与接话建议，请稍候…
+              正在分析…
             </div>
             <div className="space-y-4 animate-pulse">
               {[
@@ -329,10 +348,7 @@ export default function AnalysisSidebar({
             <div className="p-3 bg-zinc-100 dark:bg-zinc-900 rounded-full mb-3 text-zinc-500">
               <Lightbulb className="h-6 w-6" />
             </div>
-            <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">发送第一句后再开始精讲</p>
-            <p className="text-[11px] text-zinc-500 mt-1 max-w-xs leading-relaxed">
-              发送英文消息后，这里会自动展示纠错、翻译和接话建议。
-            </p>
+            <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">发送英文后查看反馈</p>
           </div>
         ) : (
           <div className="space-y-5 animate-fade-in">
@@ -343,22 +359,16 @@ export default function AnalysisSidebar({
             )}
             {!analysis.isFallback && (
               <>
-                <GrammarFeedbackCard corrections={analysis.grammarCorrections} onSpeakText={handleSpeak} />
+                <GrammarFeedbackCard corrections={analysis.grammarCorrections} speech={speech} speechScope={speechScope} />
                 <AnalysisTranslationCard translation={analysis.translation} assistantReplyInsight={analysis.assistantReplyInsight} />
-                <SuggestionListSection suggestions={analysis.suggestions} onSelectSuggestion={onSelectSuggestion} />
-                <VocabularyCardsSection keyWords={analysis.keyWords} onSpeakText={handleSpeak} />
+                <SuggestionListSection suggestions={analysis.suggestions} onSelectSuggestion={onSelectSuggestion} speech={speech} speechScope={speechScope} />
+                <VocabularyCardsSection keyWords={analysis.keyWords} speech={speech} speechScope={speechScope} />
               </>
             )}
           </div>
         )}
       </div>
 
-      {!embedded && (
-        <div className="p-3 bg-stone-50 dark:bg-zinc-900/60 border-t border-zinc-200 dark:border-zinc-800 text-[10px] text-zinc-400 text-center flex items-center justify-center gap-1">
-          <TrendingUp className="h-3.5 w-3.5 text-indigo-600" />
-          <span>每次发送后，AI 会自动更新纠错、翻译与接话建议。</span>
-        </div>
-      )}
     </div>
   )
 }

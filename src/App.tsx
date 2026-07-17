@@ -1,7 +1,7 @@
 // src/App.tsx (merged: App + AppShell + AppHeader + MobileAnalysisDrawer)
 import { useMemo, useRef, useState } from 'react'
 import type { PropsWithChildren } from 'react'
-import { HelpCircle, Menu, MessageCircle, Moon, Settings, Sun, TextCursorInput, X } from 'lucide-react'
+import { HelpCircle, Menu, MessageCircle, Moon, Settings, Sun, TextCursorInput, Volume2, X } from 'lucide-react'
 import ChatWindow from './components/ChatWindow'
 import SettingsModal from './components/SettingsModal'
 import AnalysisSidebar from './components/AnalysisSidebar'
@@ -12,6 +12,8 @@ import { SCENARIOS } from './data/scenarios'
 import { useBrowserPrefs } from './hooks/useBrowserPrefs'
 import { useChatSession } from './hooks/useChatSession'
 import { useAskAssistant } from './hooks/useAskAssistant'
+import { useSpeechPlayer } from './lib/speech'
+import type { SpeechPlayer } from './lib/speech'
 import type { AnalysisHistoryEntry, AskContext, BrowserPrefs, DifficultyLevel, Scenario, AnalysisResult } from './types'
 
 type Workspace = 'chat' | 'fill-blank'
@@ -32,9 +34,10 @@ function KeepMountedWorkspace({
 // ─── AppHeader (inlined) ─────────────────────────────────────────────────────
 
 function AppHeader({
-  theme, showMobileSidebar, showFeedbackButton, onToggleTheme, onOpenSettings, onToggleMobileSidebar, onOpenAsk,
+  theme, speech, showMobileSidebar, showFeedbackButton, onToggleTheme, onOpenSettings, onToggleMobileSidebar, onOpenAsk,
 }: {
   theme: BrowserPrefs['theme']
+  speech: SpeechPlayer
   showMobileSidebar: boolean
   showFeedbackButton: boolean
   onToggleTheme: () => void
@@ -43,15 +46,13 @@ function AppHeader({
   onOpenAsk: () => void
 }) {
   return (
-    <header className="flex-shrink-0 w-full bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+    <header className="relative z-30 flex-shrink-0 w-full bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <div className="h-8 w-8 sm:h-9 sm:w-9 bg-indigo-600 rounded-xl flex flex-shrink-0 items-center justify-center text-white font-black text-lg shadow-sm">L</div>
         <div className="min-w-0">
           <h1 className="text-[13px] sm:text-[15px] font-extrabold text-zinc-950 dark:text-white tracking-tight flex items-center gap-1.5 truncate">
             LingoLevel AI
-            <span className="hidden sm:inline text-[10px] bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400 px-1.5 py-0.5 rounded font-bold">自适应难度</span>
           </h1>
-          <p className="hidden text-[11px] text-zinc-500 font-medium sm:block">对话 · 填词 · 纠错 · 复习</p>
         </div>
       </div>
 
@@ -62,6 +63,34 @@ function AppHeader({
           aria-label={theme === 'dark' ? '切换浅色模式' : '切换深色模式'}>
           {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>
+
+        <details className="group relative">
+          <summary aria-label="打开发音设置"
+            className="flex cursor-pointer list-none items-center gap-1.5 rounded-xl border border-zinc-200 px-2.5 py-2 text-xs font-bold text-zinc-700 shadow-xs transition hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900 sm:px-3 sm:py-1.5 [&::-webkit-details-marker]:hidden">
+            <Volume2 className="h-4 w-4" />
+            <span className="hidden sm:inline">发音</span>
+          </summary>
+          <div className="fixed inset-x-4 top-16 z-[60] w-auto rounded-xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-zinc-700 dark:bg-zinc-900 sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+.5rem)] sm:w-72">
+            <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">发音设置</p>
+            <div className="mt-3 grid grid-cols-2 gap-2" aria-label="口音">
+              {(['us', 'uk'] as const).map((accent) => (
+                <button key={accent} type="button" onClick={() => speech.setAccent(accent)} aria-pressed={speech.accent === accent}
+                  className={`h-9 rounded-lg border text-xs font-semibold transition ${speech.accent === accent
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
+                    : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-300'}`}>
+                  {accent === 'us' ? '🇺🇸 美音' : '🇬🇧 英音'}
+                </button>
+              ))}
+            </div>
+            <label className="mt-4 flex items-center gap-3">
+              <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">语速</span>
+              <input type="range" min="0.5" max="1.5" step="0.1" value={speech.speed}
+                onChange={(event) => speech.setSpeed(Number(event.target.value))}
+                className="h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded-lg bg-zinc-200 accent-indigo-600 dark:bg-zinc-700" />
+              <output className="w-9 text-right font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">{speech.speed.toFixed(1)}x</output>
+            </label>
+          </div>
+        </details>
 
         <button type="button" onClick={onOpenAsk}
           className="flex items-center gap-1.5 rounded-xl border border-zinc-200 px-2.5 py-2 text-xs font-bold text-zinc-700 shadow-xs transition hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900 sm:px-3 sm:py-1.5 cursor-pointer"
@@ -101,6 +130,7 @@ type AnalysisSidebarProps = {
   onNextAnalysis: () => void
   onLatestAnalysis: () => void
   onRetryAnalysis: () => void
+  speech: SpeechPlayer
   onClose: () => void
 }
 
@@ -112,10 +142,7 @@ function MobileAnalysisDrawer(props: AnalysisSidebarProps) {
         className="absolute inset-x-0 bottom-0 flex max-h-[82dvh] min-h-[58dvh] flex-col overflow-hidden rounded-t-3xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-950"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-          <div>
-            <p id="feedback-drawer-title" className="text-xs font-bold text-zinc-900 dark:text-zinc-100">反馈与建议</p>
-            <p className="text-[11px] text-zinc-500">上滑查看纠错、翻译与接话建议</p>
-          </div>
+          <p id="feedback-drawer-title" className="text-xs font-bold text-zinc-900 dark:text-zinc-100">反馈与建议</p>
           <button type="button" onClick={onClose} className="rounded-full border border-zinc-200 p-2 text-zinc-500 dark:border-zinc-800 dark:text-zinc-300" aria-label="关闭反馈面板">
             <X className="h-4 w-4" />
           </button>
@@ -142,6 +169,7 @@ export default function App() {
   const [askContext, setAskContext] = useState<AskContext | null>(null)
   const [workspace, setWorkspace] = useState<Workspace>('chat')
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
+  const speech = useSpeechPlayer()
   const modelId = prefs.modelId
   const chat = useChatSession({
     currentLevel: prefs.level,
@@ -179,12 +207,14 @@ export default function App() {
     onNextAnalysis: showNextAnalysis,
     onLatestAnalysis: showLatestAnalysis,
     onRetryAnalysis: retrySelectedAnalysis,
+    speech,
   }
 
   return (
     <div id="app" className="h-screen max-h-screen overflow-hidden bg-stone-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 flex flex-col font-sans">
       <AppHeader
         theme={prefs.theme}
+        speech={speech}
         showMobileSidebar={showMobileSidebar}
         showFeedbackButton={workspace === 'chat'}
         onToggleTheme={() => setPrefs((p) => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' }))}
@@ -224,6 +254,7 @@ export default function App() {
                 regeneratableAssistantId={regeneratableAssistantId}
                 onRegenerateMessage={() => { void regenerateLastReply() }}
                 sendOnCtrlEnter={prefs.sendOnCtrlEnter}
+                speech={speech}
               />
           </div>
           <div className="hidden lg:block lg:col-span-1 h-full min-h-0 animate-fade-in">
@@ -243,6 +274,7 @@ export default function App() {
             onLevelChange={handleLevelChange}
             onAskWord={openAskWithWord}
             onBackToChat={() => setWorkspace('chat')}
+            speech={speech}
           />
         </KeepMountedWorkspace>
       </main>
@@ -255,7 +287,25 @@ export default function App() {
         messages={ask.messages} isLoading={ask.isLoading}
         initialContext={askContext}
         onAsk={ask.ask} onReset={ask.reset}
-        sendOnCtrlEnter={prefs.sendOnCtrlEnter} />
+        sendOnCtrlEnter={prefs.sendOnCtrlEnter} speech={speech} />
+
+      {speech.notice && (
+        <div role="status" aria-live="polite"
+          className={`fixed bottom-4 left-1/2 z-[70] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-xl border px-3 py-2 text-xs shadow-lg backdrop-blur ${speech.notice.kind === 'error'
+            ? 'border-amber-200 bg-amber-50/95 text-amber-800 dark:border-amber-900 dark:bg-amber-950/95 dark:text-amber-200'
+            : 'border-zinc-200 bg-white/95 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/95 dark:text-zinc-200'}`}>
+          {speech.notice.kind === 'error' ? <HelpCircle className="h-4 w-4 shrink-0" /> : <Volume2 className="h-4 w-4 shrink-0 text-indigo-500" />}
+          <span className="min-w-0 text-center">{speech.notice.message}</span>
+          {speech.activeId && (
+            <button type="button" onClick={speech.stop} className="ml-1 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-[10px] font-bold text-white dark:bg-zinc-100 dark:text-zinc-900">
+              停止
+            </button>
+          )}
+          <button type="button" onClick={speech.clearNotice} aria-label="关闭朗读提示" className="ml-1 rounded p-0.5 opacity-60 hover:opacity-100">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)}
         currentLevel={currentLevel} onLevelChange={handleLevelChange}

@@ -1,51 +1,31 @@
 // src/components/ChatWindow.tsx
 // Merged: ChatWindow + ChatToolbar + ChatMessageList + ChatInputBar (from features/chat/)
 import React, { useEffect, useRef, useState } from 'react'
-import { Languages, Volume2, Copy, Clock, Send, Mic, MicOff, RefreshCw, HelpCircle } from 'lucide-react'
+import { Languages, Copy, Clock, Send, Mic, MicOff, RefreshCw, HelpCircle } from 'lucide-react'
 import type { Message, Scenario } from '../types'
-import { createSpeechRecognition, speakText, type SpeechAccent, type SpeechRecognition } from '../lib/speech'
+import { createSpeechRecognition, type SpeechPlayer, type SpeechRecognition } from '../lib/speech'
+import SpeechButton from './SpeechButton'
 
 // ─── ChatToolbar ────────────────────────────────────────────────────────────
 
 function ChatToolbar({
-  activeScenario, accent, speed, onAccentChange, onSpeedChange, onResetChat,
+  activeScenario, onResetChat,
 }: {
   activeScenario: Scenario
-  accent: SpeechAccent
-  speed: number
-  onAccentChange: (accent: SpeechAccent) => void
-  onSpeedChange: (speed: number) => void
   onResetChat: () => void
 }) {
   return (
     <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between z-10">
       <div className="min-w-0 flex items-center gap-3">
         <div className="flex flex-col">
-          <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">练习场景 · {activeScenario.name}</p>
+          <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">场景 · {activeScenario.name}</p>
           <p className="text-[11px] text-zinc-400 mt-0.5 line-clamp-1">
             {activeScenario.description}
           </p>
         </div>
       </div>
 
-      <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 sm:w-auto sm:gap-4 sm:overflow-visible sm:pb-0">
-        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg text-[10.5px] font-semibold border border-zinc-200 dark:border-zinc-800">
-          {(['us', 'uk'] as SpeechAccent[]).map((a) => (
-            <button key={a} onClick={() => onAccentChange(a)}
-              className={`px-2 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${accent === a ? 'bg-white dark:bg-zinc-900 shadow-xs text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 hover:text-zinc-700'}`}>
-              {a === 'us' ? '🇺🇸 美音 (US)' : '🇬🇧 英音 (UK)'}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-800">
-          <span className="text-[10px] font-bold text-zinc-500 whitespace-nowrap">语速</span>
-          <input type="range" min="0.5" max="1.5" step="0.1" value={speed}
-            onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
-            className="w-16 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
-          <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400 w-5">{speed.toFixed(1)}x</span>
-        </div>
-
+      <div className="flex w-full justify-end sm:w-auto">
         <button onClick={onResetChat}
           className="p-1.5 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-xl bg-white dark:bg-zinc-900 text-zinc-500 hover:text-indigo-600 cursor-pointer transition flex items-center gap-1"
           title="清空记录重新开始对话">
@@ -60,14 +40,13 @@ function ChatToolbar({
 // ─── ChatMessageList ─────────────────────────────────────────────────────────
 
 function ChatMessageList({
-  messages, isSpeakingId, regeneratableAssistantId, onRegenerateMessage,
-  onSpeakMessage, onCopyMessage, messagesEndRef, onWordClick,
+  messages, speech, regeneratableAssistantId, onRegenerateMessage,
+  onCopyMessage, messagesEndRef, onWordClick,
 }: {
   messages: Message[]
-  isSpeakingId: string | null
+  speech: SpeechPlayer
   regeneratableAssistantId: string | null
   onRegenerateMessage: () => void
-  onSpeakMessage: (text: string, id: string) => void
   onCopyMessage: (text: string, e: React.MouseEvent) => void
   messagesEndRef: React.RefObject<HTMLDivElement | null>
   onWordClick: (word: string) => void
@@ -80,12 +59,12 @@ function ChatMessageList({
             <Languages className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
           </div>
           <p className="font-bold text-zinc-800 dark:text-zinc-200 text-sm">发送一句英文开始练习</p>
-          <p className="text-xs text-zinc-500 mt-2">可以直接打字，也可以开启麦克风。发送后会得到纠错、翻译和接话建议。</p>
         </div>
       )}
 
       {messages.map((message) => {
         const isUser = message.role === 'user'
+        const speechId = `chat:${message.id}`
         if (message.role === 'system') {
           return (
             <div key={message.id} className="flex justify-center my-3 animate-fade-in">
@@ -117,11 +96,9 @@ function ChatMessageList({
                         {message.isFallback ? '重试' : '换一个'}
                       </button>
                     )}
-                    <button onClick={() => onSpeakMessage(message.content, message.id)}
-                      className={`p-1 rounded transition-colors ${isUser ? 'hover:bg-indigo-500 text-indigo-200 hover:text-white' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-indigo-600'} ${isSpeakingId === message.id ? 'animate-pulse text-rose-500! dark:text-rose-400!' : ''}`}
-                      title="朗读">
-                      <Volume2 className={`h-3.5 w-3.5 ${isSpeakingId === message.id ? 'scale-110' : ''}`} />
-                    </button>
+                    <SpeechButton active={speech.activeId === speechId}
+                      onClick={() => speech.toggle(speechId, message.content, isUser ? '你的消息' : 'AI 回复')}
+                      label={isUser ? '你的消息' : 'AI 回复'} tone={isUser ? 'inverse' : 'default'} />
                     <button onClick={(e) => onCopyMessage(message.content, e)}
                       className={`p-1 rounded transition-colors ${isUser ? 'hover:bg-indigo-500 text-indigo-200 hover:text-white' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-indigo-600'}`}
                       title="复制">
@@ -137,13 +114,6 @@ function ChatMessageList({
                       : renderClickableContent(message.content, onWordClick)}
                   {message.streaming && <span className="inline-block w-1.5 h-3.5 ml-0.5 bg-current animate-pulse align-middle" />}
                 </p>
-                {isSpeakingId === message.id && (
-                  <div className="flex items-center gap-0.5 mt-2 h-3 justify-center">
-                    {[0, 150, 300].map((d) => (
-                      <div key={d} className="w-0.5 h-full bg-current rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
-                    ))}
-                  </div>
-                )}
               </div>
               <div className="flex items-center gap-1 mt-1 text-[9px] text-zinc-400 font-mono">
                 <Clock className="h-2.5 w-2.5 text-zinc-300" />
@@ -223,10 +193,6 @@ function ChatInputBar({
           <Send className="h-4.5 w-4.5" />
         </button>
       </form>
-      <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center mt-2.5 text-[10px] text-zinc-400">
-        <span>点击反馈面板里的接话建议，可直接填入输入框。</span>
-        <span>按 <strong className="font-semibold text-zinc-600">{sendOnCtrlEnter ? 'Ctrl+Enter' : 'Enter'}</strong> 发送</span>
-      </div>
     </div>
   )
 }
@@ -248,15 +214,13 @@ interface ChatWindowProps {
   onRegenerateMessage: () => void
   /** When true, only Ctrl/Cmd+Enter sends; bare Enter inserts a newline. */
   sendOnCtrlEnter?: boolean
+  speech: SpeechPlayer
 }
 
 export default function ChatWindow({
   messages, onSendMessage, isLoading, activeScenario, onResetChat, inputRef, inputText, setInputText,
-  onWordClick, onSelectSentence, regeneratableAssistantId, onRegenerateMessage, sendOnCtrlEnter = false,
+  onWordClick, onSelectSentence, regeneratableAssistantId, onRegenerateMessage, sendOnCtrlEnter = false, speech,
 }: ChatWindowProps) {
-  const [accent, setAccent] = useState<SpeechAccent>('us')
-  const [speed, setSpeed] = useState(1.0)
-  const [isSpeakingId, setIsSpeakingId] = useState<string | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [recognitionError, setRecognitionError] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
@@ -310,16 +274,6 @@ export default function ChatWindow({
     try { recognitionRef.current.start() } catch { showStatus('语音录入暂时无法启动，请稍后再试。') }
   }
 
-  const handleSpeakText = (text: string, messageId: string) => {
-    try {
-      if (isSpeakingId === messageId) { window.speechSynthesis.cancel(); setIsSpeakingId(null); return }
-      speakText({ text, accent, speed, onStart: () => setIsSpeakingId(messageId), onEnd: () => setIsSpeakingId(null) })
-    } catch (err) {
-      if (err instanceof Error && err.message === 'SPEECH_SYNTHESIS_UNAVAILABLE') showStatus('当前浏览器不支持语音朗读功能。')
-      setIsSpeakingId(null)
-    }
-  }
-
   const handleCopyText = async (text: string, e: React.MouseEvent) => {
     e.stopPropagation()
     try { await navigator.clipboard.writeText(text); showStatus('文本已复制到剪贴板。') }
@@ -345,23 +299,32 @@ export default function ChatWindow({
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-stone-50/40 dark:border-zinc-800 dark:bg-zinc-900/30">
-      <ChatToolbar activeScenario={activeScenario} accent={accent} speed={speed}
-        onAccentChange={setAccent} onSpeedChange={setSpeed} onResetChat={onResetChat} />
+      <ChatToolbar activeScenario={activeScenario} onResetChat={onResetChat} />
 
       <div className="min-h-0 flex-1 flex flex-col" onMouseUp={handleSelection}>
-        <ChatMessageList messages={messages} isSpeakingId={isSpeakingId}
+        <ChatMessageList messages={messages} speech={speech}
           regeneratableAssistantId={regeneratableAssistantId} onRegenerateMessage={onRegenerateMessage}
-          onSpeakMessage={handleSpeakText} onCopyMessage={handleCopyText} messagesEndRef={messagesEndRef}
+          onCopyMessage={handleCopyText} messagesEndRef={messagesEndRef}
           onWordClick={onWordClick} />
       </div>
 
       {selectionBox && (
-        <button
-          onClick={() => { onSelectSentence(selectionBox.text); setSelectionBox(null); window.getSelection()?.removeAllRanges() }}
-          className="fixed z-50 -translate-x-1/2 -translate-y-full bg-indigo-600 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg shadow-lg hover:bg-indigo-700 cursor-pointer whitespace-nowrap"
+        <div className="fixed z-50 flex -translate-x-1/2 -translate-y-full items-center rounded-lg bg-zinc-900 p-1 text-white shadow-lg"
           style={{ left: selectionBox.x, top: selectionBox.y - 8 }}>
-          深讲这句话
-        </button>
+          <button type="button"
+            onClick={() => { onSelectSentence(selectionBox.text); setSelectionBox(null); window.getSelection()?.removeAllRanges() }}
+            className="whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-bold hover:bg-white/15">
+            深讲
+          </button>
+          <span className="mx-0.5 h-4 w-px bg-white/20" />
+          <SpeechButton active={speech.activeId === 'chat:selection'}
+            onClick={() => {
+              speech.toggle('chat:selection', selectionBox.text, '选中内容')
+              setSelectionBox(null)
+              window.getSelection()?.removeAllRanges()
+            }}
+            label="选中内容" tone="inverse" showText />
+        </div>
       )}
 
       {(recognitionError || statusMessage) && (
