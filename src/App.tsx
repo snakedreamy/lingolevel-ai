@@ -1,5 +1,5 @@
 // src/App.tsx (merged: App + AppShell + AppHeader + MobileAnalysisDrawer)
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PropsWithChildren } from 'react'
 import { HelpCircle, Menu, MessageCircle, Moon, Settings, Sun, TextCursorInput, Volume2, X } from 'lucide-react'
 import ChatWindow from './components/ChatWindow'
@@ -46,7 +46,7 @@ function AppHeader({
   onOpenAsk: () => void
 }) {
   return (
-    <header className="relative z-30 flex-shrink-0 w-full bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+    <header className="app-header relative z-30 flex-shrink-0 w-full bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <div className="h-8 w-8 sm:h-9 sm:w-9 bg-indigo-600 rounded-xl flex flex-shrink-0 items-center justify-center text-white font-black text-lg shadow-sm">L</div>
         <div className="min-w-0">
@@ -186,6 +186,20 @@ export default function App() {
   const ask = useAskAssistant({ currentLevel: prefs.level, modelId })
   const currentLevel = prefs.level
 
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return
+    const syncViewportHeight = () => {
+      document.documentElement.style.setProperty('--visual-viewport-height', `${Math.round(viewport.height)}px`)
+    }
+    syncViewportHeight()
+    viewport.addEventListener('resize', syncViewportHeight)
+    return () => {
+      viewport.removeEventListener('resize', syncViewportHeight)
+      document.documentElement.style.removeProperty('--visual-viewport-height')
+    }
+  }, [])
+
   const handleLevelChange = (level: DifficultyLevel) => {
     setPrefs((p) => ({ ...p, level }))
     const levelName = LEVELS.find((item) => item.id === level)?.name ?? level
@@ -223,8 +237,8 @@ export default function App() {
         onOpenAsk={() => { setAskContext(null); setIsAskOpen(true) }}
       />
 
-      <main className="flex-1 w-full max-w-[1550px] mx-auto px-2.5 sm:px-4 md:px-6 py-2.5 sm:py-4 flex flex-col min-h-0 overflow-hidden">
-        <nav className="mb-2.5 flex shrink-0 items-center gap-5 border-b border-zinc-200 dark:border-zinc-800 sm:mb-3 sm:w-fit" aria-label="学习模式">
+      <main className="app-main flex-1 w-full max-w-[1550px] mx-auto px-2.5 sm:px-4 md:px-6 py-2.5 sm:py-4 flex flex-col min-h-0 overflow-hidden">
+        <nav className="app-workspace-nav mb-2.5 flex shrink-0 items-center gap-5 border-b border-zinc-200 dark:border-zinc-800 sm:mb-3 sm:w-fit" aria-label="学习模式">
           <button type="button" onClick={() => setWorkspace('chat')} aria-current={workspace === 'chat' ? 'page' : undefined}
             className={`flex h-10 flex-1 items-center justify-center gap-2 border-b-2 px-1 text-xs font-bold transition sm:flex-none ${workspace === 'chat' ? 'border-indigo-600 text-zinc-950 dark:text-white' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
             <MessageCircle className="h-4 w-4" /> 对话练习
@@ -269,11 +283,9 @@ export default function App() {
           <FillBlankPractice
             active={workspace === 'fill-blank'}
             level={currentLevel}
-            scenario={activeScenario}
             modelId={modelId}
             onLevelChange={handleLevelChange}
             onAskWord={openAskWithWord}
-            onBackToChat={() => setWorkspace('chat')}
             speech={speech}
           />
         </KeepMountedWorkspace>

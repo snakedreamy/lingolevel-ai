@@ -10,13 +10,52 @@ html, body, #root {
   overflow: hidden;
 }
 
+#app {
+  height: var(--visual-viewport-height, 100vh);
+  max-height: var(--visual-viewport-height, 100vh);
+}
+
 /* Mobile browsers resize the visual viewport when the address bar appears.
    `100dvh` keeps the chat workspace pinned to the visible screen instead of
    hiding the input drawer under browser chrome. */
 @supports (height: 100dvh) {
   #app {
-    height: 100dvh;
-    max-height: 100dvh;
+    height: var(--visual-viewport-height, 100dvh);
+    max-height: var(--visual-viewport-height, 100dvh);
+  }
+}
+
+@media (max-width: 767px), (max-height: 600px) and (pointer: coarse) {
+  #app:has(#fill-answer:focus) .app-header,
+  #app:has(#fill-answer:focus) .app-workspace-nav {
+    display: none;
+  }
+
+  #app:has(#fill-answer:focus) .app-main {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  #app:has(#fill-answer:focus) .fill-blank-shell {
+    border-radius: 0;
+  }
+
+  #app:has(#fill-answer:focus) .fill-blank-content {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  #app:has(#fill-answer:focus) .fill-blank-prompt {
+    min-height: 0;
+    margin-top: 0;
+  }
+
+  #app:has(#fill-answer:focus) .fill-blank-translation {
+    margin-top: 0.5rem;
+  }
+
+  #app:has(#fill-answer:focus) .fill-blank-fallback-notice {
+    display: none;
   }
 }
 

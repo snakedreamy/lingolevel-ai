@@ -16,6 +16,15 @@ export function saveStoredJson<T>(key: string, value: T): void {
   }
 }
 
+export function incrementStoredCounter(key: string): number {
+  const current = loadStoredJson<unknown>(key, -1)
+  const next = typeof current === 'number' && Number.isSafeInteger(current) && current < Number.MAX_SAFE_INTEGER
+    ? current + 1
+    : 0
+  saveStoredJson(key, next)
+  return next
+}
+
 export function removeStoredValue(key: string): void {
   try {
     window.localStorage.removeItem(key)

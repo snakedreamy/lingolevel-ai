@@ -18,6 +18,7 @@ export interface ChatRequest {
   level: DifficultyLevel
   scenarioInfo: Scenario | null
   model?: string
+  diversitySeed: number
 }
 
 export interface AnalyzeRequest {
@@ -133,9 +134,9 @@ export interface GenerateFillBlankRequest {
   count: number
   level: DifficultyLevel
   focus: FillBlankFocus
-  scenario?: Pick<Scenario, 'name' | 'englishName' | 'description'>
   recentSentences: string[]
   model?: string
+  diversitySeed: number
 }
 
 export interface GenerateFillBlankResponse {

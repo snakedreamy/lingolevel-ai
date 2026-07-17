@@ -55,15 +55,34 @@ const FOCUS_GUIDANCE: Record<FillBlankFocus, string> = {
   grammar: 'Every card must have focusType "grammar". Test a grammatical decision such as a verb form, tense marker, modal, preposition, conjunction, article or clause connector. Contrast the correct form with the likely wrong form.',
 }
 
+const FILL_CONTEXTS = [
+  'morning or evening routines',
+  'home tasks and shared responsibilities',
+  'school, study, or workplace situations',
+  'food preparation and meals',
+  'transport, directions, or travel',
+  'shopping and everyday services',
+  'health, exercise, and useful habits',
+  'technology, media, and communication',
+  'plans, appointments, and local events',
+  'weather, nature, and city life',
+  'an everyday problem and its solution',
+  'a decision, comparison, or simple opinion',
+]
+
 export function buildFillBlankPrompt(args: {
   count: number
   level: string
   focus: FillBlankFocus
-  scenario?: { name?: string; englishName?: string; description?: string }
   recentSentences: string[]
+  diversitySeed?: number
 }): { systemInstruction: string; userPrompt: string } {
   const levelGuide = LEVEL_GUIDANCE[args.level] ?? LEVEL_GUIDANCE.junior
-  const scenario = args.scenario?.englishName || args.scenario?.name
+  const diversitySeed = Number.isSafeInteger(args.diversitySeed) ? Math.abs(args.diversitySeed as number) : 0
+  const contextPlan = Array.from(
+    { length: Math.min(args.count, FILL_CONTEXTS.length) },
+    (_, index) => FILL_CONTEXTS[(diversitySeed + index) % FILL_CONTEXTS.length],
+  ).join('; ')
   const avoid = args.recentSentences.length
     ? args.recentSentences.map((sentence, index) => `${index + 1}. ${sentence}`).join('\n')
     : '(none)'
@@ -73,7 +92,7 @@ export function buildFillBlankPrompt(args: {
 
 Learner level: ${levelGuide}.
 Practice focus: ${FOCUS_GUIDANCE[args.focus]}.
-Topic: ${scenario ? `${scenario}${args.scenario?.description ? ` — ${args.scenario.description}` : ''}` : 'varied daily-life contexts'}.
+Context plan: ${contextPlan}.
 
 Requirements for every card:
 - "sentence" is a natural English sentence containing the literal marker {{blank}} exactly once.
@@ -86,7 +105,9 @@ Requirements for every card:
 - "breakdown" contains 3-6 ordered chunks that together cover the entire completed sentence. Each "text" quotes exact consecutive words from this sentence; "role" names its specific job; "explanation" explains in Simplified Chinese what that exact chunk means and why it is placed there. Do not use vague labels without explaining the current sentence.
 - "imitation.steps" contains 2-4 concrete replacement steps for making a learner's own sentence from this exact pattern. "imitation.example" is a new English example using the same pattern, with its Chinese "translation". "imitation.caution" gives one likely error and the corrected form.
 - Vary subjects, sentence openings, tenses and contexts. Do not repeat a sentence or merely swap one noun.
-- Do not reproduce or closely paraphrase any sentence in the avoid list.
+- Use the context plan in order before reusing a context family. Do not put more than two cards in the same setting or sentence frame.
+- Do not default to pets, colors, or "favorite things" as beginner content unless the requested language point requires it.
+- Infer recurring topics and sentence frames from the avoid list. Do not reproduce them, closely paraphrase them, or merely swap one noun.
 - Keep every teaching field concise. The goal is a usable lesson, not a long essay.
 
 Avoid list:
@@ -98,7 +119,7 @@ Return this shape:
 }
 
 const BEGINNER_BANK: CardSeed[] = [
-  seed('The cat {{blank}} on the warm chair.', '猫坐在暖和的椅子上。', 'sits', '/sɪts/', '动词', '坐', '表示猫在椅子上的动作', '一般现在时', '主语 + 动词 + 地点', '主语 the cat 是第三人称单数，因此 sit 要加 -s。'),
+  seed('The bus {{blank}} beside our school.', '公交车停在我们学校旁边。', 'stops', '/stɒps/', '动词', '停下', '表示车辆停止移动', '一般现在时', '主语 + 动词 + 地点', '主语 the bus 是第三人称单数，因此 stop 要加 -s。'),
   seed('I {{blank}} milk every morning.', '我每天早上喝牛奶。', 'drink', '/drɪŋk/', '动词', '喝', '把液体送入口中', '一般现在时', '主语 + 动词 + 宾语 + 时间', 'every morning 表示习惯，主语 I 后使用动词原形。'),
   seed('These apples {{blank}} red and sweet.', '这些苹果又红又甜。', 'are', '/ɑːr/', '动词', '是', 'be 动词的复数形式', '主谓一致', '复数主语 + be + 形容词', 'These apples 是复数，所以 be 动词使用 are。'),
   seed('My brother can {{blank}} very fast.', '我哥哥能跑得很快。', 'run', '/rʌn/', '动词', '跑', '用双脚快速移动', '情态动词 can', '主语 + can + 动词原形 + 副词', 'can 后必须接动词原形。'),
@@ -108,13 +129,13 @@ const BEGINNER_BANK: CardSeed[] = [
   seed('She {{blank}} two yellow pencils.', '她有两支黄色铅笔。', 'has', '/hæz/', '动词', '有', '表示拥有', '第三人称单数', '主语 + have/has + 宾语', '主语 she 是第三人称单数，have 要变为 has。'),
   seed('The baby is {{blank}} now.', '宝宝现在正在睡觉。', 'sleeping', '/ˈsliːpɪŋ/', '动词', '正在睡觉', '闭眼休息的动作正在发生', '现在进行时', '主语 + be + 动词-ing', 'is 与 sleeping 构成现在进行时，表示此刻正在发生。'),
   seed('I like tea, {{blank}} I do not like coffee.', '我喜欢茶，但我不喜欢咖啡。', 'but', '/bʌt/', '连词', '但是', '连接意思相反的两部分', '转折连词', '分句 + but + 分句', '前后表达相反的喜好，因此用 but 表示转折。'),
-  seed('What {{blank}} is your school bag?', '你的书包是什么颜色？', 'color', '/ˈkʌlə(r)/', '名词', '颜色', '红、黄、蓝都属于它', '特殊疑问句', 'What + 名词 + be + 主语', '询问物品的颜色时使用固定问法 What color。'),
+  seed('Grandma {{blank}} us a story after dinner.', '奶奶晚饭后给我们讲故事。', 'tells', '/telz/', '动词', '讲述', '把故事说给别人听', '第三人称单数', '主语 + 动词 + 人 + 事物 + 时间', '主语 Grandma 是第三人称单数，因此 tell 要加 -s。'),
   seed('They {{blank}} football after school.', '他们放学后踢足球。', 'play', '/pleɪ/', '动词', '玩；进行（球类运动）', '和 football 构成常用搭配', '一般现在时', '主语 + 动词 + 运动 + 时间', 'play football 是固定搭配，复数主语 they 后用原形。'),
   seed('The sun {{blank}} brightly today.', '今天阳光灿烂。', 'shines', '/ʃaɪnz/', '动词', '照耀', '太阳发出明亮的光', '一般现在时', '单数主语 + 动词第三人称单数 + 副词', '主语 the sun 是第三人称单数，所以 shine 要加 -s。'),
   seed('We {{blank}} to school by bus.', '我们乘公交车去上学。', 'go', '/ɡəʊ/', '动词', '去', '从一个地方前往另一个地方', '一般现在时', '主语 + 动词 + 地点 + 方式', '主语 we 后使用动词原形，go to school 是常用表达。'),
   seed('He is {{blank}} an orange.', '他正在吃一个橙子。', 'eating', '/ˈiːtɪŋ/', '动词', '正在吃', '把食物送入口中', '现在进行时', '主语 + be + 动词-ing + 宾语', 'is 与 eating 构成现在进行时，表示动作正在发生。'),
   seed('Can I {{blank}} the window?', '我可以打开窗户吗？', 'open', '/ˈəʊpən/', '动词', '打开', '让关闭的东西不再关闭', '情态动词 can', 'Can + 主语 + 动词原形 + 宾语', 'can 后接动词原形，open the window 是自然搭配。'),
-  seed('Her favorite {{blank}} is the banana.', '她最喜欢的水果是香蕉。', 'fruit', '/fruːt/', '名词', '水果', '苹果、香蕉和橙子都属于它', '名词作主语', '形容词 + 名词 + be + 表语', 'banana 属于 fruit，favorite 后需要名词。'),
+  seed('This key {{blank}} the small door.', '这把钥匙能打开那扇小门。', 'opens', '/ˈəʊpənz/', '动词', '打开', '让关闭的东西可以进入', '第三人称单数', '主语 + 动词 + 宾语', '主语 This key 是第三人称单数，因此 open 要加 -s。'),
   seed('A bird has two {{blank}}.', '一只鸟有两只翅膀。', 'wings', '/wɪŋz/', '名词', '翅膀', '鸟用它们飞翔', '可数名词复数', '主语 + has + 数词 + 复数名词', 'two 后接可数名词复数，所以使用 wings。'),
   seed('Dad {{blank}} noodles for dinner.', '爸爸晚餐煮了面条。', 'cooked', '/kʊkt/', '动词', '烹饪（过去式）', '用热量制作食物', '一般过去时', '主语 + 过去式 + 宾语 + 用餐时间', '晚餐已经完成，cook 的过去式是 cooked。'),
   seed('Please {{blank}} the door quietly.', '请轻轻地关上门。', 'close', '/kləʊz/', '动词', '关闭', '让门不再打开', '祈使句', 'Please + 动词原形 + 宾语 + 副词', '祈使句在 please 后使用动词原形。'),
@@ -320,15 +341,23 @@ export function normalizeGeneratedCards(raw: unknown, requestedFocus: FillBlankF
   return cards
 }
 
-export function fallbackFillBlankCards(level: string, focus: FillBlankFocus = 'mixed'): FillBlankCard[] {
+export function fallbackFillBlankCards(level: string, focus: FillBlankFocus = 'mixed', diversitySeed = 0): FillBlankCard[] {
   const bank = level === 'kindergarten' || level === 'primary_low'
     ? BEGINNER_BANK
     : level === 'senior' || level === 'college' || level === 'ielts'
       ? ADVANCED_BANK
       : BASIC_BANK
+  const rotate = (cards: CardSeed[]) => {
+    if (cards.length === 0) return cards
+    const offset = Math.abs(diversitySeed) % cards.length
+    return [...cards.slice(offset), ...cards.slice(0, offset)]
+  }
   const ordered = focus === 'mixed'
-    ? bank
-    : [...bank.filter((card) => card.focusType === focus), ...bank.filter((card) => card.focusType !== focus)]
+    ? rotate(bank)
+    : [
+        ...rotate(bank.filter((card) => card.focusType === focus)),
+        ...rotate(bank.filter((card) => card.focusType !== focus)),
+      ]
   return ordered.map((card) => ({ ...card, id: randomUUID() }))
 }
 
@@ -341,17 +370,25 @@ export function selectUniqueCards(args: {
   const recent = new Set(args.recentSentences.map(sentenceKey))
   const selected: FillBlankCard[] = []
   const selectedKeys = new Set<string>()
-  const add = (card: FillBlankCard, respectHistory: boolean) => {
+  const patternCounts = new Map<string, number>()
+  const add = (card: FillBlankCard, respectHistory: boolean, respectPatterns: boolean) => {
     const key = sentenceKey(completeSentence(card))
+    const pattern = sentenceKey(`${card.grammarPoint} ${card.structure}`)
     if (!key || selectedKeys.has(key) || (respectHistory && recent.has(key))) return
+    if (respectPatterns && (patternCounts.get(pattern) ?? 0) >= 2) return
     selectedKeys.add(key)
+    patternCounts.set(pattern, (patternCounts.get(pattern) ?? 0) + 1)
     selected.push(card)
   }
-  for (const card of args.generated) add(card, true)
-  for (const card of args.fallback) add(card, true)
+  for (const card of args.generated) add(card, true, true)
+  for (const card of args.fallback) add(card, true, true)
   // If the learner has already seen the entire local backup bank, preserve the
-  // requested card count while still avoiding duplicates inside this session.
-  for (const card of args.generated) add(card, false)
-  for (const card of args.fallback) add(card, false)
+  // requested card count while still preferring structural variety.
+  for (const card of args.generated) add(card, false, true)
+  for (const card of args.fallback) add(card, false, true)
+  if (args.fallback.length > 0) {
+    for (const card of args.fallback) add(card, false, false)
+    for (const card of args.generated) add(card, false, false)
+  }
   return selected.slice(0, args.count)
 }

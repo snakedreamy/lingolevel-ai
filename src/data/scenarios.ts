@@ -8,7 +8,14 @@ export const SCENARIOS: Scenario[] = [
     englishName: "Free Discussion",
     icon: MessageSquare,
     description: "和 AI 进行随心所欲的自在畅聊，自由探索，打破“开不了口”的尴尬。",
-    starterMessages: ["Hello! I'm your AI partner. What would you like to talk about today?", "Hi there! I am ready to carry on an interesting conversation. How has your day been?"]
+    starterMessages: [
+      "Hello! What would you like to explore today?",
+      "Hi! Bring me a thought, question, or story.",
+      "Hello! We can practise a real situation or talk freely. You choose.",
+      "Hi! Tell me one thing from your day, and we can start there.",
+      "Hello! Is there something you want to practise in English today?",
+      "Hi! We can plan something, solve a problem, or share a story.",
+    ]
   },
   {
     id: "ordering_coffee",

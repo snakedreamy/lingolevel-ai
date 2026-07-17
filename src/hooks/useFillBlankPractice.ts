@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { generateFillBlank } from '../lib/api'
-import { loadStoredJson, saveStoredJson } from '../lib/storage'
+import { incrementStoredCounter, loadStoredJson, saveStoredJson } from '../lib/storage'
 import { FILL_BLANK_MAX_COUNT, FILL_BLANK_MIN_COUNT } from '../types'
-import type { DifficultyLevel, FillBlankCard, FillBlankFocus, FillBlankProgress, Scenario } from '../types'
+import type { DifficultyLevel, FillBlankCard, FillBlankFocus, FillBlankProgress } from '../types'
 
 const HISTORY_KEY = 'lingolevel_fill_blank_history'
+const VARIETY_KEY = 'lingolevel_fill_blank_variety'
 const MAX_HISTORY = 100
 
 type PracticePhase = 'setup' | 'loading' | 'active' | 'complete'
@@ -20,8 +21,8 @@ function loadHistory(): string[] {
     : []
 }
 
-export function useFillBlankPractice(args: { level: DifficultyLevel; scenario: Scenario; modelId: string }) {
-  const { level, scenario, modelId } = args
+export function useFillBlankPractice(args: { level: DifficultyLevel; modelId: string }) {
+  const { level, modelId } = args
   const [phase, setPhase] = useState<PracticePhase>('setup')
   const [count, setCountState] = useState(5)
   const [focus, setFocus] = useState<FillBlankFocus>('mixed')
@@ -53,13 +54,9 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; scenario: S
         count,
         level,
         focus,
-        scenario: {
-          name: scenario.name,
-          englishName: scenario.englishName,
-          description: scenario.description,
-        },
         recentSentences: history,
         model: modelId || undefined,
+        diversitySeed: incrementStoredCounter(VARIETY_KEY),
       }, controller.signal)
       if (result.cards.length !== count) throw new Error('CARD_COUNT_MISMATCH')
       const initialProgress = Object.fromEntries(result.cards.map((card) => [card.id, {
@@ -84,7 +81,7 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; scenario: S
     } finally {
       if (controllerRef.current === controller) controllerRef.current = null
     }
-  }, [count, focus, level, modelId, scenario])
+  }, [count, focus, level, modelId])
 
   const currentCard = cards[currentIndex] ?? null
   const currentProgress = currentCard ? progress[currentCard.id] : undefined

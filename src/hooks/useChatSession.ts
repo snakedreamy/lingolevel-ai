@@ -2,10 +2,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { sendAnalyze, streamChat } from '../lib/api'
 import { createMessageId } from '../lib/ids'
+import { incrementStoredCounter } from '../lib/storage'
 import type { AnalysisHistoryEntry, AnalysisResult, DifficultyLevel, Message, Scenario } from '../types'
 
-function getStarterMessage(scenario: Scenario): string {
-  return scenario.starterMessages[Math.floor(Math.random() * scenario.starterMessages.length)]
+const CHAT_VARIETY_KEY = 'lingolevel_chat_variety'
+
+function getStarterMessage(scenario: Scenario, diversitySeed: number): string {
+  const index = scenario.id === 'free_chat'
+    ? diversitySeed % scenario.starterMessages.length
+    : Math.floor(Math.random() * scenario.starterMessages.length)
+  return scenario.starterMessages[index]
 }
 
 function trimChatContext(messages: Message[], max: number) {
@@ -24,6 +30,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
   const [isChatLoading, setIsChatLoading] = useState(false)
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false)
   const sessionIdRef = useRef(0)
+  const diversitySeedRef = useRef(0)
   const requestIdRef = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
   const analysisQueueRef = useRef<Promise<void>>(Promise.resolve())
@@ -37,6 +44,8 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
     const sessionId = sessionIdRef.current + 1
     sessionIdRef.current = sessionId
     requestIdRef.current += 1
+    const diversitySeed = activeScenario.id === 'free_chat' ? incrementStoredCounter(CHAT_VARIETY_KEY) : 0
+    diversitySeedRef.current = diversitySeed
     analysisQueueRef.current = Promise.resolve()
     for (const controller of analysisAbortControllersRef.current) controller.abort()
     analysisAbortControllersRef.current.clear()
@@ -46,7 +55,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
     setMessages([{
       id: createMessageId('starter'),
       role: 'assistant',
-      content: getStarterMessage(activeScenario),
+      content: getStarterMessage(activeScenario, diversitySeed),
       timestamp: Date.now(),
     }])
     setAnalysis(null)
@@ -82,6 +91,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
           level,
           scenarioInfo: activeScenario.id === 'free_chat' ? null : activeScenario,
           model: modelId || undefined,
+          diversitySeed: diversitySeedRef.current,
         },
         {
           onDelta: (delta) => {
@@ -250,6 +260,9 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
     if (!userMessage || userMessage.role !== 'user') return
 
     const sessionId = sessionIdRef.current
+    if (activeScenario.id === 'free_chat') {
+      diversitySeedRef.current = incrementStoredCounter(CHAT_VARIETY_KEY)
+    }
     const requestId = requestIdRef.current + 1
     requestIdRef.current = requestId
     const existingEntry = analysisHistory.find((entry) => entry.assistantMessageId === regeneratableAssistantId)

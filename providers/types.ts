@@ -12,6 +12,8 @@ export interface ProviderChatInput {
   /** Maximum transport attempts; structured callers may own their own retry loop. */
   maxAttempts?: number
   scenarioId?: string | null
+  /** Browser-persisted rotation value used only to vary prompts and local fallbacks. */
+  diversitySeed?: number
   /** Optional abort signal; the provider cancels the upstream fetch when aborted. */
   signal?: AbortSignal
 }

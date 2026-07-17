@@ -154,7 +154,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
       if (input.signal?.aborted) throw err
       console.error('[openai.chat] falling back:', errorMessage(err))
       return {
-        content: fallbackChatReply(input.scenarioId),
+        content: fallbackChatReply(input.scenarioId, input.diversitySeed, input.messages.length),
         isFallback: true
       }
     }
@@ -200,7 +200,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
         if (input.signal?.aborted || emitted) throw err
         console.error('[openai.chatStream] falling back:', errorMessage(err))
         output.isFallback = true
-        yield { delta: fallbackChatReply(input.scenarioId) }
+        yield { delta: fallbackChatReply(input.scenarioId, input.diversitySeed, input.messages.length) }
       } finally {
         clearTimeout(timer)
       }

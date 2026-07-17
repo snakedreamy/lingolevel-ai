@@ -54,6 +54,10 @@ function resolveRequestedModel(value: unknown, fallback: string, allowed: string
   return allowed.includes(requested) ? requested : null
 }
 
+function resolveDiversitySeed(value: unknown): number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0
+}
+
 export function createApiRouter(args: { provider: Provider; cfg: ServerConfig }): Router {
   const { provider, cfg } = args
   const router = Router()
@@ -71,6 +75,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
   router.post('/chat', async (req, res) => {
     const start = Date.now()
     const { messages, level, scenarioInfo } = req.body ?? {}
+    const diversitySeed = resolveDiversitySeed(req.body?.diversitySeed)
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'messages array is required' })
     }
@@ -106,9 +111,11 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
         systemInstruction: composeScenarioInstruction({
           levelPrompt: getLevelSystemPrompt(String(level ?? 'junior')),
           scenarioInfo,
+          diversitySeed,
         }),
         temperature: 0.7,
         scenarioId: typeof scenarioInfo?.id === 'string' ? scenarioInfo.id : 'free_chat',
+        diversitySeed,
         signal: abortController.signal,
       })
       for await (const { delta } of result.stream) {
@@ -167,16 +174,10 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     const focus: FillBlankFocus = ['mixed', 'vocabulary', 'grammar'].includes(req.body?.focus)
       ? req.body.focus
       : 'mixed'
+    const diversitySeed = resolveDiversitySeed(req.body?.diversitySeed)
     const recentSentences = Array.isArray(req.body?.recentSentences)
       ? req.body.recentSentences.filter((item: unknown): item is string => typeof item === 'string').slice(-100)
       : []
-    const scenario = typeof req.body?.scenario === 'object' && req.body.scenario !== null
-      ? {
-          name: typeof req.body.scenario.name === 'string' ? req.body.scenario.name : undefined,
-          englishName: typeof req.body.scenario.englishName === 'string' ? req.body.scenario.englishName : undefined,
-          description: typeof req.body.scenario.description === 'string' ? req.body.scenario.description : undefined,
-        }
-      : undefined
     const abortController = abortWhenClientDisconnects(req, res)
     let generated = [] as ReturnType<typeof normalizeGeneratedCards>
     let isFallback = false
@@ -185,7 +186,13 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
       if (abortController.signal.aborted) return
       const count = Math.min(batchSize, rawCount - offset)
       const avoidList = [...recentSentences, ...generated.map(completeSentence)]
-      const prompts = buildFillBlankPrompt({ count, level, focus, scenario, recentSentences: avoidList })
+      const prompts = buildFillBlankPrompt({
+        count,
+        level,
+        focus,
+        recentSentences: avoidList,
+        diversitySeed: diversitySeed + offset,
+      })
       let batch = [] as ReturnType<typeof normalizeGeneratedCards>
       for (let attempt = 1; attempt <= cfg.fillBlankAttempts && batch.length < count; attempt++) {
         try {
@@ -225,7 +232,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     if (abortController.signal.aborted) return
     const cards = selectUniqueCards({
       generated,
-      fallback: fallbackFillBlankCards(level, focus),
+      fallback: fallbackFillBlankCards(level, focus, diversitySeed),
       count: rawCount,
       recentSentences,
     })
