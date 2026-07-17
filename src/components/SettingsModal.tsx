@@ -1,4 +1,4 @@
-import { Keyboard, Server, Settings2, X } from 'lucide-react'
+import { Bot, Keyboard, Server, Settings2, X } from 'lucide-react'
 import type { DifficultyLevel, ProviderId, Scenario } from '../types'
 import type { ServerConfig } from '../lib/api'
 import LevelSelector from './LevelSelector'
@@ -13,6 +13,8 @@ interface SettingsModalProps {
   onScenarioSelect: (scenario: Scenario) => void
   serverConfig: ServerConfig | null
   serverConfigError?: boolean
+  currentModelId: string
+  onModelChange: (modelId: string) => void
   sendOnCtrlEnter: boolean
   onToggleSendOnCtrlEnter: () => void
 }
@@ -38,7 +40,7 @@ function ConfigRow({ label, value }: { label: string; value: string }) {
 
 export default function SettingsModal({
   isOpen, onClose, currentLevel, onLevelChange, activeScenario, onScenarioSelect,
-  serverConfig, serverConfigError, sendOnCtrlEnter, onToggleSendOnCtrlEnter,
+  serverConfig, serverConfigError, currentModelId, onModelChange, sendOnCtrlEnter, onToggleSendOnCtrlEnter,
 }: SettingsModalProps) {
   if (!isOpen) return null
 
@@ -53,7 +55,7 @@ export default function SettingsModal({
             </div>
             <div>
               <h2 id="settings-title" className="text-base font-bold sm:text-lg">学习设置</h2>
-              <p className="text-xs text-zinc-500">难度、场景与输入习惯</p>
+              <p className="text-xs text-zinc-500">难度、场景、模型与输入习惯</p>
             </div>
           </div>
           <button type="button" onClick={onClose} aria-label="关闭设置"
@@ -65,6 +67,23 @@ export default function SettingsModal({
         <div className="flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
           <LevelSelector currentLevel={currentLevel} onLevelChange={onLevelChange} />
           <ScenarioCards activeScenarioId={activeScenario.id} onScenarioSelect={onScenarioSelect} />
+
+          <section className="border-t border-zinc-200 pt-5 dark:border-zinc-800">
+            <div className="mb-3 flex items-center gap-2">
+              <Bot className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-200">当前模型</h3>
+            </div>
+            <label htmlFor="active-model" className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">用于后续 AI 请求</label>
+            <select id="active-model" value={currentModelId} disabled={!serverConfig}
+              onChange={(event) => onModelChange(event.target.value)}
+              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 font-mono text-xs font-semibold text-zinc-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:[color-scheme:dark] dark:focus:ring-indigo-900">
+              <option value="" className="bg-white text-zinc-950 dark:bg-zinc-900 dark:text-zinc-100">按任务使用服务端默认模型</option>
+              {serverConfig?.availableModels.map((model) => (
+                <option key={model} value={model} className="bg-white text-zinc-950 dark:bg-zinc-900 dark:text-zinc-100">{model}</option>
+              ))}
+            </select>
+            <p className="mt-2 text-[11px] leading-5 text-zinc-500">切换只影响之后发起的对话、分析、答疑和填词请求；可选范围由服务端配置决定。</p>
+          </section>
 
           <section className="border-t border-zinc-200 pt-5 dark:border-zinc-800">
             <div className="mb-3 flex items-center gap-2">
@@ -97,6 +116,7 @@ export default function SettingsModal({
                     <ConfigRow label="Base URL" value={serverConfig.baseUrl} />
                     <ConfigRow label="Chat model" value={serverConfig.chatModel} />
                     <ConfigRow label="Analyze model" value={serverConfig.analyzeModel} />
+                    <ConfigRow label="Allowed models" value={serverConfig.availableModels.join(', ')} />
                     <ConfigRow label="Request timeout" value={`${Math.round(serverConfig.requestTimeoutMs / 1000)} 秒`} />
                     <ConfigRow label="Max output" value={`${serverConfig.maxOutputTokens} tokens`} />
                     <ConfigRow label="Context window" value={`最近 ${serverConfig.maxContextMessages} 句`} />

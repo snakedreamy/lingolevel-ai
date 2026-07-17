@@ -18,6 +18,7 @@ function normalizeBrowserPrefs(value: unknown): BrowserPrefs {
     level: typeof v.level === 'string' && VALID_LEVELS.has(v.level as DifficultyLevel)
       ? (v.level as DifficultyLevel) : defaults.level,
     theme: v.theme === 'light' || v.theme === 'dark' ? v.theme : defaults.theme,
+    modelId: typeof v.modelId === 'string' ? v.modelId.trim() : defaults.modelId,
     sendOnCtrlEnter: v.sendOnCtrlEnter === true,
   }
 }
@@ -43,7 +44,14 @@ export function useBrowserPrefs() {
   useEffect(() => {
     let active = true
     fetchServerConfig()
-      .then((cfg) => { if (active) { setServerConfig(cfg); setServerConfigError(false) } })
+      .then((cfg) => {
+        if (!active) return
+        setServerConfig(cfg)
+        setServerConfigError(false)
+        setPrefs((current) => cfg.availableModels.includes(current.modelId) || !current.modelId
+          ? current
+          : { ...current, modelId: '' })
+      })
       .catch(() => { if (active) { setServerConfig(null); setServerConfigError(true) } })
     return () => { active = false }
   }, [])

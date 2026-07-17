@@ -8,15 +8,14 @@ import { LEVELS } from '../data/levels'
 import { useFillBlankPractice } from '../hooks/useFillBlankPractice'
 import { speakText } from '../lib/speech'
 import { FILL_BLANK_MAX_COUNT, FILL_BLANK_MIN_COUNT } from '../types'
-import type { DifficultyLevel, FillBlankCard, FillBlankFocus, Scenario, WordItem } from '../types'
+import type { DifficultyLevel, FillBlankCard, FillBlankFocus, Scenario } from '../types'
 
 interface FillBlankPracticeProps {
   active: boolean
   level: DifficultyLevel
   scenario: Scenario
+  modelId: string
   onLevelChange: (level: DifficultyLevel) => void
-  onAddWord: (word: WordItem) => void
-  isWordSaved: (word: string) => boolean
   onAskWord: (word: string) => void
   onBackToChat: () => void
 }
@@ -108,8 +107,8 @@ function SetupView({
               <span className="text-xs text-zinc-500">AI 会同步调整词汇和句型</span>
             </div>
             <select id="fill-level" value={level} onChange={(event) => onLevelChange(event.target.value as DifficultyLevel)}
-              className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-800 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:ring-indigo-900">
-              {LEVELS.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-800 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:[color-scheme:dark] dark:focus:ring-indigo-900">
+              {LEVELS.map((item) => <option key={item.id} value={item.id} className="bg-white text-zinc-950 dark:bg-zinc-900 dark:text-zinc-100">{item.name}</option>)}
             </select>
           </div>
 
@@ -125,9 +124,9 @@ function SetupView({
               </button>
               <label className="flex items-baseline gap-1">
                 <select aria-label="句子数量" value={count} onChange={(event) => setCount(Number(event.target.value))}
-                  className="appearance-none bg-transparent text-center text-2xl font-black text-zinc-950 outline-none dark:text-white">
+                  className="appearance-none bg-transparent text-center text-2xl font-black text-zinc-950 outline-none dark:text-zinc-100 dark:[color-scheme:dark]">
                   {Array.from({ length: FILL_BLANK_MAX_COUNT - FILL_BLANK_MIN_COUNT + 1 }, (_, index) => index + FILL_BLANK_MIN_COUNT)
-                    .map((value) => <option key={value} value={value}>{value}</option>)}
+                    .map((value) => <option key={value} value={value} className="bg-white text-zinc-950 dark:bg-zinc-900 dark:text-zinc-100">{value}</option>)}
                 </select>
                 <span className="text-xs text-zinc-500">句</span>
               </label>
@@ -192,7 +191,7 @@ function LoadingView({ count }: { count: number }) {
 }
 
 export default function FillBlankPractice(props: FillBlankPracticeProps) {
-  const practice = useFillBlankPractice({ level: props.level, scenario: props.scenario })
+  const practice = useFillBlankPractice({ level: props.level, scenario: props.scenario, modelId: props.modelId })
   const [showHint, setShowHint] = useState(false)
   const [answerError, setAnswerError] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -278,7 +277,6 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
   const item = practice.currentProgress
   if (!card || !item) return null
   const settled = item.status !== 'answering'
-  const saved = props.isWordSaved(card.answer)
 
   const handleSubmit = () => {
     const result = practice.submit()
@@ -384,9 +382,7 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
                       本题考查：{card.focusType === 'grammar' ? '语法形式' : '词义与搭配'}
                     </span>
                   </div>
-                  <div className="mt-3 flex gap-4">
-                    <button type="button" disabled={saved} onClick={() => props.onAddWord({ word: card.answer, phonetic: card.phonetic, translation: card.definition, exampleEn: fullSentence(card), exampleZh: card.translation, addTime: Date.now() })}
-                      className="text-xs font-bold text-indigo-600 disabled:text-emerald-600 dark:text-indigo-400">{saved ? '已在生词本' : '+ 加入生词本'}</button>
+                  <div className="mt-3">
                     <button type="button" onClick={() => props.onAskWord(card.answer)} className="text-xs font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200">问老师</button>
                   </div>
                 </section>

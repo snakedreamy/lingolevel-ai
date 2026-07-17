@@ -135,7 +135,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
 
   async function chat(input: ProviderChatInput) {
     const body = {
-      model: cfg.chatModel,
+      model: input.model ?? cfg.chatModel,
       messages: [
         { role: 'system', content: input.systemInstruction },
         ...input.messages
@@ -162,7 +162,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
 
   async function chatStream(input: ProviderChatInput): Promise<ProviderChatStreamOutput> {
     const body = {
-      model: cfg.chatModel,
+      model: input.model ?? cfg.chatModel,
       messages: [
         { role: 'system', content: input.systemInstruction },
         ...input.messages,
@@ -210,7 +210,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
 
   async function analyzeJSON(input: ProviderAnalyzeInput) {
     const body = {
-      model: cfg.analyzeModel,
+      model: input.model ?? cfg.analyzeModel,
       max_tokens: cfg.maxOutputTokens,
       messages: [
         { 

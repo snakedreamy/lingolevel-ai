@@ -48,6 +48,12 @@ function abortWhenClientDisconnects(req: Request, res: Response): AbortControlle
   return controller
 }
 
+function resolveRequestedModel(value: unknown, fallback: string, allowed: string[]): string | null {
+  if (typeof value !== 'string' || !value.trim()) return fallback
+  const requested = value.trim()
+  return allowed.includes(requested) ? requested : null
+}
+
 export function createApiRouter(args: { provider: Provider; cfg: ServerConfig }): Router {
   const { provider, cfg } = args
   const router = Router()
@@ -68,6 +74,8 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'messages array is required' })
     }
+    const model = resolveRequestedModel(req.body?.model, cfg.chatModel, cfg.availableModels)
+    if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
 
     const chatMessages = (messages as unknown[])
       .filter((m): m is { role: string; content: unknown } =>
@@ -94,6 +102,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     try {
       const result = await provider.chatStream({
         messages: chatMessages,
+        model,
         systemInstruction: composeScenarioInstruction({
           levelPrompt: getLevelSystemPrompt(String(level ?? 'junior')),
           scenarioInfo,
@@ -109,10 +118,10 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
       isFallback = result.isFallback
       if (abortController.signal.aborted) return
       writeSSE(res, { type: 'done', isFallback, timestamp: Date.now() })
-      logRequest({ endpoint: 'chat', provider: cfg.provider, model: cfg.chatModel, status: 200, latencyMs: Date.now() - start, fallback: isFallback })
+      logRequest({ endpoint: 'chat', provider: cfg.provider, model, status: 200, latencyMs: Date.now() - start, fallback: isFallback })
     } catch (error) {
       if (!abortController.signal.aborted) writeSSE(res, { type: 'error', message: 'CHAT_FAILED' })
-      logRequest({ endpoint: 'chat', provider: cfg.provider, model: cfg.chatModel, status: 500, latencyMs: Date.now() - start, fallback: true, errorMsg: errorMessage(error) })
+      logRequest({ endpoint: 'chat', provider: cfg.provider, model, status: 500, latencyMs: Date.now() - start, fallback: true, errorMsg: errorMessage(error) })
     } finally {
       res.end()
     }
@@ -125,6 +134,8 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     if (!userMessage && !assistantMessage) {
       return res.status(400).json({ error: 'userMessage or assistantMessage is required' })
     }
+    const model = resolveRequestedModel(req.body?.model, cfg.analyzeModel, cfg.availableModels)
+    if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
     const normalizedScenarioContext =
       typeof scenarioContext === 'string' && scenarioContext.trim() ? scenarioContext.trim() : undefined
     try {
@@ -132,12 +143,13 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
         userMessage: String(userMessage ?? ''),
         assistantMessage: String(assistantMessage ?? ''),
         level: String(level ?? 'junior'),
+        model,
         scenarioContext: normalizedScenarioContext,
       })
-      logRequest({ endpoint: 'analyze', provider: cfg.provider, model: cfg.analyzeModel, status: 200, latencyMs: Date.now() - start, fallback: !!isFallback })
+      logRequest({ endpoint: 'analyze', provider: cfg.provider, model, status: 200, latencyMs: Date.now() - start, fallback: !!isFallback })
       res.json({ ...(typeof data === 'object' && data !== null ? data : {}), isFallback: !!isFallback })
     } catch (error) {
-      logRequest({ endpoint: 'analyze', provider: cfg.provider, model: cfg.analyzeModel, status: 500, latencyMs: Date.now() - start, retry: 3, fallback: true, errorMsg: errorMessage(error) })
+      logRequest({ endpoint: 'analyze', provider: cfg.provider, model, status: 500, latencyMs: Date.now() - start, retry: 3, fallback: true, errorMsg: errorMessage(error) })
       res.status(500).json({ error: 'ANALYZE_FAILED' })
     }
   })
@@ -149,6 +161,8 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     if (!Number.isInteger(rawCount) || rawCount < FILL_BLANK_MIN_COUNT || rawCount > FILL_BLANK_MAX_COUNT) {
       return res.status(400).json({ error: `count must be an integer between ${FILL_BLANK_MIN_COUNT} and ${FILL_BLANK_MAX_COUNT}` })
     }
+    const model = resolveRequestedModel(req.body?.model, cfg.chatModel, cfg.availableModels)
+    if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
     const level = typeof req.body?.level === 'string' ? req.body.level : 'junior'
     const focus: FillBlankFocus = ['mixed', 'vocabulary', 'grammar'].includes(req.body?.focus)
       ? req.body.focus
@@ -177,6 +191,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
         try {
           const output = await provider.chat({
             messages: [{ role: 'user', content: prompts.userPrompt }],
+            model,
             systemInstruction: prompts.systemInstruction,
             temperature: 0.65,
             maxAttempts: 1,
@@ -219,7 +234,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     if (fallbackCount > 0) {
       isFallback = true
     }
-    logRequest({ endpoint: 'fill-blank', provider: cfg.provider, model: cfg.chatModel, status: 200, latencyMs: Date.now() - start, fallback: isFallback })
+    logRequest({ endpoint: 'fill-blank', provider: cfg.provider, model, status: 200, latencyMs: Date.now() - start, fallback: isFallback })
     res.json({ cards, isFallback, fallbackCount })
   })
 
@@ -230,6 +245,8 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     if (typeof question !== 'string' || !question.trim()) {
       return res.status(400).json({ error: 'question is required' })
     }
+    const model = resolveRequestedModel(req.body?.model, cfg.chatModel, cfg.availableModels)
+    if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
     const ctx =
       typeof context === 'object' && context !== null
         ? {
@@ -248,6 +265,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     try {
       const result = await provider.chatStream({
         messages: [{ role: 'user', content: buildAskUserPrompt({ question: question.trim(), context: ctx }) }],
+        model,
         systemInstruction: composeAskSystemPrompt(String(level ?? 'junior')),
         temperature: 0.4,
         scenarioId: null,
@@ -259,10 +277,10 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
       }
       if (abortController.signal.aborted) return
       writeSSE(res, { type: 'done', isFallback: result.isFallback })
-      logRequest({ endpoint: 'ask', provider: cfg.provider, model: cfg.chatModel, status: 200, latencyMs: Date.now() - start, fallback: result.isFallback })
+      logRequest({ endpoint: 'ask', provider: cfg.provider, model, status: 200, latencyMs: Date.now() - start, fallback: result.isFallback })
     } catch (error) {
       if (!abortController.signal.aborted) writeSSE(res, { type: 'error', message: 'ASK_FAILED' })
-      logRequest({ endpoint: 'ask', provider: cfg.provider, model: cfg.chatModel, status: 500, latencyMs: Date.now() - start, fallback: true, errorMsg: errorMessage(error) })
+      logRequest({ endpoint: 'ask', provider: cfg.provider, model, status: 500, latencyMs: Date.now() - start, fallback: true, errorMsg: errorMessage(error) })
     } finally {
       res.end()
     }

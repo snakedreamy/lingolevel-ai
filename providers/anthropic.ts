@@ -108,7 +108,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
 
   async function chat(input: ProviderChatInput) {
     const body = {
-      model: cfg.chatModel,
+      model: input.model ?? cfg.chatModel,
       max_tokens: cfg.maxOutputTokens,
       system: input.systemInstruction,
       messages: input.messages,
@@ -133,7 +133,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
 
   async function chatStream(input: ProviderChatInput): Promise<ProviderChatStreamOutput> {
     const body = {
-      model: cfg.chatModel,
+      model: input.model ?? cfg.chatModel,
       max_tokens: cfg.maxOutputTokens,
       system: input.systemInstruction,
       messages: input.messages,
@@ -171,7 +171,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
 
   async function analyzeJSON(input: ProviderAnalyzeInput) {
     const body = {
-      model: cfg.analyzeModel,
+      model: input.model ?? cfg.analyzeModel,
       max_tokens: cfg.maxOutputTokens,
       system: 'You are an expert English-Chinese Bilingual Teacher. Always return a valid JSON object matching the documented shape (translation, grammarCorrections, assistantReplyInsight, keyWords, suggestions).',
       messages: [

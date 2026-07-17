@@ -1,7 +1,7 @@
 // src/components/AnalysisSidebar.tsx
 // Merged: AnalysisSidebar + AnalysisTranslationCard + GrammarFeedbackCard + SuggestionListSection + VocabularyCardsSection
-import { ArrowLeft, ArrowRight, Lightbulb, TrendingUp, Volume2, BookmarkPlus, CheckCircle2, ChevronRight, RefreshCw } from 'lucide-react'
-import type { AnalysisHistoryEntry, AnalysisResult, AssistantReplyInsight, GrammarCorrection, WordItem } from '../types'
+import { ArrowLeft, ArrowRight, Lightbulb, TrendingUp, Volume2, CheckCircle2, ChevronRight, RefreshCw } from 'lucide-react'
+import type { AnalysisHistoryEntry, AnalysisResult, AssistantReplyInsight, GrammarCorrection } from '../types'
 import { speakText } from '../lib/speech'
 
 // ─── GrammarFeedbackCard ─────────────────────────────────────────────────────
@@ -193,10 +193,8 @@ function SuggestionListSection({ suggestions, onSelectSuggestion }: {
 
 // ─── VocabularyCardsSection ──────────────────────────────────────────────────
 
-function VocabularyCardsSection({ keyWords, isWordSaved, onAddWord, onSpeakText }: {
+function VocabularyCardsSection({ keyWords, onSpeakText }: {
   keyWords: AnalysisResult['keyWords']
-  isWordSaved: (word: string) => boolean
-  onAddWord: (word: WordItem) => void
   onSpeakText: (text: string) => void
 }) {
   if (keyWords.length === 0) return null
@@ -205,9 +203,7 @@ function VocabularyCardsSection({ keyWords, isWordSaved, onAddWord, onSpeakText 
     <section>
       <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">本轮词汇摘录</span>
       <div className="mt-2">
-        {keyWords.filter((kw) => kw.word).map((kw) => {
-          const saved = isWordSaved(kw.word)
-          return (
+        {keyWords.filter((kw) => kw.word).map((kw) => (
             <div key={kw.word} className="border-t border-zinc-200 py-3 first:border-t-0 dark:border-zinc-800">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -218,14 +214,6 @@ function VocabularyCardsSection({ keyWords, isWordSaved, onAddWord, onSpeakText 
                   </button>
                   {kw.phonetic && <span className="text-[10px] font-mono text-zinc-400">{kw.phonetic}</span>}
                 </div>
-                <button
-                  onClick={() => { if (!saved) onAddWord({ word: kw.word, phonetic: kw.phonetic, translation: kw.definition, exampleEn: kw.exampleEn, exampleZh: kw.exampleZh, addTime: Date.now() }) }}
-                  disabled={saved}
-                  className={`shrink-0 flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full border transition ${saved ? 'border-emerald-200 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400 cursor-default' : 'border-zinc-200 text-zinc-500 hover:border-indigo-400 hover:text-indigo-600 dark:border-zinc-700 dark:text-zinc-400 cursor-pointer'}`}
-                  title={saved ? '已在词本' : '加入词本'}>
-                  <BookmarkPlus className="h-3 w-3" />
-                  {saved ? '已收录' : '+词本'}
-                </button>
               </div>
               <p className="text-[11px] text-indigo-700 dark:text-indigo-400 font-semibold mt-1">{kw.definition}</p>
               {kw.exampleEn && (
@@ -235,8 +223,7 @@ function VocabularyCardsSection({ keyWords, isWordSaved, onAddWord, onSpeakText 
                 </div>
               )}
             </div>
-          )
-        })}
+        ))}
       </div>
     </section>
   )
@@ -249,8 +236,6 @@ interface AnalysisSidebarProps {
   analysisHistory: AnalysisHistoryEntry[]
   selectedAnalysisIndex: number
   isLoading: boolean
-  onAddWord: (word: WordItem) => void
-  isWordSaved: (word: string) => boolean
   onSelectSuggestion: (text: string) => void
   onPreviousAnalysis: () => void
   onNextAnalysis: () => void
@@ -260,7 +245,7 @@ interface AnalysisSidebarProps {
 }
 
 export default function AnalysisSidebar({
-  analysis, analysisHistory, selectedAnalysisIndex, isLoading, onAddWord, isWordSaved,
+  analysis, analysisHistory, selectedAnalysisIndex, isLoading,
   onSelectSuggestion, onPreviousAnalysis, onNextAnalysis, onLatestAnalysis, onRetryAnalysis, embedded = false,
 }: AnalysisSidebarProps) {
   const handleSpeak = (text: string) => {
@@ -361,7 +346,7 @@ export default function AnalysisSidebar({
                 <GrammarFeedbackCard corrections={analysis.grammarCorrections} onSpeakText={handleSpeak} />
                 <AnalysisTranslationCard translation={analysis.translation} assistantReplyInsight={analysis.assistantReplyInsight} />
                 <SuggestionListSection suggestions={analysis.suggestions} onSelectSuggestion={onSelectSuggestion} />
-                <VocabularyCardsSection keyWords={analysis.keyWords} isWordSaved={isWordSaved} onAddWord={onAddWord} onSpeakText={handleSpeak} />
+                <VocabularyCardsSection keyWords={analysis.keyWords} onSpeakText={handleSpeak} />
               </>
             )}
           </div>

@@ -4,6 +4,7 @@ export interface ServerConfig {
   provider: ProviderId
   chatModel: string
   analyzeModel: string
+  availableModels: string[]
   baseUrl: string
   requestTimeoutMs: number
   maxOutputTokens: number
@@ -16,12 +17,14 @@ export interface ChatRequest {
   messages: Array<{ role: "user" | "assistant"; content: string }>
   level: DifficultyLevel
   scenarioInfo: Scenario | null
+  model?: string
 }
 
 export interface AnalyzeRequest {
   userMessage: string
   assistantMessage: string
   level: DifficultyLevel
+  model?: string
   /** Scenario display name forwarded to the analysis prompt for context-aware suggestions. */
   scenarioContext?: string
 }
@@ -119,6 +122,7 @@ export interface AskRequest {
   question: string
   level: DifficultyLevel
   context?: AskContext
+  model?: string
 }
 
 export function streamAsk(body: AskRequest, handlers: SSEHandlers, signal?: AbortSignal) {
@@ -131,6 +135,7 @@ export interface GenerateFillBlankRequest {
   focus: FillBlankFocus
   scenario?: Pick<Scenario, 'name' | 'englishName' | 'description'>
   recentSentences: string[]
+  model?: string
 }
 
 export interface GenerateFillBlankResponse {

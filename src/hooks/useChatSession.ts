@@ -15,8 +15,8 @@ function trimChatContext(messages: Message[], max: number) {
     .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 }
 
-export function useChatSession(args: { currentLevel: DifficultyLevel; activeScenario: Scenario; maxContextMessages: number }) {
-  const { currentLevel, activeScenario, maxContextMessages } = args
+export function useChatSession(args: { currentLevel: DifficultyLevel; activeScenario: Scenario; maxContextMessages: number; modelId: string }) {
+  const { currentLevel, activeScenario, maxContextMessages, modelId } = args
   const [messages, setMessages] = useState<Message[]>([])
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistoryEntry[]>([])
@@ -81,6 +81,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
           messages: trimChatContext(contextMessages, maxContextMessages),
           level,
           scenarioInfo: activeScenario.id === 'free_chat' ? null : activeScenario,
+          model: modelId || undefined,
         },
         {
           onDelta: (delta) => {
@@ -118,7 +119,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
       }
     }
     return assistantContent || null
-  }, [activeScenario, maxContextMessages])
+  }, [activeScenario, maxContextMessages, modelId])
 
   const enqueueAnalysis = useCallback((args: {
     entryId?: string
@@ -150,6 +151,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
           userMessage: args.userMessage,
           assistantMessage: args.assistantMessage,
           level: args.level,
+          model: modelId || undefined,
           scenarioContext: args.scenarioContext,
         }, controller.signal)
         if (sessionIdRef.current !== args.sessionId || analysisVersionRef.current.get(versionKey) !== version) return
@@ -191,7 +193,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
       }
     }
     analysisQueueRef.current = analysisQueueRef.current.then(runAnalysis, runAnalysis)
-  }, [])
+  }, [modelId])
 
   const sendMessage = useCallback(async (text: string) => {
     const userText = text.trim()

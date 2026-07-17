@@ -27,6 +27,7 @@ interface ResolvedProviderEnv {
   baseUrl: string
   chatModel: string
   analyzeModel: string
+  availableModels: string[]
   timeoutMs: number
   maxOutputTokens: number
   maxContextMessages: number
@@ -41,6 +42,14 @@ function readPositiveInteger(name: string, fallback: number): number {
     throw new Error(`${name} must be a positive integer (got "${raw}")`)
   }
   return value
+}
+
+function readModelList(name: string, defaults: string[]): string[] {
+  const configured = (process.env[name] ?? '').split(',').map((model) => model.trim()).filter(Boolean)
+  const models = [...new Set([...defaults, ...configured])]
+  const placeholder = models.find((model) => model.startsWith('your-'))
+  if (placeholder) throw new Error(`${name} contains a placeholder model id: "${placeholder}"`)
+  return models
 }
 
 /**
@@ -69,6 +78,7 @@ function resolveProviderEnv(): ResolvedProviderEnv {
   if (!baseUrl) throw new Error(`${isOpenAI ? 'OPENAI_BASE_URL' : 'ANTHROPIC_BASE_URL'} is required`)
   const chatModelVar = isOpenAI ? 'OPENAI_CHAT_MODEL' : 'ANTHROPIC_CHAT_MODEL'
   const analyzeModelVar = isOpenAI ? 'OPENAI_ANALYZE_MODEL' : 'ANTHROPIC_ANALYZE_MODEL'
+  const modelsVar = isOpenAI ? 'OPENAI_MODELS' : 'ANTHROPIC_MODELS'
   if (!chatModel) throw new Error(`${chatModelVar} is required`)
   if (!analyzeModel) throw new Error(`${analyzeModelVar} is required`)
   if (chatModel.startsWith('your-')) {
@@ -77,6 +87,7 @@ function resolveProviderEnv(): ResolvedProviderEnv {
   if (analyzeModel.startsWith('your-')) {
     throw new Error(`${analyzeModelVar} must be set to a real model id, not the .env.example placeholder`)
   }
+  const availableModels = readModelList(modelsVar, [chatModel, analyzeModel])
 
   const timeoutRaw = readPositiveInteger('REQUEST_TIMEOUT_MS', 180_000)
   const maxOutputTokens = readPositiveInteger('MAX_OUTPUT_TOKENS', 32_768)
@@ -90,6 +101,7 @@ function resolveProviderEnv(): ResolvedProviderEnv {
     baseUrl,
     chatModel,
     analyzeModel,
+    availableModels,
     timeoutMs: timeoutRaw,
     maxOutputTokens,
     maxContextMessages: maxContextMessagesRaw,
@@ -115,6 +127,7 @@ export interface ServerConfig {
   provider: 'openai' | 'anthropic'
   chatModel: string
   analyzeModel: string
+  availableModels: string[]
   baseUrl: string
   requestTimeoutMs: number
   maxOutputTokens: number
@@ -145,6 +158,7 @@ export function loadServerConfigFromEnv(): ServerConfig {
     provider: env.provider,
     chatModel: env.chatModel,
     analyzeModel: env.analyzeModel,
+    availableModels: env.availableModels,
     baseUrl: env.baseUrl,
     requestTimeoutMs: env.timeoutMs,
     maxOutputTokens: env.maxOutputTokens,

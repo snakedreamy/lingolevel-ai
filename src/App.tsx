@@ -1,20 +1,18 @@
 // src/App.tsx (merged: App + AppShell + AppHeader + MobileAnalysisDrawer)
 import { useMemo, useRef, useState } from 'react'
 import type { PropsWithChildren } from 'react'
-import { BookMarked, HelpCircle, Menu, MessageCircle, Moon, Settings, Sun, TextCursorInput, X } from 'lucide-react'
+import { HelpCircle, Menu, MessageCircle, Moon, Settings, Sun, TextCursorInput, X } from 'lucide-react'
 import ChatWindow from './components/ChatWindow'
 import SettingsModal from './components/SettingsModal'
-import WordBook from './components/WordBook'
 import AnalysisSidebar from './components/AnalysisSidebar'
 import AskAssistant from './components/AskAssistant'
 import FillBlankPractice from './components/FillBlankPractice'
 import { LEVELS } from './data/levels'
 import { SCENARIOS } from './data/scenarios'
 import { useBrowserPrefs } from './hooks/useBrowserPrefs'
-import { useWordBook } from './hooks/useWordBook'
 import { useChatSession } from './hooks/useChatSession'
 import { useAskAssistant } from './hooks/useAskAssistant'
-import type { AnalysisHistoryEntry, AskContext, BrowserPrefs, DifficultyLevel, Scenario, AnalysisResult, WordItem } from './types'
+import type { AnalysisHistoryEntry, AskContext, BrowserPrefs, DifficultyLevel, Scenario, AnalysisResult } from './types'
 
 type Workspace = 'chat' | 'fill-blank'
 
@@ -34,15 +32,13 @@ function KeepMountedWorkspace({
 // ─── AppHeader (inlined) ─────────────────────────────────────────────────────
 
 function AppHeader({
-  theme, savedWordsCount, showMobileSidebar, showFeedbackButton, onToggleTheme, onOpenSettings, onOpenWordBook, onToggleMobileSidebar, onOpenAsk,
+  theme, showMobileSidebar, showFeedbackButton, onToggleTheme, onOpenSettings, onToggleMobileSidebar, onOpenAsk,
 }: {
   theme: BrowserPrefs['theme']
-  savedWordsCount: number
   showMobileSidebar: boolean
   showFeedbackButton: boolean
   onToggleTheme: () => void
   onOpenSettings: () => void
-  onOpenWordBook: () => void
   onToggleMobileSidebar: () => void
   onOpenAsk: () => void
 }) {
@@ -81,18 +77,6 @@ function AppHeader({
           <span className="hidden sm:inline">偏好设置</span>
         </button>
 
-        <button type="button" onClick={onOpenWordBook}
-          className="relative flex items-center gap-1.5 rounded-xl bg-indigo-50 px-2.5 py-2 text-xs font-bold text-indigo-600 shadow-xs transition hover:bg-indigo-100 dark:bg-indigo-950 dark:text-indigo-400 dark:hover:bg-indigo-900/60 sm:px-3 sm:py-1.5 cursor-pointer"
-          aria-label={`我的生词本${savedWordsCount > 0 ? `，${savedWordsCount} 个词` : ''}`}>
-          <BookMarked className="h-4 w-4" />
-          <span className="hidden sm:inline">我的生词本</span>
-          {savedWordsCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full h-4.5 w-4.5 text-[9px] font-black flex items-center justify-center scale-95">
-              {savedWordsCount}
-            </span>
-          )}
-        </button>
-
         {showFeedbackButton && (
           <button type="button" onClick={onToggleMobileSidebar}
             className="lg:hidden p-2 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900"
@@ -112,8 +96,6 @@ type AnalysisSidebarProps = {
   analysisHistory: AnalysisHistoryEntry[]
   selectedAnalysisIndex: number
   isLoading: boolean
-  onAddWord: (word: WordItem) => void
-  isWordSaved: (word: string) => boolean
   onSelectSuggestion: (text: string) => void
   onPreviousAnalysis: () => void
   onNextAnalysis: () => void
@@ -155,17 +137,17 @@ export default function App() {
   )
   const [inputText, setInputText] = useState('')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [isWordBookOpen, setIsWordBookOpen] = useState(false)
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   const [isAskOpen, setIsAskOpen] = useState(false)
   const [askContext, setAskContext] = useState<AskContext | null>(null)
   const [workspace, setWorkspace] = useState<Workspace>('chat')
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
-  const { savedWords, addWord, removeWord, clearAllWords, hasWord } = useWordBook()
+  const modelId = prefs.modelId
   const chat = useChatSession({
     currentLevel: prefs.level,
     activeScenario,
     maxContextMessages: serverConfig?.maxContextMessages ?? 12,
+    modelId,
   })
   const {
     messages, analysis, analysisHistory, selectedAnalysisIndex,
@@ -173,7 +155,7 @@ export default function App() {
     regeneratableAssistantId, regenerateLastReply, retrySelectedAnalysis,
     showPreviousAnalysis, showNextAnalysis, showLatestAnalysis,
   } = chat
-  const ask = useAskAssistant({ currentLevel: prefs.level })
+  const ask = useAskAssistant({ currentLevel: prefs.level, modelId })
   const currentLevel = prefs.level
 
   const handleLevelChange = (level: DifficultyLevel) => {
@@ -189,13 +171,9 @@ export default function App() {
   const handleResetChat = () => {
     if (window.confirm('确定要清空当前对话，重新开始吗？')) void resetConversation()
   }
-  const handleClearAllWords = () => {
-    if (window.confirm('确定要清空所有生词？此操作无法撤销。')) clearAllWords()
-  }
-
   const sidebarProps = {
     analysis, analysisHistory, selectedAnalysisIndex,
-    isLoading: isAnalysisLoading, onAddWord: addWord, isWordSaved: hasWord,
+    isLoading: isAnalysisLoading,
     onSelectSuggestion: handleSelectSuggestion,
     onPreviousAnalysis: showPreviousAnalysis,
     onNextAnalysis: showNextAnalysis,
@@ -207,12 +185,10 @@ export default function App() {
     <div id="app" className="h-screen max-h-screen overflow-hidden bg-stone-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 flex flex-col font-sans">
       <AppHeader
         theme={prefs.theme}
-        savedWordsCount={savedWords.length}
         showMobileSidebar={showMobileSidebar}
         showFeedbackButton={workspace === 'chat'}
         onToggleTheme={() => setPrefs((p) => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' }))}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenWordBook={() => setIsWordBookOpen(true)}
         onToggleMobileSidebar={() => setShowMobileSidebar((prev) => !prev)}
         onOpenAsk={() => { setAskContext(null); setIsAskOpen(true) }}
       />
@@ -263,9 +239,8 @@ export default function App() {
             active={workspace === 'fill-blank'}
             level={currentLevel}
             scenario={activeScenario}
+            modelId={modelId}
             onLevelChange={handleLevelChange}
-            onAddWord={addWord}
-            isWordSaved={hasWord}
             onAskWord={openAskWithWord}
             onBackToChat={() => setWorkspace('chat')}
           />
@@ -282,14 +257,13 @@ export default function App() {
         onAsk={ask.ask} onReset={ask.reset}
         sendOnCtrlEnter={prefs.sendOnCtrlEnter} />
 
-      <WordBook isOpen={isWordBookOpen} onClose={() => setIsWordBookOpen(false)}
-        wordList={savedWords} onRemoveWord={removeWord} onClearAll={handleClearAllWords} />
-
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)}
         currentLevel={currentLevel} onLevelChange={handleLevelChange}
         activeScenario={activeScenario}
         onScenarioSelect={(scenario) => setPrefs((p) => ({ ...p, scenarioId: scenario.id }))}
         serverConfig={serverConfig} serverConfigError={serverConfigError}
+        currentModelId={modelId}
+        onModelChange={(nextModelId) => setPrefs((p) => ({ ...p, modelId: nextModelId }))}
         sendOnCtrlEnter={prefs.sendOnCtrlEnter}
         onToggleSendOnCtrlEnter={() => setPrefs((p) => ({ ...p, sendOnCtrlEnter: !p.sendOnCtrlEnter }))} />
     </div>

@@ -4,8 +4,8 @@ import { createMessageId } from '../lib/ids'
 import { streamAsk } from '../lib/api'
 import type { DifficultyLevel } from '../types'
 
-export function useAskAssistant(args: { currentLevel: DifficultyLevel }) {
-  const { currentLevel } = args
+export function useAskAssistant(args: { currentLevel: DifficultyLevel; modelId: string }) {
+  const { currentLevel, modelId } = args
   const [messages, setMessages] = useState<AskMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
@@ -24,7 +24,7 @@ export function useAskAssistant(args: { currentLevel: DifficultyLevel }) {
 
     try {
       await streamAsk(
-        { question: q, level: currentLevel, context },
+        { question: q, level: currentLevel, context, model: modelId || undefined },
         {
           onDelta: (delta) => {
             setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: m.content + delta } : m))
@@ -56,7 +56,7 @@ export function useAskAssistant(args: { currentLevel: DifficultyLevel }) {
       setIsLoading(false)
       abortRef.current = null
     }
-  }, [currentLevel, isLoading])
+  }, [currentLevel, isLoading, modelId])
 
   const stop = useCallback(() => {
     abortRef.current?.abort()

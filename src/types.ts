@@ -48,15 +48,6 @@ export interface AskMessage {
   isFallback?: boolean
 }
 
-export interface WordItem {
-  word: string;
-  phonetic: string;
-  translation: string;
-  exampleEn: string;
-  exampleZh: string;
-  addTime: number;
-}
-
 export type FillBlankFocus = 'mixed' | 'vocabulary' | 'grammar'
 
 export const FILL_BLANK_MIN_COUNT = 3
@@ -152,10 +143,9 @@ export type ProviderId = 'openai' | 'anthropic'
 /**
  * Browser-side, non-sensitive preferences persisted in `localStorage`.
  *
- * These values are owned by the browser UI itself: theme, selected level and
- * selected scenario. Server-owned runtime config such as provider/model/baseUrl
- * is fetched separately from `/api/server-config` and must never be merged into
- * this object, otherwise the settings flow becomes harder to reason about.
+ * These values are owned by the browser UI itself. Server-owned runtime config
+ * such as provider/baseUrl and the allowed model list is fetched separately;
+ * `modelId` only remembers the user's selection from that server-owned list.
  */
 export interface BrowserPrefs {
   /** CEFR-like level picked by the user; drives the system prompt. */
@@ -164,6 +154,8 @@ export interface BrowserPrefs {
   scenarioId: string
   /** UI theme preference. */
   theme: 'light' | 'dark'
+  /** Empty means use each task's server-configured default model. */
+  modelId: string
   /**
    * When true, the chat input only sends on Ctrl/Cmd+Enter; a bare Enter
    * inserts a newline. Helps users who keep sending half-finished messages.
@@ -174,10 +166,8 @@ export interface BrowserPrefs {
 /**
  * Storage key for `BrowserPrefs` in `window.localStorage`.
  *
- * Why not just `prefs`? An older, unrelated key named
- * `english_coach_wordbook` already lives in localStorage and we want to
- * make any future cleanup of legacy keys obvious. The `lingolevel_` prefix
- * also avoids collisions with other apps hosted on the same origin.
+ * The `lingolevel_` prefix avoids collisions with other apps hosted on the
+ * same origin.
  */
 export const BROWSER_PREFS_KEY = 'lingolevel_prefs'
 
@@ -185,5 +175,6 @@ export const DEFAULT_BROWSER_PREFS: Readonly<BrowserPrefs> = {
   level: 'junior',
   scenarioId: 'free_chat',
   theme: 'light',
+  modelId: '',
   sendOnCtrlEnter: false
 }

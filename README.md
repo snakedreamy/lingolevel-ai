@@ -1,12 +1,12 @@
 # lingolevel-ai
 
-An interactive AI English coach designed for Chinese learners with adaptive difficulty levels, real-time grammar correction, translation, voice-broadcast, and interactive vocabulary notebook.
+An interactive AI English coach designed for Chinese learners with adaptive difficulty levels, real-time grammar correction, translation, and voice-broadcast.
 
 ## Features
 
 - **Token-by-token streaming chat** — `/api/chat` and `/api/ask` reply as Server-Sent Events (`data: {"type":"delta","content":"..."}\n\n` … `{"type":"done"}`), so tokens render live in the UI instead of arriving as one blocking blob.
 - **Ask assistant** — click a word in an AI reply, select a sentence, or type a free-form question into the ask drawer (`src/components/AskAssistant.tsx`, driven by `src/hooks/useAskAssistant.ts`) to get a Chinese-language tutor answer covering spelling, IPA pronunciation, and an example sentence.
-- **AI fill-in-the-blank practice** — choose 3–20 cards, a learning level, and a vocabulary/grammar focus. `/api/fill-blank` generates bilingual cloze sentences, while the practice workspace provides hints, retries, pronunciation, word-book actions, sentence-pattern explanations, and a review summary. Recent sentences are kept locally and sent as an avoid-list so later sets are less repetitive.
+- **AI fill-in-the-blank practice** — choose 3–20 cards, a learning level, and a vocabulary/grammar focus. `/api/fill-blank` generates bilingual cloze sentences, while the practice workspace provides hints, retries, pronunciation, sentence-pattern explanations, and a review summary. Recent sentences are kept locally and sent as an avoid-list so later sets are less repetitive.
 - **Adaptive difficulty + scenarios** — junior / intermediate / senior levels with themed conversation scenarios.
 - **Real-time analysis** — `/api/analyze` returns translation, grammar corrections, a reply insight, keywords, and follow-up suggestions for each user/assistant turn.
 - **Voice broadcast, word book, and theme switching** — persisted as non-sensitive browser prefs under `lingolevel_prefs`.
@@ -42,6 +42,7 @@ Other useful runtime knobs in `.env.local`:
 - `REQUEST_TIMEOUT_MS` / `MAX_OUTPUT_TOKENS` — shared request timeout and output budget for every AI task
 - `MAX_CONTEXT_MESSAGES` — how many recent user/assistant turns are sent back to the model as memory
 - `FILL_BLANK_BATCH_SIZE` / `FILL_BLANK_ATTEMPTS` — fill-blank batching and structured-output validation attempts; these do not limit model capacity
+- `OPENAI_MODELS` / `ANTHROPIC_MODELS` — comma-separated server allowlist shown in the web model selector; chat and analyze defaults are always included
 
 The server prints its URL on startup (default `http://localhost:59100`).
 
@@ -49,7 +50,7 @@ The server prints its URL on startup (default `http://localhost:59100`).
 
 ## Configuring your Provider
 
-Set `PROVIDER` to one of `openai` (any OpenAI-compatible service) or `anthropic` in `.env.local`, then fill the matching section.
+Set `PROVIDER` to one of `openai` (any OpenAI-compatible service) or `anthropic` in `.env.local`, then fill the matching section. Add optional model IDs to the provider's `*_MODELS` comma-separated list to make them selectable in the web settings; the server rejects model IDs outside this list.
 
 > **API keys live only on the server.** They are never sent to or stored in the browser. The in-app Settings panel shows the active server-side provider/model/base URL from `/api/server-config`, but those connection values are controlled by `.env.local` and require a server restart to change. The browser only persists learning preferences such as level, scenario, and theme. `GET /api/server-config` is verified to not contain an `apiKey` field.
 
@@ -161,10 +162,10 @@ lingolevel-ai/
 │   └── middleware/             # apiLimiter (express-rate-limit)
 ├── src/                        # React + Vite frontend
 │   ├── App.tsx                 # app shell (header + chat + sidebar + ask drawer)
-│   ├── components/             # ChatWindow, AnalysisSidebar, SettingsModal, WordBook, AskAssistant, …
-│   ├── hooks/                  # useChatSession, useAskAssistant, useBrowserPrefs, useWordBook
+│   ├── components/             # ChatWindow, AnalysisSidebar, SettingsModal, AskAssistant, …
+│   ├── hooks/                  # useChatSession, useAskAssistant, useBrowserPrefs
 │   ├── data/                   # static level + scenario definitions
-│   ├── features/               # chat, analysis, settings, wordbook feature modules
+│   ├── features/               # chat, analysis and settings feature modules
 │   ├── types.ts                # frontend types incl. BrowserPrefs
 │   ├── index.css               # global styles
 │   └── main.tsx                # entry point

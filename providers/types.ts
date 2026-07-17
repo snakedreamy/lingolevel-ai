@@ -6,6 +6,8 @@ export interface ChatMessage {
 export interface ProviderChatInput {
   messages: ChatMessage[]
   systemInstruction: string
+  /** Server-validated model selected for this request. */
+  model?: string
   temperature?: number
   /** Maximum transport attempts; structured callers may own their own retry loop. */
   maxAttempts?: number
@@ -30,6 +32,8 @@ export interface ProviderAnalyzeInput {
   userMessage: string
   assistantMessage: string
   level: string
+  /** Server-validated model selected for this request. */
+  model?: string
   /** Optional scenario context injected into the analysis prompt (e.g. "Ordering Coffee at Starbucks"). */
   scenarioContext?: string
 }

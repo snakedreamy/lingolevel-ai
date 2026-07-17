@@ -20,8 +20,8 @@ function loadHistory(): string[] {
     : []
 }
 
-export function useFillBlankPractice(args: { level: DifficultyLevel; scenario: Scenario }) {
-  const { level, scenario } = args
+export function useFillBlankPractice(args: { level: DifficultyLevel; scenario: Scenario; modelId: string }) {
+  const { level, scenario, modelId } = args
   const [phase, setPhase] = useState<PracticePhase>('setup')
   const [count, setCountState] = useState(5)
   const [focus, setFocus] = useState<FillBlankFocus>('mixed')
@@ -59,6 +59,7 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; scenario: S
           description: scenario.description,
         },
         recentSentences: history,
+        model: modelId || undefined,
       }, controller.signal)
       if (result.cards.length !== count) throw new Error('CARD_COUNT_MISMATCH')
       const initialProgress = Object.fromEntries(result.cards.map((card) => [card.id, {
@@ -83,7 +84,7 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; scenario: S
     } finally {
       if (controllerRef.current === controller) controllerRef.current = null
     }
-  }, [count, focus, level, scenario])
+  }, [count, focus, level, modelId, scenario])
 
   const currentCard = cards[currentIndex] ?? null
   const currentProgress = currentCard ? progress[currentCard.id] : undefined
