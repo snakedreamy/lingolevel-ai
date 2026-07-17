@@ -389,7 +389,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     const abortController = abortWhenClientDisconnects(req, res)
 
     try {
-      const result = await collectProviderStream(provider, {
+      const result = await provider.chatStream({
         messages: [...history, { role: 'user', content: buildAskUserPrompt({ question: question.trim(), context: ctx }) }],
         model,
         systemInstruction: composeAskSystemPrompt(String(level ?? 'junior')),
@@ -398,13 +398,30 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
         scenarioId: null,
         signal: abortController.signal,
       })
-      if (abortController.signal.aborted) return
+      const stream = result.stream[Symbol.asyncIterator]()
+      const first = await stream.next()
+      if (abortController.signal.aborted) {
+        await stream.return?.()
+        return
+      }
       if (result.isFallback) {
+        await stream.return?.()
         writeSSE(res, { type: 'error', message: 'ASK_UPSTREAM_UNAVAILABLE' })
         logRequest({ endpoint: 'ask', provider: cfg.provider, model, status: 503, latencyMs: Date.now() - start, fallback: true })
         return
       }
-      writeSSE(res, { type: 'delta', content: result.content })
+      if (first.done) throw new Error('Ask stream returned empty content')
+      writeSSE(res, { type: 'delta', content: first.value.delta })
+      while (true) {
+        const next = await stream.next()
+        if (next.done) break
+        if (abortController.signal.aborted) {
+          await stream.return?.()
+          return
+        }
+        writeSSE(res, { type: 'delta', content: next.value.delta })
+      }
+      if (abortController.signal.aborted) return
       writeSSE(res, { type: 'done', isFallback: false })
       logRequest({ endpoint: 'ask', provider: cfg.provider, model, status: 200, latencyMs: Date.now() - start })
     } catch (error) {
