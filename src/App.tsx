@@ -1,12 +1,13 @@
 // src/App.tsx (merged: App + AppShell + AppHeader + MobileAnalysisDrawer)
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PropsWithChildren } from 'react'
-import { HelpCircle, Menu, MessageCircle, Moon, Settings, Sun, TextCursorInput, Volume2, X } from 'lucide-react'
+import { GraduationCap, HelpCircle, Menu, MessageCircle, Moon, Settings, Sun, TextCursorInput, Volume2, X } from 'lucide-react'
 import ChatWindow from './components/ChatWindow'
 import SettingsModal from './components/SettingsModal'
 import AnalysisSidebar from './components/AnalysisSidebar'
 import AskAssistant from './components/AskAssistant'
 import FillBlankPractice from './components/FillBlankPractice'
+import SystemLearning from './components/SystemLearning'
 import { LEVELS } from './data/levels'
 import { SCENARIOS } from './data/scenarios'
 import { useBrowserPrefs } from './hooks/useBrowserPrefs'
@@ -16,7 +17,7 @@ import { useSpeechPlayer } from './lib/speech'
 import type { SpeechPlayer } from './lib/speech'
 import type { AnalysisHistoryEntry, AskContext, BrowserPrefs, DifficultyLevel, Scenario, AnalysisResult } from './types'
 
-type Workspace = 'chat' | 'fill-blank'
+type Workspace = 'learning' | 'fill-blank' | 'chat'
 
 /** Keep inactive workspaces mounted so their in-memory session state survives tab switches. */
 function KeepMountedWorkspace({
@@ -167,14 +168,14 @@ export default function App() {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   const [isAskOpen, setIsAskOpen] = useState(false)
   const [askContext, setAskContext] = useState<AskContext | null>(null)
-  const [workspace, setWorkspace] = useState<Workspace>('chat')
+  const [workspace, setWorkspace] = useState<Workspace>('learning')
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const speech = useSpeechPlayer()
   const modelId = prefs.modelId
   const chat = useChatSession({
     currentLevel: prefs.level,
     activeScenario,
-    maxContextMessages: serverConfig?.maxContextMessages ?? 12,
+    maxContextMessages: serverConfig?.maxContextMessages,
     modelId,
   })
   const {
@@ -183,7 +184,11 @@ export default function App() {
     regeneratableAssistantId, regenerateLastReply, retrySelectedAnalysis,
     showPreviousAnalysis, showNextAnalysis, showLatestAnalysis,
   } = chat
-  const ask = useAskAssistant({ currentLevel: prefs.level, modelId })
+  const ask = useAskAssistant({
+    currentLevel: prefs.level,
+    modelId,
+    maxContextMessages: serverConfig?.maxContextMessages,
+  })
   const currentLevel = prefs.level
 
   useEffect(() => {
@@ -209,6 +214,11 @@ export default function App() {
   const handleSendMessage = (text: string) => { void sendMessage(text); setInputText('') }
   const openAskWithWord = (word: string) => { setAskContext({ word }); setIsAskOpen(true) }
   const openAskWithSentence = (sentence: string) => { setAskContext({ sentence }); setIsAskOpen(true) }
+  const openAskWithLesson = (context: AskContext, question: string) => {
+    setAskContext(context)
+    setIsAskOpen(true)
+    void ask.ask(question, context, { resetHistory: true })
+  }
   const handleSelectSuggestion = (text: string) => { setInputText(text); inputRef.current?.focus() }
   const handleResetChat = () => {
     if (window.confirm('确定要清空当前对话，重新开始吗？')) void resetConversation()
@@ -239,15 +249,23 @@ export default function App() {
 
       <main className="app-main flex-1 w-full max-w-[1550px] mx-auto px-2.5 sm:px-4 md:px-6 py-2.5 sm:py-4 flex flex-col min-h-0 overflow-hidden">
         <nav className="app-workspace-nav mb-2.5 flex shrink-0 items-center gap-5 border-b border-zinc-200 dark:border-zinc-800 sm:mb-3 sm:w-fit" aria-label="学习模式">
-          <button type="button" onClick={() => setWorkspace('chat')} aria-current={workspace === 'chat' ? 'page' : undefined}
-            className={`flex h-10 flex-1 items-center justify-center gap-2 border-b-2 px-1 text-xs font-bold transition sm:flex-none ${workspace === 'chat' ? 'border-indigo-600 text-zinc-950 dark:text-white' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
-            <MessageCircle className="h-4 w-4" /> 对话练习
+          <button type="button" title="学习并掌握新知识" aria-label="系统学习：学习并掌握新知识" onClick={() => { setShowMobileSidebar(false); setWorkspace('learning') }} aria-current={workspace === 'learning' ? 'page' : undefined}
+            className={`flex h-10 flex-1 items-center justify-center gap-2 border-b-2 px-1 text-xs font-bold transition sm:flex-none ${workspace === 'learning' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-300' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
+            <GraduationCap className="h-4 w-4" /> 系统学习
           </button>
-          <button type="button" onClick={() => { setShowMobileSidebar(false); setWorkspace('fill-blank') }} aria-current={workspace === 'fill-blank' ? 'page' : undefined}
+          <button type="button" title="自由生成与快速测试" aria-label="填词练习：自由生成与快速测试" onClick={() => { setShowMobileSidebar(false); setWorkspace('fill-blank') }} aria-current={workspace === 'fill-blank' ? 'page' : undefined}
             className={`flex h-10 flex-1 items-center justify-center gap-2 border-b-2 px-1 text-xs font-bold transition sm:flex-none ${workspace === 'fill-blank' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-300' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
             <TextCursorInput className="h-4 w-4" /> 填词练习
           </button>
+          <button type="button" title="自由表达与交流" aria-label="对话练习：自由表达与交流" onClick={() => setWorkspace('chat')} aria-current={workspace === 'chat' ? 'page' : undefined}
+            className={`flex h-10 flex-1 items-center justify-center gap-2 border-b-2 px-1 text-xs font-bold transition sm:flex-none ${workspace === 'chat' ? 'border-indigo-600 text-zinc-950 dark:text-white' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
+            <MessageCircle className="h-4 w-4" /> 对话练习
+          </button>
         </nav>
+
+        <KeepMountedWorkspace active={workspace === 'learning'} className="min-h-0 flex-1 overflow-hidden">
+          <SystemLearning speech={speech} modelId={modelId} onAskTutor={openAskWithLesson} />
+        </KeepMountedWorkspace>
 
         <KeepMountedWorkspace
           active={workspace === 'chat'}

@@ -14,14 +14,14 @@ function getStarterMessage(scenario: Scenario, diversitySeed: number): string {
   return scenario.starterMessages[index]
 }
 
-function trimChatContext(messages: Message[], max: number) {
-  return messages
+function trimChatContext(messages: Message[], max?: number) {
+  const context = messages
     .filter((m) => m.role === 'user' || m.role === 'assistant')
-    .slice(-max)
     .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+  return max === undefined ? context : context.slice(-max)
 }
 
-export function useChatSession(args: { currentLevel: DifficultyLevel; activeScenario: Scenario; maxContextMessages: number; modelId: string }) {
+export function useChatSession(args: { currentLevel: DifficultyLevel; activeScenario: Scenario; maxContextMessages?: number; modelId: string }) {
   const { currentLevel, activeScenario, maxContextMessages, modelId } = args
   const [messages, setMessages] = useState<Message[]>([])
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)

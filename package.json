@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server/index.ts",
+    "dev": "tsx watch server/index.ts",
     "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "start": "node dist/server.cjs",
+    "start": "NODE_ENV=production node dist/server.cjs",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },

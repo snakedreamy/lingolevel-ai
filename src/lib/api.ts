@@ -1,4 +1,5 @@
 import type { AnalysisResult, AskContext, DifficultyLevel, FillBlankCard, FillBlankFocus, ProviderId, Scenario } from "../types"
+import type { ApplyActivity, LearningActivity } from '../data/learningLessons'
 
 export interface ServerConfig {
   provider: ProviderId
@@ -123,11 +124,48 @@ export interface AskRequest {
   question: string
   level: DifficultyLevel
   context?: AskContext
+  history?: Array<{ role: 'user' | 'assistant'; content: string }>
   model?: string
 }
 
 export function streamAsk(body: AskRequest, handlers: SSEHandlers, signal?: AbortSignal) {
   return streamSSE('/api/ask', body, handlers, signal)
+}
+
+export async function generateLearningPractice(request: {
+  conceptId: string
+  recentPrompts: string[]
+  diversitySeed: number
+  model?: string
+}, signal?: AbortSignal): Promise<{ activities: LearningActivity[] }> {
+  const response = await fetch('/api/learning-practice', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request), signal,
+  })
+  if (!response.ok) throw new Error('LEARNING_PRACTICE_GENERATION_FAILED')
+  return (await response.json()) as { activities: LearningActivity[] }
+}
+
+export interface LearningEvaluationResult {
+  score: number
+  correct: boolean
+  feedback: string
+  correction: string
+  nextStep: string
+}
+
+export async function evaluateLearningAnswer(request: {
+  conceptId: string
+  activity: ApplyActivity
+  answer: string
+  model?: string
+}, signal?: AbortSignal): Promise<LearningEvaluationResult> {
+  const response = await fetch('/api/learning-evaluate', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request), signal,
+  })
+  if (!response.ok) throw new Error('LEARNING_EVALUATION_FAILED')
+  return (await response.json()) as LearningEvaluationResult
 }
 
 export interface GenerateFillBlankRequest {

@@ -36,6 +36,11 @@ export interface Message {
 export interface AskContext {
   word?: string
   sentence?: string
+  lessonId?: string
+  lessonTitle?: string
+  activityPrompt?: string
+  learnerAnswer?: string
+  feedback?: string
 }
 
 export interface AskMessage {

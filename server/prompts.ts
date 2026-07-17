@@ -107,9 +107,10 @@ export function composeScenarioInstruction(args: {
 
 const ASK_SYSTEM_PROMPT = `你是一位耐心的中英双语英语辅导老师，专门解答学习者在英语练习中产生的疑问。
 回答规则：
-- 用简体中文回答；所有出现的英语单词/句子都要给出：正确拼写、IPA 音标、1 个简短例句（含中文翻译）。
+- 用简体中文回答；英语示例给出中文翻译。只有问题涉及单词读音或发音时才提供 IPA，不要给每个英语句子堆叠音标。
 - 若问单词怎么拼/怎么用：先确认拼写，再给音标、词性、释义、常见搭配、例句。
 - 若问句子语法：用最简单方式拆解主谓宾结构、时态、为什么这么用、是否有更地道说法。
+- 若提供了系统课程上下文：优先依据固定的课程目标、规则和示例解释；把“课程明确内容”和“补充说明”区分开，不要编造课程规则。
 - 回答短、具体、可直接照着练，不要长篇理论铺垫。
 - 若学习者提问本身含英语错误，用括号温和指出并给正确写法。`
 
@@ -119,13 +120,33 @@ export function composeAskSystemPrompt(level: string): string {
 
 export function buildAskUserPrompt(args: {
   question: string
-  context?: { word?: string; sentence?: string }
+  context?: {
+    word?: string
+    sentence?: string
+    lesson?: {
+      title: string
+      objective: string
+      examples: unknown
+      explanation: unknown
+      rules: unknown
+      contrasts: unknown
+    }
+    activityPrompt?: string
+    learnerAnswer?: string
+    feedback?: string
+  }
 }): string {
   const { question, context } = args
-  const ctxLine = context?.word
+  const basicContext = context?.word
     ? `\n[疑问上下文] 学习者点选了单词 "${context.word}"，请围绕它展开。`
     : context?.sentence
       ? `\n[疑问上下文] 学习者选中了这句话："${context.sentence}"，请围绕它展开。`
       : ''
-  return `${ctxLine}\n学习者的提问：${question}`.trim()
+  const lessonContext = context?.lesson
+    ? `\n[固定课程上下文] ${JSON.stringify(context.lesson)}`
+    : ''
+  const activityContext = context?.activityPrompt
+    ? `\n[当前练习] ${context.activityPrompt}${context.learnerAnswer ? `\n[学习者答案] ${context.learnerAnswer}` : ''}${context.feedback ? `\n[已有反馈] ${context.feedback}` : ''}`
+    : ''
+  return `${basicContext}${lessonContext}${activityContext}\n学习者的提问：${question}`.trim()
 }

@@ -3,7 +3,6 @@ import dotenv from 'dotenv'
 import express from 'express'
 import helmet from 'helmet'
 import path from 'path'
-import { createServer as createViteServer } from 'vite'
 import { loadProviderFromEnv, loadServerConfigFromEnv } from '../providers'
 import { errorMessage } from '../providers/util'
 import { buildApiLimiter } from './middleware/apiLimiter'
@@ -38,9 +37,12 @@ async function createApp(): Promise<express.Express> {
   app.post('/api/analyze', apiLimiter)
   app.post('/api/ask', apiLimiter)
   app.post('/api/fill-blank', apiLimiter)
+  app.post('/api/learning-practice', apiLimiter)
+  app.post('/api/learning-evaluate', apiLimiter)
   app.use('/api', createApiRouter({ provider, cfg }))
 
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite')
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' })
     app.use(vite.middlewares)
     return app

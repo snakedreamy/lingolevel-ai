@@ -1,7 +1,7 @@
 // server/routes.ts
 import { Router } from 'express'
 import type { Request, Response } from 'express'
-import type { Provider } from '../providers'
+import type { Provider, ProviderChatInput } from '../providers'
 import type { ServerConfig } from '../providers'
 import { loadServerConfigFromEnv } from '../providers'
 import { errorMessage, extractJsonObject } from '../providers/util'
@@ -20,6 +20,15 @@ import {
 } from './fillBlank'
 import type { FillBlankFocus } from '../src/types'
 import { FILL_BLANK_MAX_COUNT, FILL_BLANK_MIN_COUNT } from '../src/types'
+import { LESSON_BY_ID } from '../src/data/learningLessons'
+import type { ApplyActivity } from '../src/data/learningLessons'
+import {
+  buildLearningEvaluationPrompts,
+  buildLearningPracticePrompts,
+  learningLessonForConcept,
+  normalizeLearningActivities,
+  normalizeLearningEvaluation,
+} from './learningPractice'
 
 function logRequest(args: {
   endpoint: string; provider: string; model: string; status: number
@@ -33,6 +42,13 @@ function logRequest(args: {
 function writeSSE(res: Response, payload: unknown): void {
   if (res.destroyed || res.writableEnded) return
   res.write(`data: ${JSON.stringify(payload)}\n\n`)
+}
+
+async function collectProviderStream(provider: Provider, input: ProviderChatInput): Promise<{ content: string; isFallback: boolean }> {
+  const result = await provider.chatStream(input)
+  let content = ''
+  for await (const { delta } of result.stream) content += delta
+  return { content, isFallback: result.isFallback }
 }
 
 function abortWhenClientDisconnects(req: Request, res: Response): AbortController {
@@ -245,6 +261,90 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     res.json({ cards, isFallback, fallbackCount })
   })
 
+  // POST /api/learning-practice — fresh, lesson-bounded mastery activities.
+  router.post('/learning-practice', async (req, res) => {
+    const start = Date.now()
+    const conceptId = typeof req.body?.conceptId === 'string' ? req.body.conceptId : ''
+    const lesson = learningLessonForConcept(conceptId)
+    if (!lesson) return res.status(400).json({ error: 'UNKNOWN_LEARNING_CONCEPT' })
+    const model = resolveRequestedModel(req.body?.model, cfg.chatModel, cfg.availableModels)
+    if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
+    const diversitySeed = resolveDiversitySeed(req.body?.diversitySeed)
+    const recentPrompts = Array.isArray(req.body?.recentPrompts)
+      ? req.body.recentPrompts.filter((item: unknown): item is string => typeof item === 'string').map((item: string) => item.slice(0, 600)).slice(-20)
+      : []
+    const prompts = buildLearningPracticePrompts({ lesson, diversitySeed, recentPrompts })
+    const abortController = abortWhenClientDisconnects(req, res)
+    try {
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        const output = await collectProviderStream(provider, {
+          messages: [{ role: 'user', content: prompts.userPrompt }],
+          model,
+          systemInstruction: prompts.systemInstruction,
+          temperature: 0.45,
+          maxAttempts: 1,
+          scenarioId: null,
+          signal: abortController.signal,
+        })
+        if (output.isFallback) break
+        try {
+          const activities = normalizeLearningActivities(JSON.parse(extractJsonObject(output.content)), { conceptId, diversitySeed, recentPrompts })
+          if (activities) {
+            logRequest({ endpoint: 'learning-practice', provider: cfg.provider, model, status: 200, latencyMs: Date.now() - start, retry: attempt - 1 })
+            return res.json({ activities })
+          }
+        } catch { /* retry malformed structured output */ }
+      }
+      logRequest({ endpoint: 'learning-practice', provider: cfg.provider, model, status: 503, latencyMs: Date.now() - start, retry: 1, fallback: true })
+      return res.status(503).json({ error: 'LEARNING_PRACTICE_GENERATION_FAILED' })
+    } catch (error) {
+      if (abortController.signal.aborted) return
+      logRequest({ endpoint: 'learning-practice', provider: cfg.provider, model, status: 500, latencyMs: Date.now() - start, errorMsg: errorMessage(error) })
+      return res.status(500).json({ error: 'LEARNING_PRACTICE_GENERATION_FAILED' })
+    }
+  })
+
+  // POST /api/learning-evaluate — AI assessment for open production only.
+  router.post('/learning-evaluate', async (req, res) => {
+    const start = Date.now()
+    const conceptId = typeof req.body?.conceptId === 'string' ? req.body.conceptId : ''
+    const lesson = learningLessonForConcept(conceptId)
+    if (!lesson) return res.status(400).json({ error: 'UNKNOWN_LEARNING_CONCEPT' })
+    const model = resolveRequestedModel(req.body?.model, cfg.analyzeModel, cfg.availableModels)
+    if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
+    const answer = typeof req.body?.answer === 'string' ? req.body.answer.trim().slice(0, 2000) : ''
+    const rawActivity = req.body?.activity
+    if (!answer || !rawActivity || rawActivity.type !== 'apply' || !Array.isArray(rawActivity.checklist)) {
+      return res.status(400).json({ error: 'INVALID_LEARNING_ANSWER' })
+    }
+    const activity: ApplyActivity = {
+      id: 'evaluation', type: 'apply', dimension: 'application',
+      prompt: String(rawActivity.prompt ?? '').slice(0, 600),
+      explanation: String(rawActivity.explanation ?? '').slice(0, 800),
+      checklist: rawActivity.checklist.filter((item: unknown): item is string => typeof item === 'string').map((item: string) => item.slice(0, 160)).slice(0, 4),
+      modelAnswer: String(rawActivity.modelAnswer ?? '').slice(0, 500),
+    }
+    if (!activity.prompt || activity.checklist.length < 2 || !activity.modelAnswer) return res.status(400).json({ error: 'INVALID_LEARNING_ACTIVITY' })
+    const prompts = buildLearningEvaluationPrompts({ lesson, activity, answer })
+    const abortController = abortWhenClientDisconnects(req, res)
+    try {
+      const output = await collectProviderStream(provider, {
+        messages: [{ role: 'user', content: prompts.userPrompt }], model,
+        systemInstruction: prompts.systemInstruction, temperature: 0.2, maxAttempts: 2,
+        scenarioId: null, signal: abortController.signal,
+      })
+      if (output.isFallback) throw new Error('provider fallback')
+      const evaluation = normalizeLearningEvaluation(JSON.parse(extractJsonObject(output.content)))
+      if (!evaluation) throw new Error('invalid evaluation output')
+      logRequest({ endpoint: 'learning-evaluate', provider: cfg.provider, model, status: 200, latencyMs: Date.now() - start })
+      return res.json(evaluation)
+    } catch (error) {
+      if (abortController.signal.aborted) return
+      logRequest({ endpoint: 'learning-evaluate', provider: cfg.provider, model, status: 503, latencyMs: Date.now() - start, fallback: true, errorMsg: errorMessage(error) })
+      return res.status(503).json({ error: 'LEARNING_EVALUATION_FAILED' })
+    }
+  })
+
   // POST /api/ask — SSE streaming tutor answers
   router.post('/ask', async (req, res) => {
     const start = Date.now()
@@ -254,13 +354,32 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     }
     const model = resolveRequestedModel(req.body?.model, cfg.chatModel, cfg.availableModels)
     if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
+    const requestedLessonId = typeof context?.lessonId === 'string' ? context.lessonId : undefined
+    const lesson = requestedLessonId ? LESSON_BY_ID.get(requestedLessonId) : undefined
+    if (requestedLessonId && !lesson) {
+      return res.status(400).json({ error: 'UNKNOWN_LEARNING_LESSON' })
+    }
     const ctx =
       typeof context === 'object' && context !== null
         ? {
             word: typeof (context as any).word === 'string' ? (context as any).word : undefined,
             sentence: typeof (context as any).sentence === 'string' ? (context as any).sentence : undefined,
+            lesson: lesson ? {
+              title: lesson.title, objective: lesson.objective, examples: lesson.examples,
+              explanation: lesson.explanation, rules: lesson.rules, contrasts: lesson.contrasts,
+            } : undefined,
+            activityPrompt: typeof (context as any).activityPrompt === 'string' ? (context as any).activityPrompt.slice(0, 600) : undefined,
+            learnerAnswer: typeof (context as any).learnerAnswer === 'string' ? (context as any).learnerAnswer.slice(0, 2000) : undefined,
+            feedback: typeof (context as any).feedback === 'string' ? (context as any).feedback.slice(0, 1200) : undefined,
           }
         : undefined
+    const history = Array.isArray(req.body?.history)
+      ? req.body.history
+        .filter((item: unknown): item is { role: string; content: unknown } => typeof item === 'object' && item !== null && 'role' in item)
+        .filter((item: { role: string }) => item.role === 'user' || item.role === 'assistant')
+        .map((item: { role: string; content: unknown }) => ({ role: item.role as 'user' | 'assistant', content: String(item.content ?? '').slice(0, 4000) }))
+        .slice(-cfg.maxContextMessages)
+      : []
 
     res.setHeader('Content-Type', 'text/event-stream')
     res.setHeader('Cache-Control', 'no-cache')
@@ -270,21 +389,24 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     const abortController = abortWhenClientDisconnects(req, res)
 
     try {
-      const result = await provider.chatStream({
-        messages: [{ role: 'user', content: buildAskUserPrompt({ question: question.trim(), context: ctx }) }],
+      const result = await collectProviderStream(provider, {
+        messages: [...history, { role: 'user', content: buildAskUserPrompt({ question: question.trim(), context: ctx }) }],
         model,
         systemInstruction: composeAskSystemPrompt(String(level ?? 'junior')),
         temperature: 0.4,
+        maxAttempts: 2,
         scenarioId: null,
         signal: abortController.signal,
       })
-      for await (const { delta } of result.stream) {
-        if (abortController.signal.aborted) break
-        writeSSE(res, { type: 'delta', content: delta })
-      }
       if (abortController.signal.aborted) return
-      writeSSE(res, { type: 'done', isFallback: result.isFallback })
-      logRequest({ endpoint: 'ask', provider: cfg.provider, model, status: 200, latencyMs: Date.now() - start, fallback: result.isFallback })
+      if (result.isFallback) {
+        writeSSE(res, { type: 'error', message: 'ASK_UPSTREAM_UNAVAILABLE' })
+        logRequest({ endpoint: 'ask', provider: cfg.provider, model, status: 503, latencyMs: Date.now() - start, fallback: true })
+        return
+      }
+      writeSSE(res, { type: 'delta', content: result.content })
+      writeSSE(res, { type: 'done', isFallback: false })
+      logRequest({ endpoint: 'ask', provider: cfg.provider, model, status: 200, latencyMs: Date.now() - start })
     } catch (error) {
       if (!abortController.signal.aborted) writeSSE(res, { type: 'error', message: 'ASK_FAILED' })
       logRequest({ endpoint: 'ask', provider: cfg.provider, model, status: 500, latencyMs: Date.now() - start, fallback: true, errorMsg: errorMessage(error) })

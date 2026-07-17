@@ -31,10 +31,9 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
     if (!question.trim() || isLoading) return
     onAsk(question, ctx ?? undefined)
     setQuestion('')
-    setCtx(null)
   }
 
-  const ctxLabel = ctx?.word ? `单词：${ctx.word}` : ctx?.sentence ? `句子：${ctx.sentence}` : null
+  const ctxLabel = ctx?.word ? `单词：${ctx.word}` : ctx?.sentence ? `句子：${ctx.sentence}` : ctx?.lessonTitle ? `课程：${ctx.lessonTitle}` : null
 
   return (
     // 非模态：抽屉悬浮在右侧，不遮罩/模糊主聊天区，点击外部不关闭，
@@ -60,14 +59,14 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center text-zinc-400">
               <HelpCircle className="h-10 w-10 mb-3" />
-              <p className="max-w-xs text-xs leading-5">直接提问，或从对话中的单词、句子发起答疑。</p>
+              <p className="max-w-xs text-xs leading-5">直接提问，也可以带着当前课程、练习答案或对话句子继续追问。</p>
             </div>
           ) : messages.map((m) => (
             <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[12px] leading-relaxed ${m.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-tl-none'}`}>
-                {m.context && (m.context.word || m.context.sentence) && (
+                {m.context && (m.context.word || m.context.sentence || m.context.lessonTitle) && (
                   <div className={`mb-1.5 text-[10px] px-1.5 py-0.5 rounded ${m.role === 'user' ? 'bg-indigo-500/40' : 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'}`}>
-                    {m.context.word ? `单词：${m.context.word}` : `句子：${m.context.sentence}`}
+                    {m.context.word ? `单词：${m.context.word}` : m.context.sentence ? `句子：${m.context.sentence}` : `课程：${m.context.lessonTitle}`}
                   </div>
                 )}
                 <div className="break-words">
@@ -102,7 +101,7 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
                 const isSendCombo = sendOnCtrlEnter ? (e.ctrlKey || e.metaKey) : !e.shiftKey
                 if (e.key === 'Enter' && isSendCombo) { e.preventDefault(); submit() }
               }}
-              placeholder={"问：单词怎么拼？这句话什么语法？" + (sendOnCtrlEnter ? ' (Ctrl+Enter 发送)' : '')}
+              placeholder={"问：为什么这样用？能再举一个例子吗？" + (sendOnCtrlEnter ? ' (Ctrl+Enter 发送)' : '')}
               className="flex-1 resize-none bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-[13px] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
             <button onClick={submit} disabled={!question.trim() || isLoading}
               className={`px-3 rounded-xl flex items-center justify-center ${!question.trim() || isLoading ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
