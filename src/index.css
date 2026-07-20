@@ -35,7 +35,7 @@
 /* ── Design tokens ────────────────────────────────────────────────────── */
 
 :root {
-  color-scheme: light;
+  color-scheme: only light;
   --line: color-mix(in srgb, var(--color-ink) 13%, transparent);
   --line-strong: color-mix(in srgb, var(--color-ink) 30%, transparent);
   --ink-muted: color-mix(in srgb, var(--color-ink) 62%, transparent);
