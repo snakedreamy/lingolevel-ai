@@ -35,6 +35,7 @@
 /* ── Design tokens ────────────────────────────────────────────────────── */
 
 :root {
+  color-scheme: light;
   --line: color-mix(in srgb, var(--color-ink) 13%, transparent);
   --line-strong: color-mix(in srgb, var(--color-ink) 30%, transparent);
   --ink-muted: color-mix(in srgb, var(--color-ink) 62%, transparent);
@@ -44,7 +45,8 @@
   --gilt-tint: color-mix(in srgb, var(--color-gilt) 11%, transparent);
   --paper-alpha: color-mix(in srgb, var(--color-paper) 94%, transparent);
 }
-.dark {
+:root.dark {
+  color-scheme: dark;
   /* 深色底上半透明浅色线比日间更容易“化开”，透明度各提一档保住边缘。
      默认边线混入少许蓝（对应色板 #273748），避免发灰。 */
   --line: color-mix(in srgb, var(--color-ink-dark) 15%, #273748 50%);
