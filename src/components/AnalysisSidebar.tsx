@@ -275,9 +275,10 @@ export default function AnalysisSidebar({
   const currentRound = hasHistory ? selectedAnalysisIndex + 1 : 0
   const speechScope = `analysis:${analysisHistory[selectedAnalysisIndex]?.id ?? selectedAnalysisIndex}`
 
+  // 外层统一用 ui-surface（主面板），内层滚动区叠 ui-well 形成“纸面 → 纸槽”的层级
   const shellClass = embedded
-    ? 'flex min-h-0 flex-1 flex-col overflow-hidden ui-well'
-    : 'ui-surface flex h-full min-h-0 flex-col overflow-hidden ui-well'
+    ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+    : 'ui-surface flex h-full min-h-0 flex-col overflow-hidden'
 
   return (
     <div className={shellClass}>
@@ -325,7 +326,7 @@ export default function AnalysisSidebar({
         </div>
       )}
 
-      <div className="ui-scroll min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 sm:space-y-5 sm:p-4">
+      <div className="ui-scroll ui-well min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 sm:space-y-5 sm:p-4">
         {isLoading ? (
           <div className="space-y-4">
             <div className="rounded-md border border-forest/30 bg-forest/5 px-3 py-2.5 text-[11px] leading-relaxed text-forest dark:border-forest-dark/40 dark:bg-forest-dark/10 dark:text-forest-dark">

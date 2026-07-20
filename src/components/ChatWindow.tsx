@@ -193,7 +193,7 @@ function ChatInputBar({
 
         <button type="submit" disabled={!inputText.trim() || isLoading} aria-label="发送消息"
           className={`flex h-[52px] flex-shrink-0 cursor-pointer items-center justify-center rounded-md px-4 transition-all ${!inputText.trim() || isLoading ? 'cursor-not-allowed bg-ink/10 text-ink/35 dark:bg-ink-dark/15 dark:text-ink-dark/35' : 'bg-forest text-paper hover:bg-forest/90 dark:bg-forest-dark dark:text-paper-dark dark:hover:bg-forest-dark/90'}`}>
-          <Send className="h-4.5 w-4.5" />
+          <Send className="h-4 w-4" />
         </button>
       </form>
     </div>

@@ -7,11 +7,42 @@
     <title>LingoLevel AI</title>  <!-- 标题默认英文 -->
     <!-- 字体已自托管（@fontsource-variable/newsreader，见 src/main.tsx），无外部资源依赖 -->
     <script>
-      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
+      // 主题的唯一真源：读写 `lingolevel_theme`，兼容旧版 `lingolevel_prefs`。
+      // 显式选择优先；从未选择过则跟随系统，并监听系统变化。
+      (function () {
+        var KEY = 'lingolevel_theme';
+        var media = window.matchMedia('(prefers-color-scheme: dark)');
+        var stored = null;
+        try {
+          stored = window.localStorage.getItem(KEY);
+          if (stored !== 'light' && stored !== 'dark') {
+            var legacy = JSON.parse(window.localStorage.getItem('lingolevel_prefs') || 'null');
+            stored = legacy && (legacy.theme === 'light' || legacy.theme === 'dark') ? legacy.theme : null;
+          }
+        } catch (e) { stored = null; }
+        var explicit = stored === 'light' || stored === 'dark' ? stored : null;
+        function apply(theme) {
+          document.documentElement.classList.toggle('dark', theme === 'dark');
+        }
+        apply(explicit || (media.matches ? 'dark' : 'light'));
+        window.__theme = {
+          get: function () { return explicit || (media.matches ? 'dark' : 'light'); },
+          set: function (theme) {
+            explicit = theme;
+            try { window.localStorage.setItem(KEY, theme); } catch (e) {}
+            apply(theme);
+          },
+          subscribe: function (listener) {
+            function handler(e) { if (!explicit) listener(e.matches ? 'dark' : 'light'); }
+            if (media.addEventListener) media.addEventListener('change', handler);
+            else media.addListener(handler);
+            return function () {
+              if (media.removeEventListener) media.removeEventListener('change', handler);
+              else media.removeListener(handler);
+            };
+          },
+        };
+      })();
     </script>
   </head>
   <body>

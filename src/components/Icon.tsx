@@ -65,8 +65,9 @@ export const RotateCcw: Icon = (p) => <Glyph {...p}><path d="M3 12a9 9 0 1 0 2.6
 export const Route: Icon = (p) => <Glyph {...p}><circle cx="6" cy="19" r="2.5" /><circle cx="18" cy="5" r="2.5" /><path d="M8.5 19h6a3.5 3.5 0 0 0 0-7h-5a3.5 3.5 0 0 1 0-7h6" /></Glyph>
 export const Send: Icon = (p) => <Glyph {...p}><path d="M21 3L10 14" /><path d="M21 3l-7 19-4-8-8-4z" /></Glyph>
 export const Server: Icon = (p) => <Glyph {...p}><rect x="2" y="3" width="20" height="7" rx="1" /><rect x="2" y="14" width="20" height="7" rx="1" /><path d="M6 6.5h.01M6 17.5h.01" /></Glyph>
-export const Settings: Icon = (p) => <Glyph {...p}><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" /></Glyph>
-export const Settings2: Icon = (p) => <Glyph {...p}><path d="M4 7h9M17 7h3" /><circle cx="15" cy="7" r="2" /><path d="M4 17h3M11 17h9" /><circle cx="9" cy="17" r="2" /></Glyph>
+// 偏好设置用滑杆图标：与主题切换的太阳/月亮彻底区分，避免“日轮”误读
+export const Settings: Icon = (p) => <Glyph {...p}><path d="M4 7h8" /><circle cx="15" cy="7" r="2" /><path d="M17 7h3" /><path d="M4 17h5" /><circle cx="12" cy="17" r="2" /><path d="M14 17h6" /></Glyph>
+export const Settings2: Icon = Settings
 export const ShieldCheck: Icon = (p) => <Glyph {...p}><path d="M12 3l8 3v6c0 4.5-3.2 7.6-8 9-4.8-1.4-8-4.5-8-9V6z" /><path d="M8.5 12l2.5 2.5 5-5.5" /></Glyph>
 export const Sparkles: Icon = (p) => <Glyph {...p}><path d="M12 4l1.8 4.7L18.5 10l-4.7 1.8L12 16.5l-1.8-4.7L5.5 10l4.7-1.3z" /><path d="M19 15l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" /></Glyph>
 export const Square: Icon = (p) => <Glyph {...p}><rect x="5" y="5" width="14" height="14" rx="1" /></Glyph>

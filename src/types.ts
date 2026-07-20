@@ -179,10 +179,28 @@ export interface BrowserPrefs {
  */
 export const BROWSER_PREFS_KEY = 'lingolevel_prefs'
 
-export const DEFAULT_BROWSER_PREFS: Readonly<BrowserPrefs> = {
+/**
+ * Theme is owned by the tiny bootstrap in `index.html` (so it can run before
+ * first paint) and mirrored here through `window.__theme`. Stored in its own
+ * `localStorage` key so an explicit choice survives independently of the
+ * larger prefs blob.
+ */
+export const THEME_STORAGE_KEY = 'lingolevel_theme'
+
+export interface ThemeController {
+  get(): 'light' | 'dark'
+  set(theme: 'light' | 'dark'): void
+  /** Fires on system dark-mode changes while no explicit choice is stored. */
+  subscribe(listener: (theme: 'light' | 'dark') => void): () => void
+}
+
+declare global {
+  interface Window { __theme?: ThemeController }
+}
+
+export const DEFAULT_BROWSER_PREFS: Readonly<Omit<BrowserPrefs, 'theme'>> = {
   level: 'junior',
   scenarioId: 'free_chat',
-  theme: 'light',
   modelId: '',
   sendOnCtrlEnter: false
 }

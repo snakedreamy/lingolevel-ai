@@ -23,7 +23,7 @@ export function AppHeader({
 }) {
   const speech = useSpeech()
   return (
-    <header className="app-header relative z-30 flex w-full flex-shrink-0 items-center justify-between gap-2 border-b-2 border-ink bg-paper px-3 py-2.5 dark:border-ink-dark dark:bg-paper-dark sm:px-6 sm:py-3">
+    <header className="app-header relative z-30 flex w-full flex-shrink-0 items-center justify-between gap-2 border-b-2 border-ink bg-paper px-3 py-2.5 dark:border-transparent dark:bg-paper-dark sm:px-6 sm:py-3">
       <div className="flex min-w-0 items-baseline gap-2.5">
         <h1 className="truncate font-display text-lg font-semibold leading-none tracking-tight sm:text-xl">
           LingoLevel&nbsp;AI

@@ -17,15 +17,19 @@
   --color-scarlet: #B23A2E;
   --color-gilt: #8A6D3B;
 
-  /* 夜间：近中性墨纸（极轻微暖调），不再掺绿——掺绿的深底与暖白文字
-     叠加后对比发闷，是“糊”感的来源；面板与底纸拉开明度差建立层次，
-     墨色保持暖纸白，彩色提亮到在深色底上依然清晰的明度。 */
-  --color-paper-dark: #161412;
-  --color-leaf-dark: #211E1A;
-  --color-ink-dark: #EDE7D9;
-  --color-forest-dark: #7EBB9B;
-  --color-scarlet-dark: #E08D7A;
-  --color-gilt-dark: #CDA666;
+  /* 夜间：午夜蓝。蓝黑底纸 + 蓝绿主色（与日间的松绿同族，明暗互换），
+     朱红与泥金沿用日间色相、只提亮到深底上清晰的明度。 */
+  --color-paper-dark: #070C12;
+  --color-leaf-dark: #0A1018;
+  --color-ink-dark: #EEF4F6;
+  --color-forest-dark: #6FA8BF;
+  --color-scarlet-dark: #D97777;
+  --color-gilt-dark: #C8AA6A;
+
+  /* 夜间层级：页头与底纸同色（app-header 类在 JS 媒体查询下隐藏），浮层抬高一档 */
+  --color-sheet-dark: #182433;
+  --color-well-dark: #0D151F;
+  --color-selected-dark: #172A36;
 }
 
 /* ── Design tokens ────────────────────────────────────────────────────── */
@@ -41,12 +45,13 @@
   --paper-alpha: color-mix(in srgb, var(--color-paper) 94%, transparent);
 }
 .dark {
-  /* 深色底上半透明浅色线比日间更容易“化开”，透明度各提一档保住边缘 */
-  --line: color-mix(in srgb, var(--color-ink-dark) 20%, transparent);
-  --line-strong: color-mix(in srgb, var(--color-ink-dark) 42%, transparent);
-  --ink-muted: color-mix(in srgb, var(--color-ink-dark) 62%, transparent);
-  --ink-faint: color-mix(in srgb, var(--color-ink-dark) 38%, transparent);
-  --accent-tint: color-mix(in srgb, var(--color-forest-dark) 11%, transparent);
+  /* 深色底上半透明浅色线比日间更容易“化开”，透明度各提一档保住边缘。
+     默认边线混入少许蓝（对应色板 #273748），避免发灰。 */
+  --line: color-mix(in srgb, var(--color-ink-dark) 15%, #273748 50%);
+  --line-strong: color-mix(in srgb, var(--color-ink-dark) 30%, #273748 70%);
+  --ink-muted: color-mix(in srgb, var(--color-ink-dark) 78%, transparent);
+  --ink-faint: color-mix(in srgb, var(--color-ink-dark) 54%, transparent);
+  --accent-tint: color-mix(in srgb, var(--color-forest-dark) 12%, transparent);
   --scarlet-tint: color-mix(in srgb, var(--color-scarlet-dark) 13%, transparent);
   --gilt-tint: color-mix(in srgb, var(--color-gilt-dark) 13%, transparent);
   --paper-alpha: color-mix(in srgb, var(--color-paper-dark) 94%, transparent);
@@ -106,12 +111,16 @@
     background-color: var(--color-leaf-dark);
   }
 
-  /* 次级底纸（答题栏、输入区贴底） */
+  /* 次级底纸（答题栏、输入区贴底）；夜间用更深一档的输入槽底色 */
   .ui-well {
     background-color: var(--color-paper);
   }
   .dark .ui-well {
-    background-color: var(--color-paper-dark);
+    background-color: var(--color-well-dark);
+  }
+  /* 选中/激活底色（侧栏当前项、进度当前步） */
+  .dark .ui-active-bg {
+    background-color: var(--color-selected-dark);
   }
 
   .ui-rule {
@@ -181,7 +190,7 @@
     padding-inline: 0;
   }
 
-  /* 主按钮：墨绿实底 */
+  /* 主按钮：日间墨绿实底；夜间蓝绿实底（与日间的松绿同族） */
   .ui-btn-primary {
     background-color: var(--color-forest);
     border-color: transparent;
@@ -246,7 +255,7 @@
     border-color: var(--line-strong);
   }
   .dark .ui-sheet {
-    background-color: var(--color-paper-dark);
+    background-color: var(--color-sheet-dark);
   }
 
   /* 文本链接（forest + 泥金下划线） */
