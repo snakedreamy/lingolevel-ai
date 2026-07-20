@@ -30,6 +30,35 @@ import {
   normalizeLearningEvaluation,
 } from './learningPractice'
 
+const LEVEL_IDS = new Set(['kindergarten', 'primary_low', 'primary_high', 'junior', 'senior', 'college', 'ielts'])
+
+// Only validate shape here. Overall input capacity is governed by Express's
+// 1 MB body limit, while conversational history count uses MAX_CONTEXT_MESSAGES.
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function requiredText(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function optionalText(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined
+}
+
+function resolveLevel(value: unknown): string | null {
+  return typeof value === 'string' && LEVEL_IDS.has(value) ? value : null
+}
+
+function resolveScenario(value: unknown): { id: string; name: string; englishName: string; description: string } | null {
+  if (!isRecord(value)) return null
+  const id = requiredText(value.id)
+  const name = requiredText(value.name)
+  const englishName = requiredText(value.englishName)
+  const description = requiredText(value.description)
+  return id && name && englishName && description ? { id, name, englishName, description } : null
+}
+
 function logRequest(args: {
   endpoint: string; provider: string; model: string; status: number
   latencyMs: number; retry?: number; fallback?: boolean; errorMsg?: string
@@ -97,18 +126,26 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     }
     const model = resolveRequestedModel(req.body?.model, cfg.chatModel, cfg.availableModels)
     if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
+    const normalizedLevel = resolveLevel(level)
+    if (!normalizedLevel) return res.status(400).json({ error: 'INVALID_LEVEL' })
+    const normalizedScenario = scenarioInfo == null ? null : resolveScenario(scenarioInfo)
+    if (scenarioInfo != null && !normalizedScenario) return res.status(400).json({ error: 'INVALID_SCENARIO' })
 
     const chatMessages = (messages as unknown[])
       .filter((m): m is { role: string; content: unknown } =>
         typeof m === 'object' && m !== null && 'role' in m)
       .filter((m) => m.role === 'user' || m.role === 'assistant')
-      .map((m) => ({ role: m.role as 'user' | 'assistant', content: String(m.content ?? '') }))
+      .filter((m): m is { role: 'user' | 'assistant'; content: string } => typeof m.content === 'string' && m.content.trim().length > 0)
+      .map((m) => ({ role: m.role, content: m.content }))
       .slice(-cfg.maxContextMessages)
 
+    if (messages.length > 0 && chatMessages.length === 0) {
+      return res.status(400).json({ error: 'INVALID_MESSAGES' })
+    }
     if (chatMessages.length === 0) {
       chatMessages.push({
         role: 'user',
-        content: `Say hello and welcome me to practice English. Context: ${scenarioInfo?.name ?? 'General practice'}.`,
+        content: `Say hello and welcome me to practice English. Context: ${normalizedScenario?.name ?? 'General practice'}.`,
       })
     }
 
@@ -125,12 +162,12 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
         messages: chatMessages,
         model,
         systemInstruction: composeScenarioInstruction({
-          levelPrompt: getLevelSystemPrompt(String(level ?? 'junior')),
-          scenarioInfo,
+          levelPrompt: getLevelSystemPrompt(normalizedLevel),
+          scenarioInfo: normalizedScenario,
           diversitySeed,
         }),
         temperature: 0.7,
-        scenarioId: typeof scenarioInfo?.id === 'string' ? scenarioInfo.id : 'free_chat',
+        scenarioId: normalizedScenario?.id ?? 'free_chat',
         diversitySeed,
         signal: abortController.signal,
       })
@@ -154,18 +191,21 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
   router.post('/analyze', async (req, res) => {
     const start = Date.now()
     const { userMessage, assistantMessage, level, scenarioContext } = req.body ?? {}
-    if (!userMessage && !assistantMessage) {
+    const normalizedUserMessage = optionalText(userMessage)
+    const normalizedAssistantMessage = optionalText(assistantMessage)
+    if (!normalizedUserMessage && !normalizedAssistantMessage) {
       return res.status(400).json({ error: 'userMessage or assistantMessage is required' })
     }
+    const normalizedLevel = resolveLevel(level)
+    if (!normalizedLevel) return res.status(400).json({ error: 'INVALID_LEVEL' })
     const model = resolveRequestedModel(req.body?.model, cfg.analyzeModel, cfg.availableModels)
     if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
-    const normalizedScenarioContext =
-      typeof scenarioContext === 'string' && scenarioContext.trim() ? scenarioContext.trim() : undefined
+    const normalizedScenarioContext = optionalText(scenarioContext)
     try {
       const { data, isFallback } = await provider.analyzeJSON({
-        userMessage: String(userMessage ?? ''),
-        assistantMessage: String(assistantMessage ?? ''),
-        level: String(level ?? 'junior'),
+        userMessage: normalizedUserMessage ?? '',
+        assistantMessage: normalizedAssistantMessage ?? '',
+        level: normalizedLevel,
         model,
         scenarioContext: normalizedScenarioContext,
       })
@@ -186,7 +226,8 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     }
     const model = resolveRequestedModel(req.body?.model, cfg.chatModel, cfg.availableModels)
     if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
-    const level = typeof req.body?.level === 'string' ? req.body.level : 'junior'
+    const level = resolveLevel(req.body?.level)
+    if (!level) return res.status(400).json({ error: 'INVALID_LEVEL' })
     const focus: FillBlankFocus = ['mixed', 'vocabulary', 'grammar'].includes(req.body?.focus)
       ? req.body.focus
       : 'mixed'
@@ -349,37 +390,41 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
   router.post('/ask', async (req, res) => {
     const start = Date.now()
     const { question, level, context } = req.body ?? {}
-    if (typeof question !== 'string' || !question.trim()) {
+    const normalizedQuestion = requiredText(question)
+    if (!normalizedQuestion) {
       return res.status(400).json({ error: 'question is required' })
     }
+    const normalizedLevel = resolveLevel(level)
+    if (!normalizedLevel) return res.status(400).json({ error: 'INVALID_LEVEL' })
     const model = resolveRequestedModel(req.body?.model, cfg.chatModel, cfg.availableModels)
     if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
-    const requestedLessonId = typeof context?.lessonId === 'string' ? context.lessonId : undefined
+    const contextRecord = isRecord(context) ? context : undefined
+    const requestedLessonId = optionalText(contextRecord?.lessonId)
     const lesson = requestedLessonId ? LESSON_BY_ID.get(requestedLessonId) : undefined
     if (requestedLessonId && !lesson) {
       return res.status(400).json({ error: 'UNKNOWN_LEARNING_LESSON' })
     }
     const ctx =
-      typeof context === 'object' && context !== null
+      contextRecord
         ? {
-            word: typeof (context as any).word === 'string' ? (context as any).word : undefined,
-            sentence: typeof (context as any).sentence === 'string' ? (context as any).sentence : undefined,
+            word: optionalText(contextRecord.word),
+            sentence: optionalText(contextRecord.sentence),
             lesson: lesson ? {
               title: lesson.title, objective: lesson.objective, examples: lesson.examples,
               explanation: lesson.explanation, rules: lesson.rules, contrasts: lesson.contrasts,
             } : undefined,
-            activityPrompt: typeof (context as any).activityPrompt === 'string' ? (context as any).activityPrompt.slice(0, 600) : undefined,
-            learnerAnswer: typeof (context as any).learnerAnswer === 'string' ? (context as any).learnerAnswer.slice(0, 2000) : undefined,
-            feedback: typeof (context as any).feedback === 'string' ? (context as any).feedback.slice(0, 1200) : undefined,
+            activityPrompt: optionalText(contextRecord.activityPrompt),
+            learnerAnswer: optionalText(contextRecord.learnerAnswer),
+            feedback: optionalText(contextRecord.feedback),
           }
         : undefined
-    const history = Array.isArray(req.body?.history)
-      ? req.body.history
-        .filter((item: unknown): item is { role: string; content: unknown } => typeof item === 'object' && item !== null && 'role' in item)
-        .filter((item: { role: string }) => item.role === 'user' || item.role === 'assistant')
-        .map((item: { role: string; content: unknown }) => ({ role: item.role as 'user' | 'assistant', content: String(item.content ?? '').slice(0, 4000) }))
-        .slice(-cfg.maxContextMessages)
-      : []
+    const rawHistory: unknown[] = Array.isArray(req.body?.history) ? req.body.history : []
+    const history = rawHistory
+      .filter((item): item is { role: string; content: unknown } => typeof item === 'object' && item !== null && 'role' in item)
+      .filter((item): item is { role: 'user' | 'assistant'; content: unknown } => item.role === 'user' || item.role === 'assistant')
+      .filter((item): item is { role: 'user' | 'assistant'; content: string } => typeof item.content === 'string' && item.content.trim().length > 0)
+      .map((item) => ({ role: item.role, content: item.content }))
+      .slice(-cfg.maxContextMessages)
 
     res.setHeader('Content-Type', 'text/event-stream')
     res.setHeader('Cache-Control', 'no-cache')
@@ -390,9 +435,9 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
 
     try {
       const result = await provider.chatStream({
-        messages: [...history, { role: 'user', content: buildAskUserPrompt({ question: question.trim(), context: ctx }) }],
+        messages: [...history, { role: 'user', content: buildAskUserPrompt({ question: normalizedQuestion, context: ctx }) }],
         model,
-        systemInstruction: composeAskSystemPrompt(String(level ?? 'junior')),
+        systemInstruction: composeAskSystemPrompt(normalizedLevel),
         temperature: 0.4,
         maxAttempts: 2,
         scenarioId: null,

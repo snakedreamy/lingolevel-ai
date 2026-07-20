@@ -5,11 +5,12 @@ An interactive AI English coach designed for Chinese learners with adaptive diff
 ## Features
 
 - **Token-by-token streaming chat** — `/api/chat` and `/api/ask` reply as Server-Sent Events (`data: {"type":"delta","content":"..."}\n\n` … `{"type":"done"}`), so tokens render live in the UI instead of arriving as one blocking blob.
-- **Ask assistant** — click a word in an AI reply, select a sentence, or type a free-form question into the ask drawer (`src/components/AskAssistant.tsx`, driven by `src/hooks/useAskAssistant.ts`) to get a Chinese-language tutor answer covering spelling, IPA pronunciation, and an example sentence.
+- **Systematic learning** — an independent curriculum workspace with routes, fixed lessons, course-bounded AI practice, evaluation, review scheduling, and browser-local progress.
+- **Ask assistant** — click a word in an AI reply, select a sentence, ask about a course activity, or type a free-form question into the ask drawer to get a context-aware Chinese explanation.
 - **AI fill-in-the-blank practice** — choose 3–20 cards, a learning level, and a vocabulary/grammar focus. `/api/fill-blank` generates bilingual cloze sentences, while the practice workspace provides hints, retries, pronunciation, sentence-pattern explanations, and a review summary. Recent sentences are kept locally and sent as an avoid-list so later sets are less repetitive.
-- **Adaptive difficulty + scenarios** — junior / intermediate / senior levels with themed conversation scenarios.
+- **Adaptive difficulty + scenarios** — seven learner levels from kindergarten to IELTS, with free discussion and themed conversation scenarios.
 - **Real-time analysis** — `/api/analyze` returns translation, grammar corrections, a reply insight, keywords, and follow-up suggestions for each user/assistant turn.
-- **Voice broadcast, word book, and theme switching** — persisted as non-sensitive browser prefs under `lingolevel_prefs`.
+- **Speech and theme controls** — browser speech preferences are stored locally; the explicit light/dark choice has one source of truth under `lingolevel_theme`.
 
 ## Architecture
 
@@ -20,8 +21,8 @@ An interactive AI English coach designed for Chinese learners with adaptive diff
   - `providers/fallback.ts` — canned replies returned by adapters when all retries are exhausted
   - `providers/util.ts` — shared helpers (e.g. `errorMessage`)
   - `providers/index.ts` — factory: build provider from `process.env`
-- **Server** (`server/`): Express on the Vite dev middleware. `server/index.ts` is the entry; `server/routes.ts` mounts `GET /api/server-config` (echoes active provider / model / base URL — **no API key**), the streaming `POST /api/chat` and `POST /api/ask` (Server-Sent Events: `data: {"type":"delta"|"done"|"error",...}`), and the non-streaming `POST /api/analyze` and `POST /api/fill-blank`. Fill-blank model output is normalized, deduplicated, and completed from a level-matched verified backup bank when necessary. The active provider and model names are selected at boot from `.env.local` / `process.env`. `server/prompts.ts` holds the system-prompt composition, `server/middleware/` holds the rate limiter.
-- **Frontend** (`src/`): React + Vite SPA. The browser persists only non-sensitive learning preferences such as level, scenario, and theme under `lingolevel_prefs`. Active provider / model / base URL are fetched separately from `GET /api/server-config` and are never merged into browser-owned prefs. **No API keys, tokens, or secrets ever touch the browser** — the server is the only thing that talks to upstream LLMs.
+- **Server** (`server/`): Express on the Vite dev middleware. `server/index.ts` is the entry; `server/routes.ts` mounts server config, streaming chat/ask, analysis, fill-blank, and system-learning practice/evaluation endpoints. Fill-blank output is normalized, deduplicated, and completed from a level-matched verified backup bank when necessary. `server/learningPractice.ts` validates generated course activities and evaluations. The active provider and model names are selected at boot from `.env.local` / `process.env`.
+- **Frontend** (`src/`): React + Vite SPA with three independent workspaces: systematic learning, fill-blank practice, and free conversation. Browser-owned preferences are stored under `lingolevel_prefs`; theme uses `lingolevel_theme`; each practice workspace owns its local session/progress data. Active provider / model / base URL are fetched from `GET /api/server-config`. **No API keys, tokens, or secrets ever touch the browser**.
 - **Runtime tuning via `.env.local`**: provider/model/base URL, outbound timeout, and chat context window are all server-owned runtime settings. The browser only reads a sanitized summary from `/api/server-config`.
 
 ## Run Locally
@@ -52,7 +53,7 @@ The server prints its URL on startup (default `http://localhost:59100`).
 
 Set `PROVIDER` to one of `openai` (any OpenAI-compatible service) or `anthropic` in `.env.local`, then fill the matching section. Add optional model IDs to the provider's `*_MODELS` comma-separated list to make them selectable in the web settings; the server rejects model IDs outside this list.
 
-> **API keys live only on the server.** They are never sent to or stored in the browser. The in-app Settings panel shows the active server-side provider/model/base URL from `/api/server-config`, but those connection values are controlled by `.env.local` and require a server restart to change. The browser only persists learning preferences such as level, scenario, and theme. `GET /api/server-config` is verified to not contain an `apiKey` field.
+> **API keys live only on the server.** They are never sent to or stored in the browser. The in-app Settings panel shows the active server-side provider/model/base URL from `/api/server-config`, but those connection values are controlled by `.env.local` and require a server restart to change. The browser only persists non-sensitive learning preferences and local progress. `GET /api/server-config` does not contain an `apiKey` field.
 
 ### A note on third-party "transit" proxies
 
@@ -157,15 +158,17 @@ lingolevel-ai/
 │   └── index.ts                # factory: build provider from process.env
 ├── server/                     # Express server (entry: server/index.ts)
 │   ├── index.ts                # app setup + boot
-│   ├── routes.ts               # /api/server-config, /api/chat, /api/ask, /api/analyze
+│   ├── routes.ts               # config, chat, ask, analysis, fill-blank and learning routes
+│   ├── fillBlank.ts            # fill-blank prompt, validation, deduplication and fallback bank
+│   ├── learningPractice.ts     # course practice/evaluation prompts and validation
 │   ├── prompts.ts              # level + scenario + ask system-prompt composition
 │   └── middleware/             # apiLimiter (express-rate-limit)
 ├── src/                        # React + Vite frontend
-│   ├── App.tsx                 # app shell (header + chat + sidebar + ask drawer)
-│   ├── components/             # ChatWindow, AnalysisSidebar, SettingsModal, AskAssistant, …
-│   ├── hooks/                  # useChatSession, useAskAssistant, useBrowserPrefs
-│   ├── data/                   # static level + scenario definitions
-│   ├── features/               # chat, analysis and settings feature modules
+│   ├── App.tsx                 # shared shell and independent workspace assembly
+│   ├── components/             # learning, fill-blank, chat, analysis, settings and ask UI
+│   ├── hooks/                  # workspace state, browser prefs and AI-session hooks
+│   ├── data/                   # curriculum, lessons, levels and scenarios
+│   ├── lib/                    # API, speech, storage, Markdown and ID helpers
 │   ├── types.ts                # frontend types incl. BrowserPrefs
 │   ├── index.css               # global styles
 │   └── main.tsx                # entry point
@@ -189,6 +192,6 @@ lingolevel-ai/
 - `npm run dev` — start dev server (Vite middleware + Express)
 - `npm run build` — production bundle
 - `npm run start` — run the production bundle
-- `npm run lint` — type-check only
+- `npm run lint` — strict TypeScript check, including unused code
 
 The settings panel will also show the active request timeout and context-window size reported by `/api/server-config`, so you can verify the server really booted with the `.env.local` values you expect.

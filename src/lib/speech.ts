@@ -1,8 +1,7 @@
 // src/lib/speech.ts — moved from features/chat/speech.ts
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-
-export type SpeechAccent = 'us' | 'uk'
+import type { SpeechAccent } from '../types'
 
 export interface SpeechNotice {
   kind: 'info' | 'error'
@@ -113,9 +112,12 @@ function speechErrorMessage(error: string): string {
   return '朗读失败，请稍后重试。'
 }
 
-export function useSpeechPlayer(): SpeechPlayer {
-  const [accent, setAccent] = useState<SpeechAccent>('us')
-  const [speed, setSpeed] = useState(1)
+export function useSpeechPlayer({ accent, speed, setAccent, setSpeed }: {
+  accent: SpeechAccent
+  speed: number
+  setAccent: (accent: SpeechAccent) => void
+  setSpeed: (speed: number) => void
+}): SpeechPlayer {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [notice, setNotice] = useState<SpeechNotice | null>(null)
   const requestRef = useRef(0)

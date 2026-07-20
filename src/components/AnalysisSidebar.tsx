@@ -296,14 +296,14 @@ export default function AnalysisSidebar({
               第 {currentRound} / {analysisHistory.length} 轮{isViewingLatest ? ' · 最新' : ' · 回看中'}
             </div>
             <div className="flex items-center gap-1.5">
-              <button onClick={onRetryAnalysis} disabled={isLoading}
+              <button type="button" onClick={onRetryAnalysis} disabled={isLoading}
                 className="ui-btn !h-7 !px-2.5 !text-[11px] hover:!border-forest hover:!text-forest dark:hover:!border-forest-dark dark:hover:!text-forest-dark"
                 title="重新生成本轮分析">
                 <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
                 重新分析
               </button>
               {!isViewingLatest && (
-                <button onClick={onLatestAnalysis}
+                <button type="button" onClick={onLatestAnalysis}
                   className="rounded-md bg-forest px-2.5 py-1 text-[11px] font-medium text-paper transition hover:bg-forest/90 dark:bg-forest-dark dark:text-paper-dark dark:hover:bg-forest-dark/90">
                   回到最新
                 </button>

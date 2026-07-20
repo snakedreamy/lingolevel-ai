@@ -12,14 +12,12 @@ const WORKSPACES: Array<{ id: Workspace; code: string; label: string; hint: stri
 ]
 
 export function AppHeader({
-  theme, onToggleTheme, onOpenSettings, onOpenAsk, trailing,
+  theme, onToggleTheme, onOpenSettings, onOpenAsk,
 }: {
   theme: BrowserPrefs['theme']
   onToggleTheme: () => void
   onOpenSettings: () => void
   onOpenAsk: () => void
-  /** 右端追加按钮（如移动端的反馈面板开关），由当前工作区决定。 */
-  trailing?: React.ReactNode
 }) {
   const speech = useSpeech()
   return (
@@ -61,7 +59,7 @@ export function AppHeader({
           </label>
         </Dropdown>
 
-        <button type="button" onClick={onOpenAsk} className="ui-btn" title="打开答疑助手">
+        <button type="button" onClick={onOpenAsk} className="ui-btn" title="打开答疑助手" aria-label="打开答疑助手">
           <HelpCircle className="h-4 w-4" />
           <span className="hidden sm:inline">答疑</span>
         </button>
@@ -70,8 +68,6 @@ export function AppHeader({
           <Settings className="h-4 w-4" />
           <span className="hidden sm:inline">偏好设置</span>
         </button>
-
-        {trailing}
       </div>
     </header>
   )

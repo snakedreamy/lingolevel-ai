@@ -67,10 +67,6 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
 
   useEffect(() => { void resetConversation() }, [activeScenario, resetConversation])
 
-  const addSystemMessage = useCallback((content: string) => {
-    setMessages((prev) => [...prev, { id: createMessageId('system'), role: 'system', content, timestamp: Date.now() }])
-  }, [])
-
   const streamAssistantReply = useCallback(async (args: {
     contextMessages: Message[]
     assistantId: string
@@ -348,6 +344,6 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
     messages, analysis, analysisHistory, selectedAnalysisIndex,
     isChatLoading, isAnalysisLoading, resetConversation, sendMessage,
     regeneratableAssistantId, regenerateLastReply, retrySelectedAnalysis,
-    addSystemMessage, showPreviousAnalysis, showNextAnalysis, showLatestAnalysis,
+    showPreviousAnalysis, showNextAnalysis, showLatestAnalysis,
   }
 }

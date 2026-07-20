@@ -1,4 +1,4 @@
-import { Bot, Keyboard, Server, Settings2 } from './Icon'
+import { Bot, Keyboard, Server, Settings } from './Icon'
 import type { DifficultyLevel, ProviderId, Scenario } from '../types'
 import type { ServerConfig } from '../lib/api'
 import { Modal, Switch } from './ui'
@@ -48,7 +48,7 @@ export default function SettingsModal({
   return (
     <Modal wide onClose={onClose}
       title="学习设置"
-      icon={<Settings2 className="h-5 w-5 text-forest dark:text-forest-dark" />}
+      icon={<Settings className="h-5 w-5 text-forest dark:text-forest-dark" />}
       footer={
         <button type="button" onClick={onClose} className="ui-btn ui-btn-primary">
           完成

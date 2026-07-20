@@ -2,7 +2,7 @@
 // 版式：对话是一张带行号的练习纸。左侧 gilt 行号标明轮次，AI 回复用斜体衬线，
 // 用户的话加朱色侧线——不是聊天软件，是一页被批注过的会话作业。
 import React, { useEffect, useRef, useState } from 'react'
-import { Languages, Copy, Send, Mic, MicOff, RefreshCw, HelpCircle } from './Icon'
+import { BookOpen, Languages, Copy, Send, Mic, MicOff, RefreshCw, HelpCircle } from './Icon'
 import type { Message, Scenario } from '../types'
 import { createSpeechRecognition, type SpeechRecognition } from '../lib/speech'
 import { useSpeech } from './ui'
@@ -11,10 +11,11 @@ import SpeechButton from './SpeechButton'
 // ─── ChatToolbar ────────────────────────────────────────────────────────────
 
 function ChatToolbar({
-  activeScenario, onResetChat,
+  activeScenario, onResetChat, onOpenFeedback,
 }: {
   activeScenario: Scenario
   onResetChat: () => void
+  onOpenFeedback: () => void
 }) {
   return (
     <div className="z-10 flex flex-col gap-2 border-b ui-rule px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3">
@@ -27,8 +28,14 @@ function ChatToolbar({
         <p className="hidden min-w-0 truncate text-xs ui-text-faint md:block">— {activeScenario.description}</p>
       </div>
 
-      <div className="flex w-full justify-end sm:w-auto">
-        <button onClick={onResetChat}
+      <div className="flex w-full justify-end gap-2 sm:w-auto">
+        <button type="button" onClick={onOpenFeedback}
+          className="ui-btn !h-8 !text-[11px] lg:hidden"
+          aria-label="打开旁批反馈">
+          <BookOpen className="h-3.5 w-3.5" />
+          旁批
+        </button>
+        <button type="button" onClick={onResetChat}
           className="ui-btn !h-8 !text-[11px] hover:!border-scarlet hover:!text-scarlet dark:hover:!border-scarlet-dark dark:hover:!text-scarlet-dark"
           title="清空记录重新开始对话">
           <RefreshCw className="h-3.5 w-3.5" />
@@ -91,7 +98,7 @@ function ChatMessageList({
                 <span className={`margin-code ${message.isFallback ? '!text-scarlet dark:!text-scarlet-dark' : ''}`}>
                   {isUser ? '你' : message.isFallback ? '教师 · 备用回复' : '教师'}
                 </span>
-                <div className={`flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 ${isUser ? 'flex-row-reverse' : ''}`}>
+                <div className={`message-actions flex items-center gap-1 transition-opacity ${isUser ? 'flex-row-reverse' : ''}`}>
                   {!isUser && message.id === regeneratableAssistantId && (
                     <button onClick={onRegenerateMessage}
                       className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-semibold ui-text-faint transition-colors hover:bg-ink/5 hover:text-forest dark:hover:bg-ink-dark/10 dark:hover:text-forest-dark"
@@ -106,7 +113,7 @@ function ChatMessageList({
                     label={isUser ? '你的消息' : 'AI 回复'} />
                   <button onClick={(e) => onCopyMessage(message.content, e)}
                     className="rounded p-1 ui-text-faint transition-colors hover:bg-ink/5 hover:text-forest dark:hover:bg-ink-dark/10 dark:hover:text-forest-dark"
-                    title="复制">
+                    title="复制" aria-label="复制消息">
                     <Copy className="h-3 w-3" />
                   </button>
                 </div>
@@ -185,7 +192,7 @@ function ChatInputBar({
             disabled={isLoading} />
           {inputText.trim() && (
             <button type="button" onClick={onClearInput}
-              className="absolute right-3 top-2.5 p-1 ui-text-faint hover:text-ink dark:hover:text-ink-dark" title="清空输入框">
+              className="absolute right-3 top-2.5 p-1 ui-text-faint hover:text-ink dark:hover:text-ink-dark" title="清空输入框" aria-label="清空输入框">
               &times;
             </button>
           )}
@@ -215,13 +222,14 @@ interface ChatWindowProps {
   onSelectSentence: (sentence: string) => void
   regeneratableAssistantId: string | null
   onRegenerateMessage: () => void
+  onOpenFeedback: () => void
   /** When true, only Ctrl/Cmd+Enter sends; bare Enter inserts a newline. */
   sendOnCtrlEnter?: boolean
 }
 
 export default function ChatWindow({
   messages, onSendMessage, isLoading, activeScenario, onResetChat, inputRef, inputText, setInputText,
-  onWordClick, onSelectSentence, regeneratableAssistantId, onRegenerateMessage, sendOnCtrlEnter = false,
+  onWordClick, onSelectSentence, regeneratableAssistantId, onRegenerateMessage, onOpenFeedback, sendOnCtrlEnter = false,
 }: ChatWindowProps) {
   const speech = useSpeech()
   const [isRecording, setIsRecording] = useState(false)
@@ -302,7 +310,7 @@ export default function ChatWindow({
 
   return (
     <div className="ui-surface relative flex h-full flex-col overflow-hidden">
-      <ChatToolbar activeScenario={activeScenario} onResetChat={onResetChat} />
+      <ChatToolbar activeScenario={activeScenario} onResetChat={onResetChat} onOpenFeedback={onOpenFeedback} />
 
       <div className="flex min-h-0 flex-1 flex-col" onMouseUp={handleSelection}>
         <ChatMessageList messages={messages}

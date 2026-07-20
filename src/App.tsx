@@ -36,7 +36,12 @@ export default function App() {
   )
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [workspace, setWorkspace] = useState<Workspace>('learning')
-  const speech = useSpeechPlayer()
+  const speech = useSpeechPlayer({
+    accent: prefs.speechAccent,
+    speed: prefs.speechSpeed,
+    setAccent: (speechAccent) => setPrefs((current) => ({ ...current, speechAccent })),
+    setSpeed: (speechSpeed) => setPrefs((current) => ({ ...current, speechSpeed })),
+  })
   const ask = useAskPanel({
     level: prefs.level,
     modelId: prefs.modelId,
@@ -63,8 +68,8 @@ export default function App() {
         <AppHeader
           theme={prefs.theme}
           onToggleTheme={() => setPrefs((p) => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' }))}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenAsk={ask.open}
+          onOpenSettings={() => { ask.close(); setIsSettingsOpen(true) }}
+          onOpenAsk={() => { setIsSettingsOpen(false); ask.open() }}
         />
 
         <main className="app-main mx-auto flex min-h-0 w-full max-w-[1550px] flex-1 flex-col overflow-hidden px-2.5 py-2.5 sm:px-4 sm:py-4 md:px-6">
@@ -80,7 +85,6 @@ export default function App() {
           >
             <ChatWorkspace
               prefs={prefs}
-              setPrefs={setPrefs}
               activeScenario={activeScenario}
               modelId={prefs.modelId}
               maxContextMessages={serverConfig?.maxContextMessages}

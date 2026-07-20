@@ -13,7 +13,6 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
   const baseUrl = cfg.baseUrl.replace(/\/$/, '')
 
   async function runCompletion<T>(
-    label: 'chat' | 'analyze',
     body: unknown,
     signal: AbortSignal,
     parseResponse: (json: unknown) => T
@@ -116,7 +115,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
     }
     try {
       const text = await callWithRetry(
-        (signal) => runCompletion('chat', body, signal, parseChatText),
+        (signal) => runCompletion(body, signal, parseChatText),
         { timeoutMs: cfg.timeoutMs, retries: input.maxAttempts, signal: input.signal }
       )
 
@@ -180,7 +179,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
     }
     try {
       const text = await callWithRetry(
-        (signal) => runCompletion('analyze', body, signal, parseAnalyzeText),
+        (signal) => runCompletion(body, signal, parseAnalyzeText),
         { timeoutMs: cfg.timeoutMs }
       )
       let parsed: unknown

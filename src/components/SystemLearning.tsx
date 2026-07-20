@@ -16,7 +16,7 @@ import type { ConceptLearningProgress } from '../hooks/useSystemLearning'
 import { evaluateLearningAnswer, generateLearningPractice } from '../lib/api'
 import type { LearningEvaluationResult } from '../lib/api'
 import { incrementStoredCounter, loadStoredJson, saveStoredJson } from '../lib/storage'
-import { useSpeech } from './ui'
+import { Modal, useSpeech } from './ui'
 import type { AskPanel } from '../hooks/useAskPanel'
 
 type LearningView = 'home' | 'routes' | 'review'
@@ -28,13 +28,23 @@ const DIMENSIONS: Array<{ id: MasteryDimension; label: string }> = [
 const PRACTICE_VARIETY_KEY = 'lingolevel_learning_practice_variety'
 const PRACTICE_HISTORY_KEY = 'lingolevel_learning_practice_history'
 
+function loadPracticeHistoryStore(): Record<string, string[]> {
+  const stored = loadStoredJson<unknown>(PRACTICE_HISTORY_KEY, null)
+  if (typeof stored !== 'object' || stored === null || Array.isArray(stored)) return {}
+  const history: Record<string, string[]> = {}
+  for (const [conceptId, prompts] of Object.entries(stored)) {
+    if (!Array.isArray(prompts)) continue
+    history[conceptId] = prompts.filter((prompt): prompt is string => typeof prompt === 'string' && prompt.trim().length > 0).slice(-20)
+  }
+  return history
+}
+
 function loadPracticeHistory(conceptId: string): string[] {
-  const history = loadStoredJson<Record<string, string[]>>(PRACTICE_HISTORY_KEY, {})
-  return Array.isArray(history[conceptId]) ? history[conceptId].slice(-20) : []
+  return loadPracticeHistoryStore()[conceptId] ?? []
 }
 
 function savePracticeHistory(conceptId: string, prompts: string[]): void {
-  const history = loadStoredJson<Record<string, string[]>>(PRACTICE_HISTORY_KEY, {})
+  const history = loadPracticeHistoryStore()
   saveStoredJson(PRACTICE_HISTORY_KEY, { ...history, [conceptId]: [...(history[conceptId] ?? []), ...prompts].slice(-20) })
 }
 
@@ -342,6 +352,24 @@ export default function SystemLearning({ modelId, ask }: {
     </div>
     {loadingConceptId && <div role="status" aria-live="polite" className="absolute inset-0 z-30 flex items-center justify-center bg-leaf/70 backdrop-blur-sm dark:bg-leaf-dark/70"><span className="ui-surface px-4 py-3 text-xs font-bold ui-text-muted shadow-lg">正在打开课程…</span></div>}
     {courseLoadError && <div role="alert" className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-md border border-scarlet/40 bg-scarlet/10 px-4 py-3 text-xs text-scarlet shadow-lg dark:border-scarlet-dark/50 dark:bg-scarlet-dark/15 dark:text-scarlet-dark"><span>课程内容加载失败，请检查网络后重试。</span><button type="button" onClick={() => setCourseLoadError(false)} className="cursor-pointer font-bold">关闭</button></div>}
-    {outlineConcept && <div className="ui-overlay absolute inset-0 z-20 flex items-end justify-center p-0 sm:items-center sm:p-6" onClick={() => setOutlineConcept(null)}><div role="dialog" aria-modal="true" className="ui-sheet w-full max-w-lg rounded-t-2xl border-t-2 p-5 shadow-2xl sm:rounded-lg sm:border-2" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-4"><div><p className="margin-code">{conceptCode(outlineConcept)} · {LEARNING_LEVELS.find((item) => item.id === outlineConcept.level)?.label} · {LEARNING_DOMAINS.find((item) => item.id === outlineConcept.domain)?.title}</p><h3 className="mt-1 font-display text-xl font-semibold">{outlineConcept.title}</h3></div><button type="button" onClick={() => setOutlineConcept(null)} className="cursor-pointer rounded-md p-2 ui-text-faint hover:bg-ink/5 dark:hover:bg-ink-dark/10"><X className="h-4 w-4" /></button></div><p className="mt-4 text-sm leading-6 ui-text-muted">{outlineConcept.summary}</p><div className="mt-5 border-y ui-rule py-4"><p className="text-xs font-bold text-ink/85 dark:text-ink-dark/85">学完能够</p><p className="mt-1 text-xs leading-5 ui-text-muted">{outlineConcept.canDo}</p></div><div className="mt-4"><p className="text-xs font-bold text-ink/85 dark:text-ink-dark/85">内容范围</p><div className="mt-2 flex flex-wrap gap-2">{outlineConcept.topics.map((topic) => <span key={topic} className="rounded-md border ui-rule px-2 py-1 text-[11px] ui-text-muted">{topic}</span>)}</div></div><p className="mt-5 text-[11px] ui-text-faint">知识范围与掌握标准已经确定，详细课程内容正在按前置顺序编写。</p></div></div>}
+    {outlineConcept && (
+      <Modal title={outlineConcept.title} onClose={() => setOutlineConcept(null)}>
+        <p className="margin-code">
+          {conceptCode(outlineConcept)} · {LEARNING_LEVELS.find((item) => item.id === outlineConcept.level)?.label} · {LEARNING_DOMAINS.find((item) => item.id === outlineConcept.domain)?.title}
+        </p>
+        <p className="mt-4 text-sm leading-6 ui-text-muted">{outlineConcept.summary}</p>
+        <div className="mt-5 border-y ui-rule py-4">
+          <p className="text-xs font-bold text-ink/85 dark:text-ink-dark/85">学完能够</p>
+          <p className="mt-1 text-xs leading-5 ui-text-muted">{outlineConcept.canDo}</p>
+        </div>
+        <div className="mt-4">
+          <p className="text-xs font-bold text-ink/85 dark:text-ink-dark/85">内容范围</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {outlineConcept.topics.map((topic) => <span key={topic} className="rounded-md border ui-rule px-2 py-1 text-[11px] ui-text-muted">{topic}</span>)}
+          </div>
+        </div>
+        <p className="mt-5 text-[11px] ui-text-faint">知识范围与掌握标准已经确定，详细课程内容正在按前置顺序编写。</p>
+      </Modal>
+    )}
   </div>
 }

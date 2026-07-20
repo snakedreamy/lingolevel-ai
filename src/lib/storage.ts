@@ -24,11 +24,3 @@ export function incrementStoredCounter(key: string): number {
   saveStoredJson(key, next)
   return next
 }
-
-export function removeStoredValue(key: string): void {
-  try {
-    window.localStorage.removeItem(key)
-  } catch {
-    // Ignore storage removal failures for the same reason.
-  }
-}

@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft, ArrowRight, BookOpenCheck, Check, CheckCircle2,
-  CircleHelp, Lightbulb, ListTree, LoaderCircle, Minus, PenLine, Plus, RotateCcw, Sparkles,
+  HelpCircle, Lightbulb, ListTree, LoaderCircle, Minus, PenLine, Plus, RotateCcw, Sparkles,
   TextCursorInput, TriangleAlert, XCircle,
 } from './Icon'
 import { LEVELS } from '../data/levels'
@@ -332,7 +332,7 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
             {settled && (
               <div className="fill-blank-feedback mt-7 border-t ui-rule pt-6">
                 <div className={`flex items-start gap-3 border-l-2 px-4 py-3 ${item.status === 'correct' ? 'border-forest dark:border-forest-dark' : 'border-scarlet dark:border-scarlet-dark'}`}>
-                  {item.status === 'correct' ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-forest dark:text-forest-dark" /> : <CircleHelp className="mt-0.5 h-5 w-5 shrink-0 text-scarlet dark:text-scarlet-dark" />}
+                  {item.status === 'correct' ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-forest dark:text-forest-dark" /> : <HelpCircle className="mt-0.5 h-5 w-5 shrink-0 text-scarlet dark:text-scarlet-dark" />}
                   <div>
                     <p className="text-sm font-bold">{item.status === 'correct' ? (item.attempts ? '纠正成功，记住这个语境。' : '回答正确！') : `答案是 ${card.answer}`}</p>
                     <p className="mt-1 text-xs ui-text-muted">{card.explanation}</p>

@@ -1,6 +1,6 @@
 // src/components/ui.tsx — 跨工作区共享的界面原语与上下文
 // ui-* 工具类在 index.css 中定义（token 驱动），这里只保留带行为的组件。
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useEffect, useId, useRef } from 'react'
 import type { PropsWithChildren, ReactNode } from 'react'
 import { Volume2, X } from './Icon'
 import type { SpeechPlayer } from '../lib/speech'
@@ -19,33 +19,9 @@ export function useSpeech(): SpeechPlayer {
   return speech
 }
 
-/** 便捷方法：speak(id, text, label)，active 状态由 SpeechButton 自行读取。 */
-export type SpeakFn = (id: string, text: string, label?: string) => void
-
-// ─── EmptyState ──────────────────────────────────────────────────────────
-
-export function EmptyState({ icon, title, hint, className = '' }: {
-  icon?: ReactNode
-  title: ReactNode
-  hint?: ReactNode
-  className?: string
-}) {
-  return (
-    <div className={`flex h-full flex-col items-center justify-center gap-2 p-6 text-center ${className}`}>
-      {icon && (
-        <div className="mb-2 grid h-12 w-12 place-items-center rounded-full border ui-rule ui-text-faint">
-          {icon}
-        </div>
-      )}
-      <p className="text-xs font-semibold ui-text-muted">{title}</p>
-      {hint && <p className="max-w-xs text-[11px] leading-5 ui-text-faint">{hint}</p>}
-    </div>
-  )
-}
-
 // ─── Toast：底部居中的瞬时状态提示（朗读通知等） ─────────────────────────
 
-export function Toast({ kind = 'info', children, onDismiss, className = '' }: PropsWithChildren<{
+function Toast({ kind = 'info', children, onDismiss, className = '' }: PropsWithChildren<{
   kind?: 'info' | 'error'
   onDismiss?: () => void
   className?: string
@@ -105,17 +81,69 @@ export function Dropdown({ summary, label, children, className = '' }: PropsWith
 
 // ─── Drawer：底部抽屉（移动端反馈面板）与侧边抽屉（答疑） ────────────────
 
+const FOCUSABLE_SELECTOR = [
+  'button:not([disabled])', 'a[href]', 'input:not([disabled])',
+  'select:not([disabled])', 'textarea:not([disabled])', '[tabindex]:not([tabindex="-1"])',
+].join(',')
+
+/** 打开面板时建立明确焦点；模态面板额外限制 Tab，并在关闭后恢复原焦点。 */
+function usePanelFocus<T extends HTMLElement>(onClose: () => void, trapFocus: boolean) {
+  const panelRef = useRef<T | null>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const frame = window.requestAnimationFrame(() => panelRef.current?.focus())
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onCloseRef.current()
+        return
+      }
+      const panel = panelRef.current
+      if (!trapFocus || event.key !== 'Tab' || !panel) return
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+      if (focusable.length === 0) {
+        event.preventDefault()
+        panel.focus()
+        return
+      }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement
+      if (event.shiftKey && (active === first || active === panel || !panel.contains(active))) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && (active === last || !panel.contains(active))) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      document.removeEventListener('keydown', onKeyDown)
+      if (previous?.isConnected) previous.focus()
+    }
+  }, [trapFocus])
+
+  return panelRef
+}
+
 export function BottomDrawer({ title, onClose, children }: PropsWithChildren<{
   title: ReactNode
   onClose: () => void
 }>) {
+  const titleId = useId()
+  const panelRef = usePanelFocus<HTMLDivElement>(onClose, true)
   return (
     <div className="ui-overlay fixed inset-0 z-40 lg:hidden" onClick={onClose}>
-      <div role="dialog" aria-modal="true"
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}
         className="ui-sheet absolute inset-x-0 bottom-0 flex max-h-[82dvh] min-h-[58dvh] flex-col overflow-hidden rounded-t-2xl border-t-2 shadow-2xl animate-slide-up"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b ui-rule px-4 py-3">
-          <p className="margin-code">{title}</p>
+          <p id={titleId} className="margin-code">{title}</p>
           <button type="button" onClick={onClose} className="ui-btn ui-btn-icon" aria-label="关闭面板">
             <X className="h-4 w-4" />
           </button>
@@ -135,13 +163,15 @@ export function SideDrawer({ title, subtitle, actions, onClose, children }: Prop
   actions?: ReactNode
   onClose: () => void
 }>) {
+  const titleId = useId()
+  const panelRef = usePanelFocus<HTMLElement>(onClose, false)
   return (
     <div className="pointer-events-none fixed inset-0 z-40 flex justify-end animate-fade-in">
-      <aside role="complementary"
+      <aside ref={panelRef} role="complementary" aria-labelledby={titleId} tabIndex={-1}
         className="ui-sheet pointer-events-auto flex h-full w-full max-w-md flex-col border-l-2 shadow-2xl">
         <div className="flex items-center justify-between border-b ui-rule px-4 py-3">
           <div className="flex min-w-0 items-baseline gap-2.5">
-            <h2 className="font-display text-base font-semibold">{title}</h2>
+            <h2 id={titleId} className="font-display text-base font-semibold">{title}</h2>
             {subtitle && <span className="margin-code">{subtitle}</span>}
           </div>
           <div className="flex items-center gap-1">
@@ -166,15 +196,17 @@ export function Modal({ title, icon, onClose, children, footer, wide = false }: 
   footer?: ReactNode
   wide?: boolean
 }>) {
+  const titleId = useId()
+  const panelRef = usePanelFocus<HTMLDivElement>(onClose, true)
   return (
     <div className="ui-overlay fixed inset-0 z-50 flex animate-fade-in items-end justify-center p-0 sm:items-center sm:p-4" onClick={onClose}>
-      <div role="dialog" aria-modal="true"
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}
         className={`ui-sheet flex h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border-t-2 shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-lg sm:border-2 ${wide ? 'sm:max-w-4xl' : 'sm:max-w-lg'}`}
         onClick={(e) => e.stopPropagation()}>
         <header className="flex items-center justify-between border-b ui-rule px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center gap-3">
             {icon}
-            <h2 className="font-display text-lg font-semibold">{title}</h2>
+            <h2 id={titleId} className="font-display text-lg font-semibold">{title}</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="关闭" className="ui-btn ui-btn-icon border-transparent">
             <X className="h-5 w-5" />

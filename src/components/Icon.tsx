@@ -36,8 +36,6 @@ export const Check: Icon = (p) => <Glyph {...p}><path d="M4 12.5l5 5L20 6.5" /><
 export const CheckCircle2: Icon = (p) => <Glyph {...p}><circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.5 2.5 5-5.5" /></Glyph>
 export const ChevronRight: Icon = (p) => <Glyph {...p}><path d="M9 6l6 6-6 6" /></Glyph>
 export const Circle: Icon = (p) => <Glyph {...p}><circle cx="12" cy="12" r="9" /></Glyph>
-export const CircleHelp: Icon = (p) => <Glyph {...p}><circle cx="12" cy="12" r="9" /><path d="M9.2 9a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.4-2.8 4" /><path d="M12 17.5h.01" /></Glyph>
-export const Clock: Icon = (p) => <Glyph {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Glyph>
 export const Clock3: Icon = (p) => <Glyph {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5h3.5" /></Glyph>
 export const Coffee: Icon = (p) => <Glyph {...p}><path d="M4 9h12v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z" /><path d="M16 10h2a2.5 2.5 0 0 1 0 5h-2" /><path d="M8 5.5V4M12 5.5V4" /></Glyph>
 export const Copy: Icon = (p) => <Glyph {...p}><rect x="9" y="9" width="12" height="12" rx="1" /><path d="M5 15V4a1 1 0 0 1 1-1h9" /></Glyph>
@@ -50,8 +48,6 @@ export const Lightbulb: Icon = (p) => <Glyph {...p}><path d="M9 18h6" /><path d=
 export const ListTree: Icon = (p) => <Glyph {...p}><path d="M21 6h-7" /><path d="M21 12h-9" /><path d="M21 18h-7" /><path d="M7 3v18" /><path d="M7 6H3" /><path d="M7 12H3" /><path d="M7 18H3" /></Glyph>
 export const LoaderCircle: Icon = (p) => <Glyph {...p}><path d="M21 12a9 9 0 1 1-6.2-8.56" /></Glyph>
 export const MapPin: Icon = (p) => <Glyph {...p}><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></Glyph>
-export const Menu: Icon = (p) => <Glyph {...p}><path d="M3 6h18M3 12h18M3 18h18" /></Glyph>
-export const MessageCircle: Icon = (p) => <Glyph {...p}><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z" /></Glyph>
 export const MessageSquare: Icon = (p) => <Glyph {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></Glyph>
 export const Mic: Icon = (p) => <Glyph {...p}><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0" /><path d="M12 18v3" /></Glyph>
 export const MicOff: Icon = (p) => <Glyph {...p}><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0" /><path d="M12 18v3" /><path d="M4 4l16 16" /></Glyph>
@@ -67,7 +63,6 @@ export const Send: Icon = (p) => <Glyph {...p}><path d="M21 3L10 14" /><path d="
 export const Server: Icon = (p) => <Glyph {...p}><rect x="2" y="3" width="20" height="7" rx="1" /><rect x="2" y="14" width="20" height="7" rx="1" /><path d="M6 6.5h.01M6 17.5h.01" /></Glyph>
 // 偏好设置用滑杆图标：与主题切换的太阳/月亮彻底区分，避免“日轮”误读
 export const Settings: Icon = (p) => <Glyph {...p}><path d="M4 7h8" /><circle cx="15" cy="7" r="2" /><path d="M17 7h3" /><path d="M4 17h5" /><circle cx="12" cy="17" r="2" /><path d="M14 17h6" /></Glyph>
-export const Settings2: Icon = Settings
 export const ShieldCheck: Icon = (p) => <Glyph {...p}><path d="M12 3l8 3v6c0 4.5-3.2 7.6-8 9-4.8-1.4-8-4.5-8-9V6z" /><path d="M8.5 12l2.5 2.5 5-5.5" /></Glyph>
 export const Sparkles: Icon = (p) => <Glyph {...p}><path d="M12 4l1.8 4.7L18.5 10l-4.7 1.8L12 16.5l-1.8-4.7L5.5 10l4.7-1.3z" /><path d="M19 15l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" /></Glyph>
 export const Square: Icon = (p) => <Glyph {...p}><rect x="5" y="5" width="14" height="14" rx="1" /></Glyph>

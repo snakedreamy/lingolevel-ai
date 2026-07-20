@@ -1,4 +1,4 @@
-// src/hooks/useBrowserPrefs.ts — 浏览器端偏好：等级/场景/模型/输入习惯 + 主题
+// src/hooks/useBrowserPrefs.ts — 浏览器端偏好：等级/场景/模型/输入与发音习惯 + 主题
 import { useEffect, useState } from 'react'
 import { LEVELS } from '../data/levels'
 import type { BrowserPrefs, DifficultyLevel } from '../types'
@@ -18,6 +18,10 @@ function normalizeBrowserPrefs(value: unknown): Omit<BrowserPrefs, 'theme'> {
     level: typeof v.level === 'string' && VALID_LEVELS.has(v.level as DifficultyLevel)
       ? (v.level as DifficultyLevel) : defaults.level,
     modelId: typeof v.modelId === 'string' ? v.modelId.trim() : defaults.modelId,
+    speechAccent: v.speechAccent === 'us' || v.speechAccent === 'uk' ? v.speechAccent : defaults.speechAccent,
+    speechSpeed: typeof v.speechSpeed === 'number' && Number.isFinite(v.speechSpeed)
+      ? Math.round(Math.min(1.5, Math.max(0.5, v.speechSpeed)) * 10) / 10
+      : defaults.speechSpeed,
     sendOnCtrlEnter: v.sendOnCtrlEnter === true,
   }
 }

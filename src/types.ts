@@ -147,6 +147,7 @@ export interface AnalysisHistoryEntry {
 }
 
 export type ProviderId = 'openai' | 'anthropic'
+export type SpeechAccent = 'us' | 'uk'
 
 /**
  * Browser-side, non-sensitive preferences persisted in `localStorage`.
@@ -164,6 +165,10 @@ export interface BrowserPrefs {
   theme: 'light' | 'dark'
   /** Empty means use each task's server-configured default model. */
   modelId: string
+  /** Accent used by browser speech synthesis. */
+  speechAccent: SpeechAccent
+  /** Browser speech-synthesis rate, matching the UI range of 0.5–1.5. */
+  speechSpeed: number
   /**
    * When true, the chat input only sends on Ctrl/Cmd+Enter; a bare Enter
    * inserts a newline. Helps users who keep sending half-finished messages.
@@ -178,14 +183,6 @@ export interface BrowserPrefs {
  * same origin.
  */
 export const BROWSER_PREFS_KEY = 'lingolevel_prefs'
-
-/**
- * Theme is owned by the tiny bootstrap in `index.html` (so it can run before
- * first paint) and mirrored here through `window.__theme`. Stored in its own
- * `localStorage` key so an explicit choice survives independently of the
- * larger prefs blob.
- */
-export const THEME_STORAGE_KEY = 'lingolevel_theme'
 
 export interface ThemeController {
   get(): 'light' | 'dark'
@@ -202,5 +199,7 @@ export const DEFAULT_BROWSER_PREFS: Readonly<Omit<BrowserPrefs, 'theme'>> = {
   level: 'junior',
   scenarioId: 'free_chat',
   modelId: '',
+  speechAccent: 'us',
+  speechSpeed: 1,
   sendOnCtrlEnter: false
 }

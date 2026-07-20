@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react'
-import { LEARNING_CONCEPTS } from '../data/learningCurriculum'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { LEARNING_CONCEPTS, LEARNING_ROUTES } from '../data/learningCurriculum'
 import type { MasteryDimension } from '../data/learningLessons'
 import { loadStoredJson, saveStoredJson } from '../lib/storage'
 
@@ -25,10 +25,54 @@ interface StoredLearningState {
 
 const STORAGE_KEY = 'lingolevel_system_learning_v1'
 const EMPTY_STATE: StoredLearningState = { version: 1, selectedRouteId: 'sentence-building', progress: {} }
+const CONCEPT_IDS = new Set(LEARNING_CONCEPTS.map((concept) => concept.id))
+const ROUTE_IDS = new Set(LEARNING_ROUTES.map((route) => route.id))
+const LEARNING_STATUSES = new Set<LearningStatus>(['not_started', 'learning', 'completed'])
+
+function score(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0
+}
+
+function storedDate(value: unknown): string | undefined {
+  return typeof value === 'string' && !Number.isNaN(Date.parse(value)) ? value : undefined
+}
+
+function normalizeProgress(conceptId: string, value: unknown): ConceptLearningProgress {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return emptyProgress(conceptId)
+  const item = value as Record<string, unknown>
+  return {
+    conceptId,
+    status: typeof item.status === 'string' && LEARNING_STATUSES.has(item.status as LearningStatus)
+      ? item.status as LearningStatus
+      : 'not_started',
+    recognitionScore: score(item.recognitionScore),
+    understandingScore: score(item.understandingScore),
+    constructionScore: score(item.constructionScore),
+    applicationScore: score(item.applicationScore),
+    attempts: typeof item.attempts === 'number' && Number.isSafeInteger(item.attempts) && item.attempts >= 0 ? item.attempts : 0,
+    lastStudiedAt: storedDate(item.lastStudiedAt),
+    nextReviewAt: storedDate(item.nextReviewAt),
+  }
+}
 
 function loadState(): StoredLearningState {
-  const stored = loadStoredJson<StoredLearningState>(STORAGE_KEY, EMPTY_STATE)
-  return stored?.version === 1 && stored.progress ? stored : EMPTY_STATE
+  const stored = loadStoredJson<unknown>(STORAGE_KEY, null)
+  if (typeof stored !== 'object' || stored === null || Array.isArray(stored)) return { ...EMPTY_STATE, progress: {} }
+  const value = stored as Record<string, unknown>
+  if (value.version !== 1) return { ...EMPTY_STATE, progress: {} }
+  const progress: Record<string, ConceptLearningProgress> = {}
+  if (typeof value.progress === 'object' && value.progress !== null && !Array.isArray(value.progress)) {
+    for (const [conceptId, item] of Object.entries(value.progress)) {
+      if (CONCEPT_IDS.has(conceptId)) progress[conceptId] = normalizeProgress(conceptId, item)
+    }
+  }
+  return {
+    version: 1,
+    selectedRouteId: typeof value.selectedRouteId === 'string' && ROUTE_IDS.has(value.selectedRouteId)
+      ? value.selectedRouteId
+      : EMPTY_STATE.selectedRouteId,
+    progress,
+  }
 }
 
 function emptyProgress(conceptId: string): ConceptLearningProgress {
@@ -46,12 +90,10 @@ function emptyProgress(conceptId: string): ConceptLearningProgress {
 export function useSystemLearning() {
   const [state, setState] = useState<StoredLearningState>(loadState)
 
+  useEffect(() => { saveStoredJson(STORAGE_KEY, state) }, [state])
+
   const update = useCallback((recipe: (current: StoredLearningState) => StoredLearningState) => {
-    setState((current) => {
-      const next = recipe(current)
-      saveStoredJson(STORAGE_KEY, next)
-      return next
-    })
+    setState((current) => recipe(current))
   }, [])
 
   const setSelectedRouteId = useCallback((selectedRouteId: string) => {

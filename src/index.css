@@ -303,6 +303,29 @@
   max-height: var(--visual-viewport-height, 100vh);
 }
 
+/* 消息操作：鼠标设备保持移入显示；触屏没有 hover，必须始终可见。 */
+.message-actions {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .message-actions {
+    opacity: 0;
+  }
+
+  .group:hover .message-actions,
+  .group:focus-within .message-actions {
+    opacity: 1;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .message-actions button {
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+  }
+}
+
 /* Mobile browsers resize the visual viewport when the address bar appears.
    `100dvh` keeps the chat workspace pinned to the visible screen instead of
    hiding the input drawer under browser chrome. */

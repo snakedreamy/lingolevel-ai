@@ -39,7 +39,7 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
   return (
     <SideDrawer title="答疑助手" subtitle="问老师" onClose={onClose}
       actions={messages.length > 0 ? (
-        <button onClick={onReset} title="清空答疑"
+        <button type="button" onClick={onReset} title="清空答疑" aria-label="清空答疑记录"
           className="ui-btn ui-btn-icon border-transparent hover:!text-scarlet dark:hover:!text-scarlet-dark">
           <RotateCcw className="h-4 w-4" />
         </button>
@@ -83,7 +83,7 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
         {ctxLabel && (
           <div className="mb-2 flex items-center justify-between gap-2 rounded-md border border-gilt/40 bg-gilt/10 px-2.5 py-1.5 text-[11px] ui-text-muted dark:border-gilt-dark/40 dark:bg-gilt-dark/10">
             <span className="truncate">已选上下文：{ctxLabel}</span>
-            <button onClick={() => setCtx(null)} className="ui-text-faint hover:text-ink dark:hover:text-ink-dark"><X className="h-3 w-3" /></button>
+            <button type="button" onClick={() => setCtx(null)} aria-label="移除已选上下文" className="ui-text-faint hover:text-ink dark:hover:text-ink-dark"><X className="h-3 w-3" /></button>
           </div>
         )}
         <div className="flex gap-2">
@@ -94,7 +94,7 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
             }}
             placeholder={"问：为什么这样用？能再举一个例子吗？" + (sendOnCtrlEnter ? ' (Ctrl+Enter 发送)' : '')}
             className="ui-input flex-1 resize-none px-3 py-2 text-[13px]" />
-          <button onClick={submit} disabled={!question.trim() || isLoading}
+          <button type="button" onClick={submit} disabled={!question.trim() || isLoading} aria-label="发送答疑问题"
             className={`flex items-center justify-center rounded-md px-3 ${!question.trim() || isLoading ? 'bg-ink/10 text-ink/35 dark:bg-ink-dark/15 dark:text-ink-dark/35' : 'bg-forest text-paper hover:bg-forest/90 dark:bg-forest-dark dark:text-paper-dark dark:hover:bg-forest-dark/90'}`}>
             <Send className="h-4 w-4" />
           </button>

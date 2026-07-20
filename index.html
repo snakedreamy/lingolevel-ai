@@ -7,18 +7,13 @@
     <title>LingoLevel AI</title>  <!-- 标题默认英文 -->
     <!-- 字体已自托管（@fontsource-variable/newsreader，见 src/main.tsx），无外部资源依赖 -->
     <script>
-      // 主题的唯一真源：读写 `lingolevel_theme`，兼容旧版 `lingolevel_prefs`。
-      // 显式选择优先；从未选择过则跟随系统，并监听系统变化。
+      // 主题的唯一真源：`lingolevel_theme`。没有显式选择时跟随系统主题。
       (function () {
         var KEY = 'lingolevel_theme';
         var media = window.matchMedia('(prefers-color-scheme: dark)');
         var stored = null;
         try {
           stored = window.localStorage.getItem(KEY);
-          if (stored !== 'light' && stored !== 'dark') {
-            var legacy = JSON.parse(window.localStorage.getItem('lingolevel_prefs') || 'null');
-            stored = legacy && (legacy.theme === 'light' || legacy.theme === 'dark') ? legacy.theme : null;
-          }
         } catch (e) { stored = null; }
         var explicit = stored === 'light' || stored === 'dark' ? stored : null;
         function apply(theme) {
