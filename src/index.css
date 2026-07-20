@@ -3,8 +3,10 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-display: "Newsreader", "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
-  --font-body: "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  /* 西文衬线本地自托管（Newsreader Variable），中文走系统衬线；
+     正文直接用系统无衬线栈，不加载任何网络字体。 */
+  --font-display: "Newsreader Variable", "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
 
   /* 日间：暖白纸面 + 墨色文字；主色是饱而偏深的松绿，
      朱红只用于批错，泥金只用于页码与提示，三种彩色互不重叠。 */
@@ -15,14 +17,15 @@
   --color-scarlet: #B23A2E;
   --color-gilt: #8A6D3B;
 
-  /* 夜间：墨绿纸而非灰绿纸，深底里透一点绿让夜间模式与日间模式像同一本书的
-     两个版本；墨色换成暖纸白，彩色整体提亮但不改色相。 */
-  --color-paper-dark: #101511;
-  --color-leaf-dark: #1A2019;
-  --color-ink-dark: #EBE6D6;
-  --color-forest-dark: #7FBC98;
-  --color-scarlet-dark: #D9806C;
-  --color-gilt-dark: #C4A05E;
+  /* 夜间：近中性墨纸（极轻微暖调），不再掺绿——掺绿的深底与暖白文字
+     叠加后对比发闷，是“糊”感的来源；面板与底纸拉开明度差建立层次，
+     墨色保持暖纸白，彩色提亮到在深色底上依然清晰的明度。 */
+  --color-paper-dark: #161412;
+  --color-leaf-dark: #211E1A;
+  --color-ink-dark: #EDE7D9;
+  --color-forest-dark: #7EBB9B;
+  --color-scarlet-dark: #E08D7A;
+  --color-gilt-dark: #CDA666;
 }
 
 /* ── Design tokens ────────────────────────────────────────────────────── */
@@ -38,8 +41,9 @@
   --paper-alpha: color-mix(in srgb, var(--color-paper) 94%, transparent);
 }
 .dark {
-  --line: color-mix(in srgb, var(--color-ink-dark) 17%, transparent);
-  --line-strong: color-mix(in srgb, var(--color-ink-dark) 38%, transparent);
+  /* 深色底上半透明浅色线比日间更容易“化开”，透明度各提一档保住边缘 */
+  --line: color-mix(in srgb, var(--color-ink-dark) 20%, transparent);
+  --line-strong: color-mix(in srgb, var(--color-ink-dark) 42%, transparent);
   --ink-muted: color-mix(in srgb, var(--color-ink-dark) 62%, transparent);
   --ink-faint: color-mix(in srgb, var(--color-ink-dark) 38%, transparent);
   --accent-tint: color-mix(in srgb, var(--color-forest-dark) 11%, transparent);

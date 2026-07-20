@@ -172,7 +172,7 @@ function ChatInputBar({
           aria-label={isRecording ? '停止语音录入' : '开始语音录入'}>
           {isRecording ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
           {isRecording && (
-            <span className="absolute -right-1 -top-1 grid h-3.5 w-3.5 place-items-center rounded-full bg-scarlet text-[8px] font-extrabold text-white dark:bg-scarlet-dark">!</span>
+            <span className="absolute -right-1 -top-1 grid h-3.5 w-3.5 place-items-center rounded-full bg-scarlet text-[8px] font-extrabold text-paper dark:bg-scarlet-dark dark:text-paper-dark">!</span>
           )}
         </button>
 
