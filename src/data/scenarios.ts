@@ -1,4 +1,4 @@
-import { Coffee, Plane, MapPin, Briefcase, Hotel, MessageSquare } from 'lucide-react'
+import { Coffee, Plane, MapPin, Briefcase, Hotel, MessageSquare } from '../components/Icon'
 import type { Scenario } from "../types"
 
 export const SCENARIOS: Scenario[] = [

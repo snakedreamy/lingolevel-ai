@@ -1,6 +1,6 @@
 import { DifficultyLevel } from "../types";
 import { LEVELS } from "../data/levels";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap } from "./Icon";
 
 interface LevelSelectorProps {
   currentLevel: DifficultyLevel;
@@ -8,17 +8,16 @@ interface LevelSelectorProps {
 }
 
 export default function LevelSelector({ currentLevel, onLevelChange }: LevelSelectorProps) {
+  const activeDetails = LEVELS.find((l) => l.id === currentLevel);
   return (
     <section className="w-full">
       <div className="mb-3 flex items-center gap-2">
-        <GraduationCap className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-        <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-          学习难度
-        </h3>
+        <GraduationCap className="h-4.5 w-4.5 text-forest dark:text-forest-dark" />
+        <h3 className="text-sm font-bold text-ink dark:text-ink-dark">学习难度</h3>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-        {LEVELS.map((level) => {
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-7">
+        {LEVELS.map((level, index) => {
           const isActive = currentLevel === level.id;
           return (
             <button
@@ -26,44 +25,36 @@ export default function LevelSelector({ currentLevel, onLevelChange }: LevelSele
               onClick={() => onLevelChange(level.id)}
               type="button"
               aria-pressed={isActive}
-              className={`flex flex-col rounded-xl border p-2.5 text-left transition-colors duration-200 ${
+              className={`flex flex-col rounded-md border p-2.5 text-left transition-colors duration-200 ${
                 isActive
-                  ? "border-indigo-500 bg-indigo-50 text-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-100"
-                  : "border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
+                  ? "border-forest bg-forest/5 dark:border-forest-dark dark:bg-forest-dark/10"
+                  : "border-ink/15 bg-leaf hover:border-ink/40 dark:border-ink-dark/20 dark:bg-leaf-dark dark:hover:border-ink-dark/50"
               }`}
             >
-              <span className={`text-xs font-bold leading-tight ${isActive ? "text-indigo-700 dark:text-indigo-400" : "text-zinc-700 dark:text-zinc-300"}`}>
+              <span className="margin-code">{String(index + 1).padStart(2, "0")}</span>
+              <span className={`mt-1 text-xs font-bold leading-tight ${isActive ? "text-forest dark:text-forest-dark" : "text-ink/80 dark:text-ink-dark/80"}`}>
                 {level.name.split(" ")[0]}
               </span>
-              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">
+              <span className="mt-0.5 truncate text-[10px] text-ink/45 dark:text-ink-dark/45">
                 {level.englishName}
               </span>
-              <div className="mt-1.5 flex flex-wrap gap-1">
-                <span className="text-[9px] scale-95 origin-left bg-zinc-100 dark:bg-zinc-800 px-1 py-0.2 rounded text-zinc-500 dark:text-zinc-400">
-                  {level.ageGroup}
-                </span>
-              </div>
             </button>
           );
         })}
       </div>
-      
-      {(() => {
-        const activeDetails = LEVELS.find((l) => l.id === currentLevel);
-        if (!activeDetails) return null;
-        return (
-          <div className="mt-3 border-l-2 border-indigo-500 py-1 pl-3 text-xs">
-            <div className="space-y-1">
-              <p className="font-semibold text-zinc-700 dark:text-zinc-300">
-                当前设定：<span className="text-indigo-600 dark:text-indigo-400">{activeDetails.name}</span>
-                <span className="mx-2 text-zinc-300 dark:text-zinc-700">·</span>
-                词汇目标：<span className="text-emerald-600 dark:text-emerald-400">{activeDetails.vocabularyRange}</span>
-              </p>
-              <p className="text-zinc-500 dark:text-zinc-400">{activeDetails.description}</p>
-            </div>
+
+      {activeDetails && (
+        <div className="mt-3 border-l-2 border-forest py-1 pl-3 text-xs dark:border-forest-dark">
+          <div className="space-y-1">
+            <p className="font-semibold text-ink/80 dark:text-ink-dark/80">
+              当前设定：<span className="text-forest dark:text-forest-dark">{activeDetails.name}</span>
+              <span className="mx-2 text-ink/25 dark:text-ink-dark/30">·</span>
+              词汇目标：<span className="text-ink/65 dark:text-ink-dark/65">{activeDetails.vocabularyRange}</span>
+            </p>
+            <p className="text-ink/50 dark:text-ink-dark/50">{activeDetails.description}</p>
           </div>
-        );
-      })()}
+        </div>
+      )}
     </section>
   );
 }

@@ -1,6 +1,9 @@
-import type { LucideIcon } from 'lucide-react'
+import type { ComponentProps, FC } from 'react'
 
 export type DifficultyLevel = 'kindergarten' | 'primary_low' | 'primary_high' | 'junior' | 'senior' | 'college' | 'ielts';
+
+/** 与本地 `components/Icon` 的图标签名一致（接收 className 的 SVG 组件）。 */
+export type ScenarioIcon = FC<ComponentProps<'svg'>>;
 
 export interface LevelConfig {
   id: DifficultyLevel;
@@ -16,7 +19,7 @@ export interface Scenario {
   id: string;
   name: string;
   englishName: string;
-  icon: LucideIcon;
+  icon: ScenarioIcon;
   description: string;
   starterMessages: string[];
 }

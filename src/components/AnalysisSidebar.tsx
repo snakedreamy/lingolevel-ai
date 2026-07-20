@@ -1,6 +1,8 @@
 // src/components/AnalysisSidebar.tsx
 // Merged: AnalysisSidebar + AnalysisTranslationCard + GrammarFeedbackCard + SuggestionListSection + VocabularyCardsSection
-import { ArrowLeft, ArrowRight, Lightbulb, CheckCircle2, ChevronRight, RefreshCw } from 'lucide-react'
+// 版式：教师的旁批页。每轮分析标 §N 小节码，原句/更正/地道三行对照，
+// 朱色留给真正的错误，其余皆墨色。
+import { ArrowLeft, ArrowRight, Lightbulb, CheckCircle2, ChevronRight, RefreshCw } from './Icon'
 import type { AnalysisHistoryEntry, AnalysisResult, AssistantReplyInsight, GrammarCorrection } from '../types'
 import type { SpeechPlayer } from '../lib/speech'
 import SpeechButton from './SpeechButton'
@@ -50,12 +52,10 @@ function GrammarFeedbackCard({ corrections, speech, speechScope, isFallback = fa
   isFallback?: boolean
 }) {
   return (
-    <section className="space-y-3 border-b border-zinc-200 pb-5 dark:border-zinc-800">
+    <section className="space-y-3 border-b border-ink/10 pb-5 dark:border-ink-dark/15">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">
-          表达反馈
-        </span>
-        {isFallback && <span className="text-[10px] text-amber-600 dark:text-amber-400">参考模式</span>}
+        <span className="margin-code">旁批 · 表达反馈</span>
+        {isFallback && <span className="text-[10px] text-scarlet dark:text-scarlet-dark">参考模式</span>}
       </div>
 
       {corrections.length > 0 ? corrections.map((correction, i) => {
@@ -67,8 +67,8 @@ function GrammarFeedbackCard({ corrections, speech, speechScope, isFallback = fa
 
         return (
           <div key={i} className="space-y-2">
-            <div className={`flex items-center justify-between px-2 py-1 rounded-lg ${isCorrect ? 'bg-emerald-50 dark:bg-emerald-950/20' : 'bg-amber-50/60 dark:bg-amber-950/20'}`}>
-              <span className={`text-[10px] font-bold ${isCorrect ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
+            <div className={`flex items-center justify-between border-l-2 py-0.5 pl-2.5 pr-1 ${isCorrect ? 'border-forest dark:border-forest-dark' : 'border-scarlet dark:border-scarlet-dark'}`}>
+              <span className={`text-[10px] font-bold ${isCorrect ? 'text-forest dark:text-forest-dark' : 'text-scarlet dark:text-scarlet-dark'}`}>
                 {isCorrect ? '✓ 这句没问题' : `✗ 评分 ${correction.score}/100`}
               </span>
               {isCorrect && <SpeechButton active={speech.activeId === correctedSpeechId}
@@ -79,13 +79,13 @@ function GrammarFeedbackCard({ corrections, speech, speechScope, isFallback = fa
             {!isCorrect && (
               <div className="space-y-1.5">
                 <div className="flex items-start gap-2">
-                  <span className="text-[10px] font-bold text-zinc-400 w-12 shrink-0 pt-0.5">原句</span>
-                  <p className="text-[12px] text-zinc-600 dark:text-zinc-400 line-through">{correction.original}</p>
+                  <span className="w-10 shrink-0 pt-0.5 text-[10px] font-bold text-ink/40 dark:text-ink-dark/40">原句</span>
+                  <p className="target-lang text-[13px] text-ink/50 line-through decoration-scarlet/60 dark:text-ink-dark/50 dark:decoration-scarlet-dark/60">{correction.original}</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-[10px] font-bold text-emerald-600 w-12 shrink-0 pt-0.5">更正</span>
+                  <span className="w-10 shrink-0 pt-0.5 text-[10px] font-bold text-scarlet dark:text-scarlet-dark">更正</span>
                   <div className="flex items-center gap-2">
-                    <p className="text-[12px] font-semibold text-emerald-700 dark:text-emerald-400">{correction.corrected}</p>
+                    <p className="target-lang text-[13px] font-semibold text-ink dark:text-ink-dark">{correction.corrected}</p>
                     <SpeechButton active={speech.activeId === correctedSpeechId}
                       onClick={() => speech.toggle(correctedSpeechId, correction.corrected, '更正句')}
                       label="更正句" />
@@ -93,9 +93,9 @@ function GrammarFeedbackCard({ corrections, speech, speechScope, isFallback = fa
                 </div>
                 {correction.politeForm && correction.politeForm !== correction.corrected && (
                   <div className="flex items-start gap-2">
-                    <span className="text-[10px] font-bold text-indigo-500 w-12 shrink-0 pt-0.5">地道</span>
+                    <span className="w-10 shrink-0 pt-0.5 text-[10px] font-bold text-forest dark:text-forest-dark">地道</span>
                     <div className="flex items-center gap-2">
-                      <p className="text-[12px] text-indigo-600 dark:text-indigo-400">{correction.politeForm}</p>
+                      <p className="target-lang text-[13px] text-forest dark:text-forest-dark">{correction.politeForm}</p>
                       <SpeechButton active={speech.activeId === politeSpeechId}
                         onClick={() => speech.toggle(politeSpeechId, correction.politeForm ?? '', '地道表达')}
                         label="地道表达" />
@@ -105,14 +105,14 @@ function GrammarFeedbackCard({ corrections, speech, speechScope, isFallback = fa
               </div>
             )}
 
-            <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 space-y-1">
-              <p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{focus.label}</p>
-              <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">{explanation}</p>
+            <div className="space-y-1 border-l border-ink/15 pl-3 dark:border-ink-dark/20">
+              <p className="text-[10px] font-bold text-forest dark:text-forest-dark">{focus.label}</p>
+              <p className="text-[11px] leading-relaxed text-ink/65 dark:text-ink-dark/65">{explanation}</p>
             </div>
           </div>
         )
       }) : (
-        <div className="flex items-center gap-2 text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/20 rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 border-l-2 border-forest py-0.5 pl-2.5 text-[11px] text-forest dark:border-forest-dark dark:text-forest-dark">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           <span>未发现明显语法问题。</span>
         </div>
@@ -132,9 +132,9 @@ const DEFAULT_INSIGHT: AssistantReplyInsight = {
 function InsightLine({ label, value }: { label: string; value: string }) {
   const content = value.trim() || '本轮暂无可直接复用的提示。'
   return (
-    <div className="space-y-1 border-l-2 border-zinc-200 py-0.5 pl-3 dark:border-zinc-700">
-      <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400">{label}</p>
-      <p className="text-[11px] leading-relaxed text-zinc-700 dark:text-zinc-300">{content}</p>
+    <div className="space-y-1 border-l border-ink/15 py-0.5 pl-3 dark:border-ink-dark/20">
+      <p className="margin-code">{label}</p>
+      <p className="text-[11px] leading-relaxed text-ink/70 dark:text-ink-dark/70">{content}</p>
     </div>
   )
 }
@@ -146,15 +146,15 @@ function AnalysisTranslationCard({ translation, assistantReplyInsight, isFallbac
 }) {
   const insight = assistantReplyInsight ?? DEFAULT_INSIGHT
   return (
-    <section className="space-y-3 border-b border-zinc-200 pb-5 dark:border-zinc-800">
+    <section className="space-y-3 border-b border-ink/10 pb-5 dark:border-ink-dark/15">
       <div className="space-y-1">
-        <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">对照翻译</span>
-        <p className="text-[12px] leading-relaxed text-zinc-700 dark:text-zinc-300 whitespace-pre-line pt-1">{translation}</p>
+        <span className="margin-code">对照翻译</span>
+        <p className="whitespace-pre-line pt-1 text-[12px] leading-relaxed text-ink/75 dark:text-ink-dark/75">{translation}</p>
       </div>
-      <div className="border-t border-zinc-200/80 pt-3 dark:border-zinc-800">
+      <div className="border-t border-ink/10 pt-3 dark:border-ink-dark/15">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">这句怎么学</span>
-          {isFallback && <span className="text-[10px] text-amber-700 dark:text-amber-300">参考说明</span>}
+          <span className="margin-code">这句怎么学</span>
+          {isFallback && <span className="text-[10px] text-scarlet dark:text-scarlet-dark">参考说明</span>}
         </div>
         <div className="space-y-2.5">
           <InsightLine label="作用" value={insight.structure} />
@@ -177,8 +177,8 @@ function SuggestionListSection({ suggestions, onSelectSuggestion, speech, speech
   if (suggestions.length === 0) return null
 
   return (
-    <section className="border-b border-zinc-200 pb-5 dark:border-zinc-800">
-      <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">接话建议</span>
+    <section className="border-b border-ink/10 pb-5 dark:border-ink-dark/15">
+      <span className="margin-code">接话建议</span>
       <ul className="mt-3 space-y-2">
         {suggestions.map((suggestion, i) => {
           const match = suggestion.match(/^(.*?)\s*\[([^\]]+)\]$/)
@@ -186,14 +186,15 @@ function SuggestionListSection({ suggestions, onSelectSuggestion, speech, speech
           const chinese = match ? match[2].trim() : ''
           const speechId = `${speechScope}:suggestion:${i}`
           return (
-            <li key={i} className="flex items-center rounded-xl border border-zinc-200 bg-stone-50/50 pr-1.5 transition hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:border-indigo-600 dark:hover:bg-indigo-950/20">
+            <li key={i} className="group/sug flex items-stretch rounded-md border border-ink/15 bg-leaf transition hover:border-forest dark:border-ink-dark/20 dark:bg-leaf-dark dark:hover:border-forest-dark">
+              <span aria-hidden="true" className={`w-0.5 shrink-0 self-stretch rounded-l-md transition ${'bg-transparent group-hover/sug:bg-forest dark:group-hover/sug:bg-forest-dark'}`} />
               <button onClick={() => onSelectSuggestion(english)} className="group min-w-0 flex-1 px-3 py-2.5 text-left">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="text-[12px] font-semibold text-zinc-800 dark:text-zinc-200 group-hover:text-indigo-700 dark:group-hover:text-indigo-300">{english}</p>
-                    {chinese && <p className="text-[10.5px] text-zinc-500 dark:text-zinc-400 mt-0.5">{chinese}</p>}
+                    <p className="target-lang text-[13px] text-ink group-hover:text-forest dark:text-ink-dark dark:group-hover:text-forest-dark">{english}</p>
+                    {chinese && <p className="mt-0.5 text-[10.5px] text-ink/50 dark:text-ink-dark/50">{chinese}</p>}
                   </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-zinc-400 group-hover:text-indigo-500 shrink-0 mt-0.5" />
+                  <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink/30 group-hover:text-forest dark:text-ink-dark/30 dark:group-hover:text-forest-dark" />
                 </div>
               </button>
               <SpeechButton active={speech.activeId === speechId}
@@ -218,27 +219,25 @@ function VocabularyCardsSection({ keyWords, speech, speechScope }: {
 
   return (
     <section>
-      <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">词汇</span>
+      <span className="margin-code">生词</span>
       <div className="mt-2">
         {keyWords.filter((kw) => kw.word).map((kw, index) => {
           const wordSpeechId = `${speechScope}:word:${index}`
           const exampleSpeechId = `${speechScope}:word:${index}:example`
           return (
-            <div key={kw.word} className="border-t border-zinc-200 py-3 first:border-t-0 dark:border-zinc-800">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100">{kw.word}</span>
-                  <SpeechButton active={speech.activeId === wordSpeechId}
-                    onClick={() => speech.toggle(wordSpeechId, kw.word, kw.word)} label={kw.word} />
-                  {kw.phonetic && <span className="text-[10px] font-mono text-zinc-400">{kw.phonetic}</span>}
-                </div>
+            <div key={kw.word} className="border-t border-ink/10 py-3 first:border-t-0 dark:border-ink-dark/15">
+              <div className="flex items-baseline gap-2">
+                <span className="font-display text-[17px] font-semibold text-ink dark:text-ink-dark">{kw.word}</span>
+                <SpeechButton active={speech.activeId === wordSpeechId}
+                  onClick={() => speech.toggle(wordSpeechId, kw.word, kw.word)} label={kw.word} />
+                {kw.phonetic && <span className="font-mono text-[10px] text-ink/40 dark:text-ink-dark/40">{kw.phonetic}</span>}
               </div>
-              <p className="text-[11px] text-indigo-700 dark:text-indigo-400 font-semibold mt-1">{kw.definition}</p>
+              <p className="mt-1 text-[11px] font-semibold text-ink/70 dark:text-ink-dark/70">{kw.definition}</p>
               {kw.exampleEn && (
-                <div className="mt-1.5 flex items-start gap-1 text-[10.5px] text-zinc-500 dark:text-zinc-400">
-                  <div className="min-w-0 flex-1">
-                    <span className="italic">"{kw.exampleEn}"</span>
-                    {kw.exampleZh && <span className="block mt-0.5">{kw.exampleZh}</span>}
+                <div className="mt-1.5 flex items-start gap-1 text-[11px] text-ink/55 dark:text-ink-dark/55">
+                  <div className="min-w-0 flex-1 border-l border-ink/15 pl-2.5 dark:border-ink-dark/20">
+                    <span className="target-lang">“{kw.exampleEn}”</span>
+                    {kw.exampleZh && <span className="mt-0.5 block">{kw.exampleZh}</span>}
                   </div>
                   <SpeechButton active={speech.activeId === exampleSpeechId}
                     onClick={() => speech.toggle(exampleSpeechId, kw.exampleEn, '词汇例句')}
@@ -279,33 +278,34 @@ export default function AnalysisSidebar({
   const speechScope = `analysis:${analysisHistory[selectedAnalysisIndex]?.id ?? selectedAnalysisIndex}`
 
   const shellClass = embedded
-    ? 'min-h-0 flex flex-1 flex-col overflow-hidden bg-white dark:bg-zinc-950'
-    : 'h-full min-h-0 flex flex-col overflow-hidden border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 lg:border-t-0 lg:border-l'
+    ? 'flex min-h-0 flex-1 flex-col overflow-hidden bg-paper dark:bg-paper-dark'
+    : 'flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-ink/20 bg-paper dark:border-ink-dark/25 dark:bg-paper-dark'
 
   return (
     <div className={shellClass}>
       {!embedded && (
-        <div className="border-b border-zinc-200 bg-stone-50/60 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900/40 sm:px-4">
-          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">学习反馈</h3>
+        <div className="flex items-baseline justify-between border-b border-ink/15 px-3 py-3 dark:border-ink-dark/20 sm:px-4">
+          <h3 className="font-display text-sm font-semibold text-ink dark:text-ink-dark">学习反馈</h3>
+          <span className="margin-code">旁批</span>
         </div>
       )}
 
       {hasHistory && (
-        <div className={`border-b border-zinc-200 bg-white/90 dark:border-zinc-800 dark:bg-zinc-950/90 ${embedded ? 'px-4 py-2.5' : 'px-3 py-2.5 sm:px-4'}`}>
+        <div className={`border-b border-ink/15 dark:border-ink-dark/20 ${embedded ? 'px-4 py-2.5' : 'px-3 py-2.5 sm:px-4'}`}>
           <div className="flex items-center justify-between gap-2">
-            <div className="rounded-full border border-zinc-200 bg-stone-50 px-2.5 py-1 text-[11px] font-medium text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+            <div className="rounded-md border border-ink/15 px-2.5 py-1 text-[11px] font-medium text-ink/55 dark:border-ink-dark/20 dark:text-ink-dark/55">
               第 {currentRound} / {analysisHistory.length} 轮{isViewingLatest ? ' · 最新' : ' · 回看中'}
             </div>
             <div className="flex items-center gap-1.5">
               <button onClick={onRetryAnalysis} disabled={isLoading}
-                className="inline-flex items-center gap-1 rounded-full border border-zinc-200 px-2.5 py-1 text-[11px] font-medium text-zinc-600 transition hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-800 dark:text-zinc-300"
+                className="inline-flex items-center gap-1 rounded-md border border-ink/15 px-2.5 py-1 text-[11px] font-medium text-ink/60 transition hover:border-forest hover:text-forest disabled:cursor-not-allowed disabled:opacity-40 dark:border-ink-dark/20 dark:text-ink-dark/60 dark:hover:border-forest-dark dark:hover:text-forest-dark"
                 title="重新生成本轮分析">
                 <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
                 重新分析
               </button>
               {!isViewingLatest && (
                 <button onClick={onLatestAnalysis}
-                  className="rounded-full bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-white transition hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">
+                  className="rounded-md bg-forest px-2.5 py-1 text-[11px] font-medium text-paper transition hover:bg-forest/90 dark:bg-forest-dark dark:text-paper-dark dark:hover:bg-forest-dark/90">
                   回到最新
                 </button>
               )}
@@ -317,7 +317,7 @@ export default function AnalysisSidebar({
               { label: '下一轮', icon: ArrowRight, action: onNextAnalysis, disabled: selectedAnalysisIndex >= analysisHistory.length - 1, iconAfter: true },
             ].map(({ label, icon: Icon, action, disabled, iconAfter }) => (
               <button key={label} onClick={action} disabled={disabled}
-                className="inline-flex items-center gap-1 rounded-full border border-zinc-200 px-2.5 py-1 text-[11px] font-medium text-zinc-600 transition hover:border-zinc-300 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900">
+                className="inline-flex items-center gap-1 rounded-md border border-ink/15 px-2.5 py-1 text-[11px] font-medium text-ink/60 transition hover:border-ink/40 disabled:cursor-not-allowed disabled:opacity-40 dark:border-ink-dark/20 dark:text-ink-dark/60 dark:hover:border-ink-dark/50">
                 {!iconAfter && <Icon className="h-3.5 w-3.5" />}
                 {label}
                 {iconAfter && <Icon className="h-3.5 w-3.5" />}
@@ -327,33 +327,33 @@ export default function AnalysisSidebar({
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 space-y-4 sm:space-y-5">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 sm:space-y-5 sm:p-4">
         {isLoading ? (
           <div className="space-y-4">
-            <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2.5 text-[11px] leading-relaxed text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/20 dark:text-indigo-200">
+            <div className="rounded-md border border-forest/30 bg-forest/5 px-3 py-2.5 text-[11px] leading-relaxed text-forest dark:border-forest-dark/40 dark:bg-forest-dark/10 dark:text-forest-dark">
               正在分析…
             </div>
-            <div className="space-y-4 animate-pulse">
+            <div className="animate-pulse space-y-4">
               {[
-                'h-20 bg-zinc-100 dark:bg-zinc-900 rounded-xl',
-                'h-28 bg-zinc-100 dark:bg-zinc-900 rounded-xl',
-                'h-32 bg-zinc-100 dark:bg-zinc-900 rounded-xl',
+                'h-20 bg-ink/5 dark:bg-ink-dark/10 rounded-md',
+                'h-28 bg-ink/5 dark:bg-ink-dark/10 rounded-md',
+                'h-32 bg-ink/5 dark:bg-ink-dark/10 rounded-md',
               ].map((cls, i) => (
                 <div key={i} className={cls} />
               ))}
             </div>
           </div>
         ) : !analysis ? (
-          <div className="h-[60vh] flex flex-col items-center justify-center text-center text-zinc-400 p-4">
-            <div className="p-3 bg-zinc-100 dark:bg-zinc-900 rounded-full mb-3 text-zinc-500">
-              <Lightbulb className="h-6 w-6" />
+          <div className="flex h-[60vh] flex-col items-center justify-center p-4 text-center">
+            <div className="mb-3 grid h-12 w-12 place-items-center rounded-full border border-ink/15 text-ink/35 dark:border-ink-dark/20 dark:text-ink-dark/35">
+              <Lightbulb className="h-5 w-5" />
             </div>
-            <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">发送英文后查看反馈</p>
+            <p className="text-xs font-semibold text-ink/60 dark:text-ink-dark/60">发送英文后查看反馈</p>
           </div>
         ) : (
-          <div className="space-y-5 animate-fade-in">
+          <div className="animate-fade-in space-y-5">
             {analysis.isFallback && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-[11px] leading-relaxed text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
+              <div className="rounded-md border border-scarlet/30 bg-scarlet/5 px-3 py-2.5 text-[11px] leading-relaxed text-scarlet dark:border-scarlet-dark/40 dark:bg-scarlet-dark/10 dark:text-scarlet-dark">
                 当前分析服务暂时不可用，本轮未进行语法评分、纠错、翻译或词汇提取，请稍后继续练习或重试。
               </div>
             )}

@@ -2,6 +2,29 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme {
+  --font-display: "Newsreader", "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+  --font-body: "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+
+  /* 日间：暖白纸面 + 墨色文字；主色是饱而偏深的松绿，
+     朱红只用于批错，泥金只用于页码与提示，三种彩色互不重叠。 */
+  --color-paper: #F5F1E8;
+  --color-leaf: #FCFAF4;
+  --color-ink: #1D1A13;
+  --color-forest: #17573E;
+  --color-scarlet: #B23A2E;
+  --color-gilt: #8A6D3B;
+
+  /* 夜间：墨绿纸而非灰绿纸，深底里透一点绿让夜间模式与日间模式像同一本书的
+     两个版本；墨色换成暖纸白，彩色整体提亮但不改色相。 */
+  --color-paper-dark: #101511;
+  --color-leaf-dark: #1A2019;
+  --color-ink-dark: #EBE6D6;
+  --color-forest-dark: #7FBC98;
+  --color-scarlet-dark: #D9806C;
+  --color-gilt-dark: #C4A05E;
+}
+
 html, body, #root {
   height: 100%;
   width: 100%;
@@ -25,6 +48,7 @@ html, body, #root {
   }
 }
 
+/* 填词面板聚焦时，小屏隐藏页眉与导航，让位给键盘 */
 @media (max-width: 767px), (max-height: 600px) and (pointer: coarse) {
   #app:has(#fill-answer:focus) .app-header,
   #app:has(#fill-answer:focus) .app-workspace-nav {
@@ -38,6 +62,8 @@ html, body, #root {
 
   #app:has(#fill-answer:focus) .fill-blank-shell {
     border-radius: 0;
+    border-left: 0;
+    border-right: 0;
   }
 
   #app:has(#fill-answer:focus) .fill-blank-content {
@@ -86,9 +112,38 @@ html, body, #root {
 .animate-fade-in { animation: fade-in 180ms ease-out both; }
 .animate-slide-up { animation: slide-up 220ms cubic-bezier(.2,.8,.2,1) both; }
 
-:where(button, input, textarea, summary, [tabindex]):focus-visible {
-  outline: 2px solid rgb(79 70 229);
+/* 页面编码：页边的小号章节编号，如一本编过页码的语法书 */
+.margin-code {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-gilt);
+}
+.dark .margin-code {
+  color: var(--color-gilt-dark);
+}
+
+/* 目标语（英文例句、词汇）一律以斜体衬线呈现——语法书里引语的排印惯例 */
+.target-lang {
+  font-family: var(--font-display);
+  font-style: italic;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-forest) 22%, transparent);
+}
+.dark ::selection {
+  background: color-mix(in srgb, var(--color-forest-dark) 30%, transparent);
+}
+
+:where(button, input, textarea, summary, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-forest);
   outline-offset: 2px;
+}
+.dark :where(button, input, textarea, summary, select, [tabindex]):focus-visible {
+  outline-color: var(--color-forest-dark);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { HelpCircle, X, Send, RotateCcw } from 'lucide-react'
+import { X, Send, RotateCcw } from './Icon'
 import type { AskContext, AskMessage } from '../types'
 import type { SpeechPlayer } from '../lib/speech'
 import { renderMarkdown } from '../lib/markdown'
@@ -39,42 +39,44 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
     // 非模态：抽屉悬浮在右侧，不遮罩/模糊主聊天区，点击外部不关闭，
     // 用户可一边看主对话一边答疑。pointer-events-none 让外层不拦截主区点击，
     // 内层抽屉 pointer-events-auto 重新启用交互。
-    <div className="fixed inset-0 z-40 flex justify-end pointer-events-none animate-fade-in">
+    <div className="pointer-events-none fixed inset-0 z-40 flex justify-end animate-fade-in">
       <aside role="complementary" aria-labelledby="ask-assistant-title"
-        className="h-full w-full max-w-md bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col pointer-events-auto">
-        <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-indigo-50 dark:bg-indigo-950/40 p-2 text-indigo-600 dark:text-indigo-400"><HelpCircle className="h-5 w-5" /></div>
-            <h2 id="ask-assistant-title" className="text-sm font-bold text-zinc-900 dark:text-zinc-100">答疑助手</h2>
+        className="pointer-events-auto flex h-full w-full max-w-md flex-col border-l-2 border-ink bg-paper shadow-2xl dark:border-ink-dark dark:bg-paper-dark">
+        <div className="flex items-center justify-between border-b border-ink/15 px-4 py-3 dark:border-ink-dark/20">
+          <div className="flex items-baseline gap-2.5">
+            <h2 id="ask-assistant-title" className="font-display text-base font-semibold text-ink dark:text-ink-dark">答疑助手</h2>
+            <span className="margin-code">问老师</span>
           </div>
           <div className="flex items-center gap-1">
             {messages.length > 0 && (
-              <button onClick={onReset} title="清空答疑" className="p-2 text-zinc-400 hover:text-rose-600 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"><RotateCcw className="h-4 w-4" /></button>
+              <button onClick={onReset} title="清空答疑" className="rounded-md p-2 text-ink/45 hover:bg-ink/5 hover:text-scarlet dark:text-ink-dark/45 dark:hover:bg-ink-dark/10 dark:hover:text-scarlet-dark"><RotateCcw className="h-4 w-4" /></button>
             )}
-            <button onClick={onClose} aria-label="关闭" className="p-2 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg cursor-pointer"><X className="h-5 w-5" /></button>
+            <button onClick={onClose} aria-label="关闭" className="cursor-pointer rounded-md p-2 text-ink/45 hover:bg-ink/5 hover:text-ink dark:text-ink-dark/45 dark:hover:bg-ink-dark/10 dark:hover:text-ink-dark"><X className="h-5 w-5" /></button>
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto p-4">
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center text-zinc-400">
-              <HelpCircle className="h-10 w-10 mb-3" />
-              <p className="max-w-xs text-xs leading-5">直接提问，也可以带着当前课程、练习答案或对话句子继续追问。</p>
+            <div className="flex h-full flex-col items-center justify-center text-center">
+              <p className="margin-code mb-3">问老师</p>
+              <p className="max-w-xs text-xs leading-5 text-ink/50 dark:text-ink-dark/50">直接提问，也可以带着当前课程、练习答案或对话句子继续追问。</p>
             </div>
           ) : messages.map((m) => (
-            <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[12px] leading-relaxed ${m.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-tl-none'}`}>
+            <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'border-l border-ink/15 pl-3 dark:border-ink-dark/20'}>
+              <div className={m.role === 'user'
+                ? 'max-w-[88%] border-r-2 border-scarlet pr-3 text-right dark:border-scarlet-dark'
+                : 'max-w-full'}>
                 {m.context && (m.context.word || m.context.sentence || m.context.lessonTitle) && (
-                  <div className={`mb-1.5 text-[10px] px-1.5 py-0.5 rounded ${m.role === 'user' ? 'bg-indigo-500/40' : 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'}`}>
+                  <div className={`mb-1.5 text-[10px] ${m.role === 'user' ? 'margin-code' : 'margin-code !text-ink/50 dark:!text-ink-dark/50'}`}>
                     {m.context.word ? `单词：${m.context.word}` : m.context.sentence ? `句子：${m.context.sentence}` : `课程：${m.context.lessonTitle}`}
                   </div>
                 )}
-                <div className="break-words">
+                <div className={`break-words leading-relaxed ${m.role === 'user' ? 'font-body text-[13px] text-ink dark:text-ink-dark' : 'text-[13px] text-ink/90 dark:text-ink-dark/90'}`}>
                   {m.content
                     ? (m.streaming ? (
-                        <span className="whitespace-pre-wrap">{m.content}<span className="inline-block w-1.5 h-3.5 ml-0.5 bg-current animate-pulse align-middle" /></span>
+                        <span className="whitespace-pre-wrap">{m.content}<span className="ml-0.5 inline-block h-3.5 w-1 animate-pulse bg-scarlet align-middle dark:bg-scarlet-dark" /></span>
                       ) : renderMarkdown(m.content))
-                    : (m.streaming ? <span className="inline-block w-1.5 h-3.5 ml-0.5 bg-current animate-pulse align-middle" /> : null)}
+                    : (m.streaming ? <span className="inline-block h-3.5 w-1 animate-pulse bg-scarlet align-middle dark:bg-scarlet-dark" /> : null)}
                 </div>
                 {m.role === 'assistant' && m.content && !m.streaming && (
                   <div className="mt-1.5">
@@ -88,11 +90,11 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
           ))}
         </div>
 
-        <div className="border-t border-zinc-200 dark:border-zinc-800 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="border-t border-ink/15 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] dark:border-ink-dark/20">
           {ctxLabel && (
-            <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+            <div className="mb-2 flex items-center justify-between gap-2 rounded-md border border-gilt/40 bg-gilt/10 px-2.5 py-1.5 text-[11px] text-ink/70 dark:border-gilt-dark/40 dark:bg-gilt-dark/10 dark:text-ink-dark/70">
               <span className="truncate">已选上下文：{ctxLabel}</span>
-              <button onClick={() => setCtx(null)} className="text-amber-500 hover:text-amber-700"><X className="h-3 w-3" /></button>
+              <button onClick={() => setCtx(null)} className="text-ink/40 hover:text-ink/70 dark:text-ink-dark/40 dark:hover:text-ink-dark/70"><X className="h-3 w-3" /></button>
             </div>
           )}
           <div className="flex gap-2">
@@ -102,9 +104,9 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
                 if (e.key === 'Enter' && isSendCombo) { e.preventDefault(); submit() }
               }}
               placeholder={"问：为什么这样用？能再举一个例子吗？" + (sendOnCtrlEnter ? ' (Ctrl+Enter 发送)' : '')}
-              className="flex-1 resize-none bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-[13px] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
+              className="flex-1 resize-none rounded-md border border-ink/20 bg-leaf px-3 py-2 text-[13px] text-ink outline-none placeholder:text-ink/35 focus:border-forest focus:ring-1 focus:ring-forest/40 dark:border-ink-dark/25 dark:bg-leaf-dark dark:text-ink-dark dark:placeholder:text-ink-dark/35 dark:focus:border-forest-dark" />
             <button onClick={submit} disabled={!question.trim() || isLoading}
-              className={`px-3 rounded-xl flex items-center justify-center ${!question.trim() || isLoading ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
+              className={`flex items-center justify-center rounded-md px-3 ${!question.trim() || isLoading ? 'bg-ink/10 text-ink/35 dark:bg-ink-dark/15 dark:text-ink-dark/35' : 'bg-forest text-paper hover:bg-forest/90 dark:bg-forest-dark dark:text-paper-dark dark:hover:bg-forest-dark/90'}`}>
               <Send className="h-4 w-4" />
             </button>
           </div>
