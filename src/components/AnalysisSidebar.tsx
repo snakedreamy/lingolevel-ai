@@ -1,10 +1,9 @@
 // src/components/AnalysisSidebar.tsx
-// Merged: AnalysisSidebar + AnalysisTranslationCard + GrammarFeedbackCard + SuggestionListSection + VocabularyCardsSection
 // 版式：教师的旁批页。每轮分析标 §N 小节码，原句/更正/地道三行对照，
 // 朱色留给真正的错误，其余皆墨色。
 import { ArrowLeft, ArrowRight, Lightbulb, CheckCircle2, ChevronRight, RefreshCw } from './Icon'
 import type { AnalysisHistoryEntry, AnalysisResult, AssistantReplyInsight, GrammarCorrection } from '../types'
-import type { SpeechPlayer } from '../lib/speech'
+import { useSpeech } from './ui'
 import SpeechButton from './SpeechButton'
 
 // ─── GrammarFeedbackCard ─────────────────────────────────────────────────────
@@ -45,14 +44,14 @@ function resolveExplanation(correction: GrammarCorrection, focus: ReturnType<typ
   return `优先记住这条规则：${focus.rule}`
 }
 
-function GrammarFeedbackCard({ corrections, speech, speechScope, isFallback = false }: {
+function GrammarFeedbackCard({ corrections, speechScope, isFallback = false }: {
   corrections: GrammarCorrection[]
-  speech: SpeechPlayer
   speechScope: string
   isFallback?: boolean
 }) {
+  const speech = useSpeech()
   return (
-    <section className="space-y-3 border-b border-ink/10 pb-5 dark:border-ink-dark/15">
+    <section className="space-y-3 border-b ui-rule pb-5">
       <div className="flex items-center justify-between">
         <span className="margin-code">旁批 · 表达反馈</span>
         {isFallback && <span className="text-[10px] text-scarlet dark:text-scarlet-dark">参考模式</span>}
@@ -79,13 +78,13 @@ function GrammarFeedbackCard({ corrections, speech, speechScope, isFallback = fa
             {!isCorrect && (
               <div className="space-y-1.5">
                 <div className="flex items-start gap-2">
-                  <span className="w-10 shrink-0 pt-0.5 text-[10px] font-bold text-ink/40 dark:text-ink-dark/40">原句</span>
-                  <p className="target-lang text-[13px] text-ink/50 line-through decoration-scarlet/60 dark:text-ink-dark/50 dark:decoration-scarlet-dark/60">{correction.original}</p>
+                  <span className="w-10 shrink-0 pt-0.5 text-[10px] font-bold ui-text-faint">原句</span>
+                  <p className="target-lang text-[13px] ui-text-muted line-through decoration-scarlet/60 dark:decoration-scarlet-dark/60">{correction.original}</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="w-10 shrink-0 pt-0.5 text-[10px] font-bold text-scarlet dark:text-scarlet-dark">更正</span>
                   <div className="flex items-center gap-2">
-                    <p className="target-lang text-[13px] font-semibold text-ink dark:text-ink-dark">{correction.corrected}</p>
+                    <p className="target-lang text-[13px] font-semibold">{correction.corrected}</p>
                     <SpeechButton active={speech.activeId === correctedSpeechId}
                       onClick={() => speech.toggle(correctedSpeechId, correction.corrected, '更正句')}
                       label="更正句" />
@@ -105,9 +104,9 @@ function GrammarFeedbackCard({ corrections, speech, speechScope, isFallback = fa
               </div>
             )}
 
-            <div className="space-y-1 border-l border-ink/15 pl-3 dark:border-ink-dark/20">
+            <div className="space-y-1 border-l ui-rule pl-3">
               <p className="text-[10px] font-bold text-forest dark:text-forest-dark">{focus.label}</p>
-              <p className="text-[11px] leading-relaxed text-ink/65 dark:text-ink-dark/65">{explanation}</p>
+              <p className="text-[11px] leading-relaxed ui-text-muted">{explanation}</p>
             </div>
           </div>
         )
@@ -132,9 +131,9 @@ const DEFAULT_INSIGHT: AssistantReplyInsight = {
 function InsightLine({ label, value }: { label: string; value: string }) {
   const content = value.trim() || '本轮暂无可直接复用的提示。'
   return (
-    <div className="space-y-1 border-l border-ink/15 py-0.5 pl-3 dark:border-ink-dark/20">
+    <div className="space-y-1 border-l ui-rule py-0.5 pl-3">
       <p className="margin-code">{label}</p>
-      <p className="text-[11px] leading-relaxed text-ink/70 dark:text-ink-dark/70">{content}</p>
+      <p className="text-[11px] leading-relaxed ui-text-muted">{content}</p>
     </div>
   )
 }
@@ -146,12 +145,12 @@ function AnalysisTranslationCard({ translation, assistantReplyInsight, isFallbac
 }) {
   const insight = assistantReplyInsight ?? DEFAULT_INSIGHT
   return (
-    <section className="space-y-3 border-b border-ink/10 pb-5 dark:border-ink-dark/15">
+    <section className="space-y-3 border-b ui-rule pb-5">
       <div className="space-y-1">
         <span className="margin-code">对照翻译</span>
-        <p className="whitespace-pre-line pt-1 text-[12px] leading-relaxed text-ink/75 dark:text-ink-dark/75">{translation}</p>
+        <p className="whitespace-pre-line pt-1 text-[12px] leading-relaxed ui-text-muted">{translation}</p>
       </div>
-      <div className="border-t border-ink/10 pt-3 dark:border-ink-dark/15">
+      <div className="border-t ui-rule pt-3">
         <div className="mb-2 flex items-center justify-between gap-2">
           <span className="margin-code">这句怎么学</span>
           {isFallback && <span className="text-[10px] text-scarlet dark:text-scarlet-dark">参考说明</span>}
@@ -168,16 +167,16 @@ function AnalysisTranslationCard({ translation, assistantReplyInsight, isFallbac
 
 // ─── SuggestionListSection ───────────────────────────────────────────────────
 
-function SuggestionListSection({ suggestions, onSelectSuggestion, speech, speechScope }: {
+function SuggestionListSection({ suggestions, onSelectSuggestion, speechScope }: {
   suggestions: string[]
   onSelectSuggestion: (text: string) => void
-  speech: SpeechPlayer
   speechScope: string
 }) {
+  const speech = useSpeech()
   if (suggestions.length === 0) return null
 
   return (
-    <section className="border-b border-ink/10 pb-5 dark:border-ink-dark/15">
+    <section className="border-b ui-rule pb-5">
       <span className="margin-code">接话建议</span>
       <ul className="mt-3 space-y-2">
         {suggestions.map((suggestion, i) => {
@@ -186,15 +185,15 @@ function SuggestionListSection({ suggestions, onSelectSuggestion, speech, speech
           const chinese = match ? match[2].trim() : ''
           const speechId = `${speechScope}:suggestion:${i}`
           return (
-            <li key={i} className="group/sug flex items-stretch rounded-md border border-ink/15 bg-leaf transition hover:border-forest dark:border-ink-dark/20 dark:bg-leaf-dark dark:hover:border-forest-dark">
-              <span aria-hidden="true" className={`w-0.5 shrink-0 self-stretch rounded-l-md transition ${'bg-transparent group-hover/sug:bg-forest dark:group-hover/sug:bg-forest-dark'}`} />
-              <button onClick={() => onSelectSuggestion(english)} className="group min-w-0 flex-1 px-3 py-2.5 text-left">
+            <li key={i} className="group/sug flex items-stretch rounded-md border ui-rule ui-surface transition hover:border-forest dark:hover:border-forest-dark">
+              <span aria-hidden="true" className="w-0.5 shrink-0 self-stretch rounded-l-md transition bg-transparent group-hover/sug:bg-forest dark:group-hover/sug:bg-forest-dark" />
+              <button onClick={() => onSelectSuggestion(english)} className="group min-w-0 flex-1 cursor-pointer px-3 py-2.5 text-left">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="target-lang text-[13px] text-ink group-hover:text-forest dark:text-ink-dark dark:group-hover:text-forest-dark">{english}</p>
-                    {chinese && <p className="mt-0.5 text-[10.5px] text-ink/50 dark:text-ink-dark/50">{chinese}</p>}
+                    <p className="target-lang text-[13px] group-hover:text-forest dark:group-hover:text-forest-dark">{english}</p>
+                    {chinese && <p className="mt-0.5 text-[10.5px] ui-text-faint">{chinese}</p>}
                   </div>
-                  <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink/30 group-hover:text-forest dark:text-ink-dark/30 dark:group-hover:text-forest-dark" />
+                  <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 ui-text-faint group-hover:text-forest dark:group-hover:text-forest-dark" />
                 </div>
               </button>
               <SpeechButton active={speech.activeId === speechId}
@@ -210,11 +209,11 @@ function SuggestionListSection({ suggestions, onSelectSuggestion, speech, speech
 
 // ─── VocabularyCardsSection ──────────────────────────────────────────────────
 
-function VocabularyCardsSection({ keyWords, speech, speechScope }: {
+function VocabularyCardsSection({ keyWords, speechScope }: {
   keyWords: AnalysisResult['keyWords']
-  speech: SpeechPlayer
   speechScope: string
 }) {
+  const speech = useSpeech()
   if (keyWords.length === 0) return null
 
   return (
@@ -225,17 +224,17 @@ function VocabularyCardsSection({ keyWords, speech, speechScope }: {
           const wordSpeechId = `${speechScope}:word:${index}`
           const exampleSpeechId = `${speechScope}:word:${index}:example`
           return (
-            <div key={kw.word} className="border-t border-ink/10 py-3 first:border-t-0 dark:border-ink-dark/15">
+            <div key={kw.word} className="border-t ui-rule py-3 first:border-t-0">
               <div className="flex items-baseline gap-2">
-                <span className="font-display text-[17px] font-semibold text-ink dark:text-ink-dark">{kw.word}</span>
+                <span className="font-display text-[17px] font-semibold">{kw.word}</span>
                 <SpeechButton active={speech.activeId === wordSpeechId}
                   onClick={() => speech.toggle(wordSpeechId, kw.word, kw.word)} label={kw.word} />
-                {kw.phonetic && <span className="font-mono text-[10px] text-ink/40 dark:text-ink-dark/40">{kw.phonetic}</span>}
+                {kw.phonetic && <span className="font-mono text-[10px] ui-text-faint">{kw.phonetic}</span>}
               </div>
-              <p className="mt-1 text-[11px] font-semibold text-ink/70 dark:text-ink-dark/70">{kw.definition}</p>
+              <p className="mt-1 text-[11px] font-semibold ui-text-muted">{kw.definition}</p>
               {kw.exampleEn && (
-                <div className="mt-1.5 flex items-start gap-1 text-[11px] text-ink/55 dark:text-ink-dark/55">
-                  <div className="min-w-0 flex-1 border-l border-ink/15 pl-2.5 dark:border-ink-dark/20">
+                <div className="mt-1.5 flex items-start gap-1 text-[11px] ui-text-muted">
+                  <div className="min-w-0 flex-1 border-l ui-rule pl-2.5">
                     <span className="target-lang">“{kw.exampleEn}”</span>
                     {kw.exampleZh && <span className="mt-0.5 block">{kw.exampleZh}</span>}
                   </div>
@@ -264,13 +263,12 @@ interface AnalysisSidebarProps {
   onNextAnalysis: () => void
   onLatestAnalysis: () => void
   onRetryAnalysis: () => void
-  speech: SpeechPlayer
   embedded?: boolean
 }
 
 export default function AnalysisSidebar({
   analysis, analysisHistory, selectedAnalysisIndex, isLoading,
-  onSelectSuggestion, onPreviousAnalysis, onNextAnalysis, onLatestAnalysis, onRetryAnalysis, speech, embedded = false,
+  onSelectSuggestion, onPreviousAnalysis, onNextAnalysis, onLatestAnalysis, onRetryAnalysis, embedded = false,
 }: AnalysisSidebarProps) {
   const hasHistory = analysisHistory.length > 0
   const isViewingLatest = hasHistory && selectedAnalysisIndex === analysisHistory.length - 1
@@ -278,27 +276,27 @@ export default function AnalysisSidebar({
   const speechScope = `analysis:${analysisHistory[selectedAnalysisIndex]?.id ?? selectedAnalysisIndex}`
 
   const shellClass = embedded
-    ? 'flex min-h-0 flex-1 flex-col overflow-hidden bg-paper dark:bg-paper-dark'
-    : 'flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-ink/20 bg-paper dark:border-ink-dark/25 dark:bg-paper-dark'
+    ? 'flex min-h-0 flex-1 flex-col overflow-hidden ui-well'
+    : 'ui-surface flex h-full min-h-0 flex-col overflow-hidden ui-well'
 
   return (
     <div className={shellClass}>
       {!embedded && (
-        <div className="flex items-baseline justify-between border-b border-ink/15 px-3 py-3 dark:border-ink-dark/20 sm:px-4">
-          <h3 className="font-display text-sm font-semibold text-ink dark:text-ink-dark">学习反馈</h3>
+        <div className="flex items-baseline justify-between border-b ui-rule px-3 py-3 sm:px-4">
+          <h3 className="font-display text-sm font-semibold">学习反馈</h3>
           <span className="margin-code">旁批</span>
         </div>
       )}
 
       {hasHistory && (
-        <div className={`border-b border-ink/15 dark:border-ink-dark/20 ${embedded ? 'px-4 py-2.5' : 'px-3 py-2.5 sm:px-4'}`}>
+        <div className={`border-b ui-rule ${embedded ? 'px-4 py-2.5' : 'px-3 py-2.5 sm:px-4'}`}>
           <div className="flex items-center justify-between gap-2">
-            <div className="rounded-md border border-ink/15 px-2.5 py-1 text-[11px] font-medium text-ink/55 dark:border-ink-dark/20 dark:text-ink-dark/55">
+            <div className="rounded-md border ui-rule px-2.5 py-1 text-[11px] font-medium ui-text-muted">
               第 {currentRound} / {analysisHistory.length} 轮{isViewingLatest ? ' · 最新' : ' · 回看中'}
             </div>
             <div className="flex items-center gap-1.5">
               <button onClick={onRetryAnalysis} disabled={isLoading}
-                className="inline-flex items-center gap-1 rounded-md border border-ink/15 px-2.5 py-1 text-[11px] font-medium text-ink/60 transition hover:border-forest hover:text-forest disabled:cursor-not-allowed disabled:opacity-40 dark:border-ink-dark/20 dark:text-ink-dark/60 dark:hover:border-forest-dark dark:hover:text-forest-dark"
+                className="ui-btn !h-7 !px-2.5 !text-[11px] hover:!border-forest hover:!text-forest dark:hover:!border-forest-dark dark:hover:!text-forest-dark"
                 title="重新生成本轮分析">
                 <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
                 重新分析
@@ -317,7 +315,7 @@ export default function AnalysisSidebar({
               { label: '下一轮', icon: ArrowRight, action: onNextAnalysis, disabled: selectedAnalysisIndex >= analysisHistory.length - 1, iconAfter: true },
             ].map(({ label, icon: Icon, action, disabled, iconAfter }) => (
               <button key={label} onClick={action} disabled={disabled}
-                className="inline-flex items-center gap-1 rounded-md border border-ink/15 px-2.5 py-1 text-[11px] font-medium text-ink/60 transition hover:border-ink/40 disabled:cursor-not-allowed disabled:opacity-40 dark:border-ink-dark/20 dark:text-ink-dark/60 dark:hover:border-ink-dark/50">
+                className="ui-btn !h-7 !px-2.5 !text-[11px]">
                 {!iconAfter && <Icon className="h-3.5 w-3.5" />}
                 {label}
                 {iconAfter && <Icon className="h-3.5 w-3.5" />}
@@ -327,7 +325,7 @@ export default function AnalysisSidebar({
         </div>
       )}
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 sm:space-y-5 sm:p-4">
+      <div className="ui-scroll min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 sm:space-y-5 sm:p-4">
         {isLoading ? (
           <div className="space-y-4">
             <div className="rounded-md border border-forest/30 bg-forest/5 px-3 py-2.5 text-[11px] leading-relaxed text-forest dark:border-forest-dark/40 dark:bg-forest-dark/10 dark:text-forest-dark">
@@ -345,10 +343,10 @@ export default function AnalysisSidebar({
           </div>
         ) : !analysis ? (
           <div className="flex h-[60vh] flex-col items-center justify-center p-4 text-center">
-            <div className="mb-3 grid h-12 w-12 place-items-center rounded-full border border-ink/15 text-ink/35 dark:border-ink-dark/20 dark:text-ink-dark/35">
+            <div className="mb-3 grid h-12 w-12 place-items-center rounded-full border ui-rule ui-text-faint">
               <Lightbulb className="h-5 w-5" />
             </div>
-            <p className="text-xs font-semibold text-ink/60 dark:text-ink-dark/60">发送英文后查看反馈</p>
+            <p className="text-xs font-semibold ui-text-muted">发送英文后查看反馈</p>
           </div>
         ) : (
           <div className="animate-fade-in space-y-5">
@@ -359,10 +357,10 @@ export default function AnalysisSidebar({
             )}
             {!analysis.isFallback && (
               <>
-                <GrammarFeedbackCard corrections={analysis.grammarCorrections} speech={speech} speechScope={speechScope} />
+                <GrammarFeedbackCard corrections={analysis.grammarCorrections} speechScope={speechScope} />
                 <AnalysisTranslationCard translation={analysis.translation} assistantReplyInsight={analysis.assistantReplyInsight} />
-                <SuggestionListSection suggestions={analysis.suggestions} onSelectSuggestion={onSelectSuggestion} speech={speech} speechScope={speechScope} />
-                <VocabularyCardsSection keyWords={analysis.keyWords} speech={speech} speechScope={speechScope} />
+                <SuggestionListSection suggestions={analysis.suggestions} onSelectSuggestion={onSelectSuggestion} speechScope={speechScope} />
+                <VocabularyCardsSection keyWords={analysis.keyWords} speechScope={speechScope} />
               </>
             )}
           </div>

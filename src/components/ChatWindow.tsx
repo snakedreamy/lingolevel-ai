@@ -1,11 +1,11 @@
 // src/components/ChatWindow.tsx
-// Merged: ChatWindow + ChatToolbar + ChatMessageList + ChatInputBar (from features/chat/)
 // 版式：对话是一张带行号的练习纸。左侧 gilt 行号标明轮次，AI 回复用斜体衬线，
 // 用户的话加朱色侧线——不是聊天软件，是一页被批注过的会话作业。
 import React, { useEffect, useRef, useState } from 'react'
 import { Languages, Copy, Send, Mic, MicOff, RefreshCw, HelpCircle } from './Icon'
 import type { Message, Scenario } from '../types'
-import { createSpeechRecognition, type SpeechPlayer, type SpeechRecognition } from '../lib/speech'
+import { createSpeechRecognition, type SpeechRecognition } from '../lib/speech'
+import { useSpeech } from './ui'
 import SpeechButton from './SpeechButton'
 
 // ─── ChatToolbar ────────────────────────────────────────────────────────────
@@ -17,19 +17,19 @@ function ChatToolbar({
   onResetChat: () => void
 }) {
   return (
-    <div className="z-10 flex flex-col gap-2 border-b border-ink/15 px-3 py-2.5 dark:border-ink-dark/20 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3">
+    <div className="z-10 flex flex-col gap-2 border-b ui-rule px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3">
       <div className="flex min-w-0 items-baseline gap-2.5">
         <span className="margin-code shrink-0">场景</span>
-        <p className="min-w-0 truncate text-sm font-semibold text-ink dark:text-ink-dark">
+        <p className="min-w-0 truncate text-sm font-semibold">
           {activeScenario.name}
-          <span className="ml-2 hidden text-xs font-normal text-ink/50 dark:text-ink-dark/50 sm:inline">{activeScenario.englishName}</span>
+          <span className="ml-2 hidden text-xs font-normal ui-text-faint sm:inline">{activeScenario.englishName}</span>
         </p>
-        <p className="hidden min-w-0 truncate text-xs text-ink/45 dark:text-ink-dark/45 md:block">— {activeScenario.description}</p>
+        <p className="hidden min-w-0 truncate text-xs ui-text-faint md:block">— {activeScenario.description}</p>
       </div>
 
       <div className="flex w-full justify-end sm:w-auto">
         <button onClick={onResetChat}
-          className="flex cursor-pointer items-center gap-1.5 rounded-md border border-ink/20 px-2.5 py-1.5 text-[11px] font-semibold text-ink/55 transition hover:border-scarlet hover:text-scarlet dark:border-ink-dark/25 dark:text-ink-dark/55 dark:hover:border-scarlet-dark dark:hover:text-scarlet-dark"
+          className="ui-btn !h-8 !text-[11px] hover:!border-scarlet hover:!text-scarlet dark:hover:!border-scarlet-dark dark:hover:!text-scarlet-dark"
           title="清空记录重新开始对话">
           <RefreshCw className="h-3.5 w-3.5" />
           重开对话
@@ -42,27 +42,27 @@ function ChatToolbar({
 // ─── ChatMessageList ─────────────────────────────────────────────────────────
 
 function ChatMessageList({
-  messages, speech, regeneratableAssistantId, onRegenerateMessage,
+  messages, regeneratableAssistantId, onRegenerateMessage,
   onCopyMessage, messagesEndRef, onWordClick,
 }: {
   messages: Message[]
-  speech: SpeechPlayer
   regeneratableAssistantId: string | null
   onRegenerateMessage: () => void
   onCopyMessage: (text: string, e: React.MouseEvent) => void
   messagesEndRef: React.RefObject<HTMLDivElement | null>
   onWordClick: (word: string) => void
 }) {
+  const speech = useSpeech()
   let turn = 0
   return (
-    <div className="flex-1 space-y-1 overflow-y-auto px-3 py-4 sm:px-6">
+    <div className="ui-scroll flex-1 space-y-1 overflow-y-auto px-3 py-4 sm:px-6">
       {messages.length === 0 && (
         <div className="mx-auto flex h-full max-w-sm flex-col items-center justify-center py-16 text-center">
-          <div className="mb-5 grid h-16 w-16 place-items-center rounded-full border border-ink/20 text-forest dark:border-ink-dark/25 dark:text-forest-dark">
+          <div className="mb-5 grid h-16 w-16 place-items-center rounded-full border ui-rule text-forest dark:text-forest-dark">
             <Languages className="h-7 w-7" />
           </div>
-          <p className="target-lang text-lg text-ink/70 dark:text-ink-dark/70">Say something in English to begin.</p>
-          <p className="mt-2 text-xs text-ink/45 dark:text-ink-dark/45">发送一句英文开始练习</p>
+          <p className="target-lang text-lg ui-text-muted">Say something in English to begin.</p>
+          <p className="mt-2 text-xs ui-text-faint">发送一句英文开始练习</p>
         </div>
       )}
 
@@ -73,7 +73,7 @@ function ChatMessageList({
           return (
             <div key={message.id} className="my-4 flex items-center gap-3 animate-fade-in" role="note">
               <span aria-hidden="true" className="h-px flex-1 bg-ink/10 dark:bg-ink-dark/15" />
-              <span className="text-[11px] tracking-wide text-ink/45 dark:text-ink-dark/45">{message.content}</span>
+              <span className="text-[11px] tracking-wide ui-text-faint">{message.content}</span>
               <span aria-hidden="true" className="h-px flex-1 bg-ink/10 dark:bg-ink-dark/15" />
             </div>
           )
@@ -86,7 +86,7 @@ function ChatMessageList({
               {String(turn).padStart(2, '0')}
             </span>
 
-            <div className={`min-w-0 max-w-[86%] flex-1 sm:max-w-[78%] ${isUser ? 'border-r-2 border-scarlet pr-3 text-right dark:border-scarlet-dark sm:pr-4' : 'border-l border-ink/15 pl-3 dark:border-ink-dark/20 sm:pl-4'}`}>
+            <div className={`min-w-0 max-w-[86%] flex-1 sm:max-w-[78%] ${isUser ? 'border-r-2 border-scarlet pr-3 text-right dark:border-scarlet-dark sm:pr-4' : 'border-l ui-rule pl-3 sm:pl-4'}`}>
               <div className={`flex items-center gap-2 ${isUser ? 'flex-row-reverse' : ''}`}>
                 <span className={`margin-code ${message.isFallback ? '!text-scarlet dark:!text-scarlet-dark' : ''}`}>
                   {isUser ? '你' : message.isFallback ? '教师 · 备用回复' : '教师'}
@@ -94,7 +94,7 @@ function ChatMessageList({
                 <div className={`flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 ${isUser ? 'flex-row-reverse' : ''}`}>
                   {!isUser && message.id === regeneratableAssistantId && (
                     <button onClick={onRegenerateMessage}
-                      className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-semibold text-ink/45 transition-colors hover:bg-ink/5 hover:text-forest dark:text-ink-dark/45 dark:hover:bg-ink-dark/10 dark:hover:text-forest-dark"
+                      className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-semibold ui-text-faint transition-colors hover:bg-ink/5 hover:text-forest dark:hover:bg-ink-dark/10 dark:hover:text-forest-dark"
                       title={message.isFallback ? '重试回复' : '换一个回答'}
                       aria-label={message.isFallback ? '重试回复' : '换一个回答'}>
                       <RefreshCw className="h-3 w-3" />
@@ -105,7 +105,7 @@ function ChatMessageList({
                     onClick={() => speech.toggle(speechId, message.content, isUser ? '你的消息' : 'AI 回复')}
                     label={isUser ? '你的消息' : 'AI 回复'} />
                   <button onClick={(e) => onCopyMessage(message.content, e)}
-                    className="rounded p-1 text-ink/40 transition-colors hover:bg-ink/5 hover:text-forest dark:text-ink-dark/40 dark:hover:bg-ink-dark/10 dark:hover:text-forest-dark"
+                    className="rounded p-1 ui-text-faint transition-colors hover:bg-ink/5 hover:text-forest dark:hover:bg-ink-dark/10 dark:hover:text-forest-dark"
                     title="复制">
                     <Copy className="h-3 w-3" />
                   </button>
@@ -113,8 +113,8 @@ function ChatMessageList({
               </div>
 
               <div data-msg-bubble className={`mt-1 break-words leading-relaxed ${isUser
-                ? 'font-body text-[15px] text-ink dark:text-ink-dark'
-                : 'target-lang text-[16.5px] text-ink dark:text-ink-dark'}`}>
+                ? 'font-body text-[15px]'
+                : 'target-lang text-[16.5px]'}`}>
                 {isUser
                   ? message.content
                   : message.streaming
@@ -167,7 +167,7 @@ function ChatInputBar({
     <div className="z-10 border-t-2 border-ink/70 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 dark:border-ink-dark/60 sm:px-5 sm:pt-4">
       <form onSubmit={onSubmit} className="flex gap-2">
         <button type="button" onClick={onToggleRecord}
-          className={`relative flex h-[52px] w-11 flex-shrink-0 cursor-pointer items-center justify-center rounded-md border transition ${isRecording ? 'border-scarlet bg-scarlet/10 text-scarlet dark:border-scarlet-dark dark:bg-scarlet-dark/15 dark:text-scarlet-dark' : 'border-ink/25 text-ink/55 hover:border-forest hover:text-forest dark:border-ink-dark/30 dark:text-ink-dark/55 dark:hover:border-forest-dark dark:hover:text-forest-dark'}`}
+          className={`relative flex h-[52px] w-11 flex-shrink-0 cursor-pointer items-center justify-center rounded-md border transition ${isRecording ? 'border-scarlet bg-scarlet/10 text-scarlet dark:border-scarlet-dark dark:bg-scarlet-dark/15 dark:text-scarlet-dark' : 'ui-btn !h-[52px] !w-11 !px-0 hover:!border-forest hover:!text-forest dark:hover:!border-forest-dark dark:hover:!text-forest-dark'}`}
           title={isRecording ? '正在倾听... 点击停止' : '开启口语录音'}
           aria-label={isRecording ? '停止语音录入' : '开始语音录入'}>
           {isRecording ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
@@ -181,11 +181,11 @@ function ChatInputBar({
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder={isRecording ? '正在听写您的英文发音...' : (sendOnCtrlEnter ? '在此作答…… (Ctrl+Enter 发送)' : '在此作答…… (Shift+Enter 换行)')}
-            className="target-lang w-full resize-none rounded-md border border-ink/25 bg-leaf px-3 py-2.5 text-[15px] text-ink outline-none transition placeholder:text-ink/35 hover:border-ink/50 focus:border-forest focus:ring-1 focus:ring-forest/40 dark:border-ink-dark/30 dark:bg-leaf-dark dark:text-ink-dark dark:placeholder:text-ink-dark/35 dark:hover:border-ink-dark/60 dark:focus:border-forest-dark dark:focus:ring-forest-dark/40"
+            className="target-lang ui-input w-full resize-none px-3 py-2.5 text-[15px]"
             disabled={isLoading} />
           {inputText.trim() && (
             <button type="button" onClick={onClearInput}
-              className="absolute right-3 top-2.5 p-1 text-ink/30 hover:text-ink/60 dark:text-ink-dark/30 dark:hover:text-ink-dark/60" title="清空输入框">
+              className="absolute right-3 top-2.5 p-1 ui-text-faint hover:text-ink dark:hover:text-ink-dark" title="清空输入框">
               &times;
             </button>
           )}
@@ -217,13 +217,13 @@ interface ChatWindowProps {
   onRegenerateMessage: () => void
   /** When true, only Ctrl/Cmd+Enter sends; bare Enter inserts a newline. */
   sendOnCtrlEnter?: boolean
-  speech: SpeechPlayer
 }
 
 export default function ChatWindow({
   messages, onSendMessage, isLoading, activeScenario, onResetChat, inputRef, inputText, setInputText,
-  onWordClick, onSelectSentence, regeneratableAssistantId, onRegenerateMessage, sendOnCtrlEnter = false, speech,
+  onWordClick, onSelectSentence, regeneratableAssistantId, onRegenerateMessage, sendOnCtrlEnter = false,
 }: ChatWindowProps) {
+  const speech = useSpeech()
   const [isRecording, setIsRecording] = useState(false)
   const [recognitionError, setRecognitionError] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
@@ -301,11 +301,11 @@ export default function ChatWindow({
   }
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden rounded-lg border border-ink/20 bg-leaf dark:border-ink-dark/25 dark:bg-leaf-dark">
+    <div className="ui-surface relative flex h-full flex-col overflow-hidden">
       <ChatToolbar activeScenario={activeScenario} onResetChat={onResetChat} />
 
       <div className="flex min-h-0 flex-1 flex-col" onMouseUp={handleSelection}>
-        <ChatMessageList messages={messages} speech={speech}
+        <ChatMessageList messages={messages}
           regeneratableAssistantId={regeneratableAssistantId} onRegenerateMessage={onRegenerateMessage}
           onCopyMessage={handleCopyText} messagesEndRef={messagesEndRef}
           onWordClick={onWordClick} />
