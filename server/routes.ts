@@ -31,6 +31,8 @@ import {
 } from './learningPractice'
 
 const LEVEL_IDS = new Set(['kindergarten', 'primary_low', 'primary_high', 'junior', 'senior', 'college', 'ielts'])
+const ASK_CONTEXT_SOURCES = new Set(['chat', 'fill-blank', 'learning'])
+const ASK_FOCUS_TYPES = new Set(['word', 'sentence', 'section'])
 
 // Only validate shape here. Overall input capacity is governed by Express's
 // 1 MB body limit, while conversational history count uses MAX_CONTEXT_MESSAGES.
@@ -399,6 +401,14 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     const model = resolveRequestedModel(req.body?.model, cfg.chatModel, cfg.availableModels)
     if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
     const contextRecord = isRecord(context) ? context : undefined
+    const requestedSource = optionalText(contextRecord?.source)
+    if (requestedSource && !ASK_CONTEXT_SOURCES.has(requestedSource)) {
+      return res.status(400).json({ error: 'INVALID_ASK_CONTEXT_SOURCE' })
+    }
+    const requestedFocusType = optionalText(contextRecord?.focusType)
+    if (requestedFocusType && !ASK_FOCUS_TYPES.has(requestedFocusType)) {
+      return res.status(400).json({ error: 'INVALID_ASK_FOCUS_TYPE' })
+    }
     const requestedLessonId = optionalText(contextRecord?.lessonId)
     const lesson = requestedLessonId ? LESSON_BY_ID.get(requestedLessonId) : undefined
     if (requestedLessonId && !lesson) {
@@ -407,8 +417,11 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     const ctx =
       contextRecord
         ? {
-            word: optionalText(contextRecord.word),
-            sentence: optionalText(contextRecord.sentence),
+            source: requestedSource as 'chat' | 'fill-blank' | 'learning' | undefined,
+            sourceLabel: optionalText(contextRecord.sourceLabel),
+            focusType: requestedFocusType as 'word' | 'sentence' | 'section' | undefined,
+            focusText: optionalText(contextRecord.focusText),
+            pageContent: optionalText(contextRecord.pageContent),
             lesson: lesson ? {
               title: lesson.title, objective: lesson.objective, examples: lesson.examples,
               explanation: lesson.explanation, rules: lesson.rules, contrasts: lesson.contrasts,

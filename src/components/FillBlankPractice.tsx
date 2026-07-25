@@ -1,7 +1,7 @@
 // src/components/FillBlankPractice.tsx
 // 版式：一张油印练习卷。题干是超大斜体衬线句，空格是手写空线；
 // 答对空线转墨绿，答错朱笔批注——整页只有这一处色彩判断。
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft, ArrowRight, BookOpenCheck, Check, CheckCircle2,
   HelpCircle, Lightbulb, ListTree, LoaderCircle, Minus, PenLine, Plus, RotateCcw, Sparkles,
@@ -10,7 +10,7 @@ import {
 import { LEVELS } from '../data/levels'
 import { useFillBlankPractice } from '../hooks/useFillBlankPractice'
 import { FILL_BLANK_MAX_COUNT, FILL_BLANK_MIN_COUNT } from '../types'
-import type { DifficultyLevel, FillBlankCard, FillBlankFocus } from '../types'
+import type { AskContext, DifficultyLevel, FillBlankCard, FillBlankFocus, FillBlankProgress } from '../types'
 import { useSpeech } from './ui'
 import SpeechButton from './SpeechButton'
 import type { AskPanel } from '../hooks/useAskPanel'
@@ -21,6 +21,7 @@ interface FillBlankPracticeProps {
   modelId: string
   onLevelChange: (level: DifficultyLevel) => void
   ask: AskPanel
+  onPageContextChange: (context: AskContext) => void
 }
 
 const FOCUS_OPTIONS: Array<{ id: FillBlankFocus; label: string; detail: string; scope: string }> = [
@@ -40,6 +41,108 @@ const FOCUS_OPTIONS: Array<{ id: FillBlankFocus; label: string; detail: string; 
 
 function fullSentence(card: FillBlankCard) {
   return card.sentence.replace('{{blank}}', card.answer)
+}
+
+function buildFillBlankAskContext(args: {
+  phase: 'setup' | 'loading' | 'active' | 'complete'
+  level: DifficultyLevel
+  count: number
+  focus: FillBlankFocus
+  cards: FillBlankCard[]
+  progress: Record<string, FillBlankProgress>
+  currentIndex: number
+  card: FillBlankCard | null
+  item?: FillBlankProgress
+  showHint: boolean
+}): AskContext {
+  const levelName = LEVELS.find((entry) => entry.id === args.level)?.name ?? args.level
+  const focusName = FOCUS_OPTIONS.find((entry) => entry.id === args.focus)?.label ?? args.focus
+  if (args.phase === 'setup' || args.phase === 'loading') {
+    return {
+      scopeId: `fill-blank:${args.phase}:${args.level}:${args.focus}:${args.count}`,
+      source: 'fill-blank',
+      sourceLabel: args.phase === 'loading' ? '填词练习 · 正在生成' : '填词练习 · 生成设置',
+      pageContent: [
+        `当前页面：${args.phase === 'loading' ? '正在生成填词练习' : '填词练习生成设置'}`,
+        `难度：${levelName}`,
+        `练习重点：${focusName}`,
+        `题目数量：${args.count}`,
+      ].join('\n'),
+    }
+  }
+  if (args.phase === 'complete') {
+    const firstTry = args.cards.filter((card) => {
+      const item = args.progress[card.id]
+      return item?.status === 'correct' && item.attempts === 0
+    }).length
+    const corrected = args.cards.filter((card) => {
+      const item = args.progress[card.id]
+      return item?.status === 'correct' && item.attempts > 0
+    }).length
+    const revealed = args.cards.filter((card) => args.progress[card.id]?.status === 'revealed').length
+    const review = args.cards
+      .filter((card) => {
+        const item = args.progress[card.id]
+        return item && (item.attempts > 0 || item.status === 'revealed')
+      })
+      .map((card) => `${fullSentence(card)}｜${card.translation}｜答案：${card.answer} ${card.phonetic}｜${card.grammarPoint}`)
+    return {
+      scopeId: `fill-blank:complete:${args.cards.map((card) => card.id).join(',')}`,
+      source: 'fill-blank',
+      sourceLabel: '填词练习 · 本组总结',
+      pageContent: [
+        `难度：${levelName}`,
+        `练习重点：${focusName}`,
+        `本组共 ${args.cards.length} 题；一次答对 ${firstTry} 题；纠正后答对 ${corrected} 题；查看答案 ${revealed} 题。`,
+        review.length ? `当前页面列出的复习题：\n${review.join('\n')}` : '当前页面结果：全部一次答对。',
+      ].join('\n\n'),
+    }
+  }
+
+  const card = args.card
+  const item = args.item
+  if (!card || !item) {
+    return {
+      scopeId: 'fill-blank:active:empty',
+      source: 'fill-blank',
+      sourceLabel: '填词练习',
+      pageContent: `难度：${levelName}\n练习重点：${focusName}`,
+    }
+  }
+  const settled = item.status !== 'answering'
+  const lines = [
+    `当前进度：第 ${args.currentIndex + 1} / ${args.cards.length} 题`,
+    `难度：${levelName}`,
+    `练习重点：${focusName}`,
+    `题目：${card.sentence}`,
+    `中文：${card.translation}`,
+    `学习者当前填写：${item.input || '尚未填写'}`,
+    `尝试次数：${item.attempts}`,
+    `当前状态：${item.status === 'answering' ? '作答中' : item.status === 'correct' ? '已答对' : '已查看答案'}`,
+  ]
+  if (!settled && args.showHint) lines.push(`当前已展开的提示：${card.hint}；答案长度 ${card.answer.length} 个字母`)
+  if (settled) {
+    lines.push(
+      `完整句子：${fullSentence(card)}`,
+      `答案：${card.answer}`,
+      `音标：${card.phonetic}`,
+      `词性：${card.partOfSpeech}`,
+      `释义：${card.definition}`,
+      `本题解释：${card.explanation}`,
+      `语法点：${card.grammarPoint}`,
+      `句型结构：${card.structure}`,
+      `句子拆解：\n${card.breakdown.map((chunk) => `- ${chunk.text}｜${chunk.role}｜${chunk.explanation}`).join('\n')}`,
+      `仿写步骤：\n${card.imitation.steps.map((step, index) => `${index + 1}. ${step}`).join('\n')}`,
+      `仿写示例：${card.imitation.example}｜${card.imitation.translation}`,
+      `仿写注意：${card.imitation.caution}`,
+    )
+  }
+  return {
+    scopeId: `fill-blank:${card.id}:${item.status}:${item.attempts}:${args.showHint ? 'hint' : 'no-hint'}`,
+    source: 'fill-blank',
+    sourceLabel: `填词练习 · 第 ${args.currentIndex + 1}/${args.cards.length} 题`,
+    pageContent: lines.join('\n\n'),
+  }
 }
 
 function Sentence({ card, reveal }: { card: FillBlankCard; reveal: boolean }) {
@@ -175,6 +278,31 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
   const activeStepRef = useRef<HTMLLIElement | null>(null)
+  const pageAskContext = useMemo(() => buildFillBlankAskContext({
+    phase: practice.phase,
+    level: props.level,
+    count: practice.count,
+    focus: practice.focus,
+    cards: practice.cards,
+    progress: practice.progress,
+    currentIndex: practice.currentIndex,
+    card: practice.currentCard,
+    item: practice.currentProgress,
+    showHint,
+  }), [
+    practice.cards,
+    practice.count,
+    practice.currentCard,
+    practice.currentIndex,
+    practice.currentProgress,
+    practice.focus,
+    practice.phase,
+    practice.progress,
+    props.level,
+    showHint,
+  ])
+
+  useEffect(() => props.onPageContextChange(pageAskContext), [pageAskContext, props.onPageContextChange])
 
   useEffect(() => {
     setShowHint(false)
@@ -358,7 +486,12 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
                     </span>
                   </div>
                   <div className="mt-3">
-                    <button type="button" onClick={() => props.ask.openWord(card.answer)} className="ui-link text-xs">问老师</button>
+                    <button type="button" onClick={() => props.ask.open({
+                      ...pageAskContext,
+                      scopeId: `${pageAskContext.scopeId}:word:${card.answer}`,
+                      focusType: 'word',
+                      focusText: card.answer,
+                    })} className="ui-link text-xs">问老师</button>
                   </div>
                 </section>
 

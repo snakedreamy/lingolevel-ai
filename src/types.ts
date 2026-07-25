@@ -36,9 +36,19 @@ export interface Message {
   streaming?: boolean;
 }
 
+export type AskContextSource = 'chat' | 'fill-blank' | 'learning'
+export type AskFocusType = 'word' | 'sentence' | 'section'
+
 export interface AskContext {
-  word?: string
-  sentence?: string
+  /** Browser-only identity used to keep follow-ups together and separate unrelated page contexts. */
+  scopeId: string
+  source: AskContextSource
+  sourceLabel: string
+  /** The item the learner pointed at; pageContent remains the surrounding evidence. */
+  focusType?: AskFocusType
+  focusText?: string
+  /** A readable snapshot of the current, visible learning state. Never raw HTML. */
+  pageContent?: string
   lessonId?: string
   lessonTitle?: string
   activityPrompt?: string

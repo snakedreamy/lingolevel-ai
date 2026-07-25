@@ -34,7 +34,7 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
     setQuestion('')
   }
 
-  const ctxLabel = ctx?.word ? `单词：${ctx.word}` : ctx?.sentence ? `句子：${ctx.sentence}` : ctx?.lessonTitle ? `课程：${ctx.lessonTitle}` : null
+  const ctxLabel = ctx?.sourceLabel ?? null
 
   return (
     <SideDrawer title="答疑助手" subtitle="问老师" onClose={onClose}
@@ -55,9 +55,9 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
             <div className={m.role === 'user'
               ? 'max-w-[88%] border-r-2 border-scarlet pr-3 text-right dark:border-scarlet-dark'
               : 'max-w-full'}>
-              {m.context && (m.context.word || m.context.sentence || m.context.lessonTitle) && (
+              {m.context && (
                 <div className="margin-code mb-1.5">
-                  {m.context.word ? `单词：${m.context.word}` : m.context.sentence ? `句子：${m.context.sentence}` : `课程：${m.context.lessonTitle}`}
+                  {m.context.sourceLabel}{m.context.focusText ? ` · 关注：${m.context.focusText}` : ''}
                 </div>
               )}
               <div className={`break-words leading-relaxed ${m.role === 'user' ? 'font-body text-[13px]' : 'text-[13px] text-ink/90 dark:text-ink-dark/90'}`}>
@@ -80,9 +80,14 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
       </div>
 
       <div className="border-t ui-rule p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        {ctxLabel && (
+        {ctx && ctxLabel && (
           <div className="mb-2 flex items-center justify-between gap-2 rounded-md border border-gilt/40 bg-gilt/10 px-2.5 py-1.5 text-[11px] ui-text-muted dark:border-gilt-dark/40 dark:bg-gilt-dark/10">
-            <span className="truncate">已选上下文：{ctxLabel}</span>
+            <span className="min-w-0">
+              <span className="block truncate">{ctxLabel}</span>
+              <span className="block truncate ui-text-faint">
+                已附带当前页面{ctx.focusText ? ` · 关注：${ctx.focusText}` : ''}
+              </span>
+            </span>
             <button type="button" onClick={() => setCtx(null)} aria-label="移除已选上下文" className="ui-text-faint hover:text-ink dark:hover:text-ink-dark"><X className="h-3 w-3" /></button>
           </div>
         )}

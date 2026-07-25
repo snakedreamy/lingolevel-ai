@@ -18,6 +18,7 @@ import type { LearningEvaluationResult } from '../lib/api'
 import { incrementStoredCounter, loadStoredJson, saveStoredJson } from '../lib/storage'
 import { Modal, useSpeech } from './ui'
 import type { AskPanel } from '../hooks/useAskPanel'
+import type { AskContext } from '../types'
 
 type LearningView = 'home' | 'routes' | 'review'
 
@@ -177,13 +178,14 @@ function ReviewView({ dueReviews, getProgress, onOpenConcept }: { dueReviews: Co
   </div>
 }
 
-function ActivityPlayer({ activity, conceptId, lesson, modelId, ask, onComplete }: {
+function ActivityPlayer({ activity, conceptId, lesson, modelId, ask, onComplete, onPageContextChange }: {
   activity: LearningActivity
   conceptId: string
   lesson: LearningLesson
   modelId: string
   ask: AskPanel
   onComplete: (score: number) => void
+  onPageContextChange: (context: AskContext) => void
 }) {
   const [selected, setSelected] = useState<number | null>(null)
   const [ordered, setOrdered] = useState<string[]>([])
@@ -197,6 +199,26 @@ function ActivityPlayer({ activity, conceptId, lesson, modelId, ask, onComplete 
   const answerText = activity.type === 'choice'
     ? (selected === null ? '' : activity.options[selected])
     : activity.type === 'order' ? ordered.join(' ') : inputValue.trim()
+  const pageAskContext = useMemo<AskContext>(() => ({
+    scopeId: `learning:${lesson.id}:activity:${activity.id}:${result ? 'feedback' : 'answering'}`,
+    source: 'learning',
+    sourceLabel: `系统学习 · ${lesson.title}`,
+    pageContent: [
+      `当前页面：AI 引导练习`,
+      `本课：${lesson.title}`,
+      `本课目标：${lesson.objective}`,
+      `当前练习：${JSON.stringify(activity)}`,
+      `学习者当前答案：${answerText || '尚未作答'}`,
+      result ? `当前评价：${JSON.stringify(result)}` : '当前评价：尚未提交或检查',
+    ].join('\n\n'),
+    lessonId: lesson.id,
+    lessonTitle: lesson.title,
+    activityPrompt: activity.prompt,
+    learnerAnswer: answerText || undefined,
+    feedback: result?.feedback,
+  }), [activity, answerText, lesson.id, lesson.objective, lesson.title, result])
+
+  useEffect(() => onPageContextChange(pageAskContext), [onPageContextChange, pageAskContext])
   const submit = async () => {
     setError(null)
     if (activity.type === 'apply') {
@@ -238,16 +260,17 @@ function ActivityPlayer({ activity, conceptId, lesson, modelId, ask, onComplete 
       {activity.type === 'apply' && <div><textarea value={inputValue} disabled={result !== null || isChecking} onChange={(event) => setInputValue(event.target.value)} placeholder="写下你自己的表达，AI 会依据本课规则评价" className="target-lang ui-input min-h-28 w-full resize-y p-3 text-sm" /><p className="mt-4 text-xs font-bold ui-text-muted">AI 将检查</p><ul className="mt-2 space-y-2">{activity.checklist.map((item) => <li key={item} className="flex items-start gap-2 text-xs ui-text-muted"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-forest dark:text-forest-dark" />{item}</li>)}</ul></div>}
     </div>
     {result === null ? <><button type="button" disabled={!canSubmit || isChecking} onClick={() => { void submit() }} className="ui-btn ui-btn-primary mt-5 !h-10 px-4">{isChecking && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}{activity.type === 'apply' ? isChecking ? 'AI 正在评价' : '交给 AI 评价' : '检查答案'}</button>{error && <p role="alert" className="mt-3 text-xs text-scarlet dark:text-scarlet-dark">{error}</p>}</>
-      : <div className={`mt-5 border-l-2 p-4 ${result.correct ? 'border-forest dark:border-forest-dark' : 'border-scarlet dark:border-scarlet-dark'}`}><div className="flex items-center justify-between gap-3"><p className="flex items-center gap-2 text-xs font-bold">{result.correct ? <Check className="h-4 w-4 text-forest dark:text-forest-dark" /> : <X className="h-4 w-4 text-scarlet dark:text-scarlet-dark" />}{result.correct ? '已达到本项要求' : '这部分还需要理解'}</p><span className="margin-code">{result.score}</span></div><p className="mt-2 text-xs leading-5 ui-text-muted">{result.feedback}</p>{result.correction && <p className="mt-2 text-xs ui-text-muted"><strong>可参考：</strong><span className="target-lang">{result.correction}</span></p>}<p className="mt-2 text-xs ui-text-muted"><strong>下一步：</strong>{result.nextStep}</p><button type="button" onClick={() => ask.openLesson({ lessonId: lesson.id, lessonTitle: lesson.title, activityPrompt: activity.prompt, learnerAnswer: answerText, feedback: result.feedback }, '请结合本课规则、这道题和我的答案，具体解释我为什么对或错。再给一个不同语境的例子让我模仿。')} className="ui-link mt-4 flex items-center gap-1.5 text-xs"><HelpCircle className="h-3.5 w-3.5" />让 AI 解释这道题</button></div>}
+      : <div className={`mt-5 border-l-2 p-4 ${result.correct ? 'border-forest dark:border-forest-dark' : 'border-scarlet dark:border-scarlet-dark'}`}><div className="flex items-center justify-between gap-3"><p className="flex items-center gap-2 text-xs font-bold">{result.correct ? <Check className="h-4 w-4 text-forest dark:text-forest-dark" /> : <X className="h-4 w-4 text-scarlet dark:text-scarlet-dark" />}{result.correct ? '已达到本项要求' : '这部分还需要理解'}</p><span className="margin-code">{result.score}</span></div><p className="mt-2 text-xs leading-5 ui-text-muted">{result.feedback}</p>{result.correction && <p className="mt-2 text-xs ui-text-muted"><strong>可参考：</strong><span className="target-lang">{result.correction}</span></p>}<p className="mt-2 text-xs ui-text-muted"><strong>下一步：</strong>{result.nextStep}</p><button type="button" onClick={() => ask.openAndAsk({ ...pageAskContext, scopeId: `${pageAskContext.scopeId}:feedback`, focusType: 'section', focusText: '当前练习与评价' }, '请结合本课规则、这道题和我的答案，具体解释我为什么对或错。再给一个不同语境的例子让我模仿。')} className="ui-link mt-4 flex items-center gap-1.5 text-xs"><HelpCircle className="h-3.5 w-3.5" />让 AI 解释这道题</button></div>}
   </div>
 }
 
-function LessonPlayer({ lesson, modelId, ask, onClose, onFinish }: {
+function LessonPlayer({ lesson, modelId, ask, onClose, onFinish, onPageContextChange }: {
   lesson: LearningLesson
   modelId: string
   ask: AskPanel
   onClose: () => void
   onFinish: (scores: Record<MasteryDimension, number>) => void
+  onPageContextChange: (context: AskContext) => void
 }) {
   const speech = useSpeech()
   const [phase, setPhase] = useState<'learn' | 'practice' | 'result'>('learn')
@@ -267,6 +290,16 @@ function LessonPlayer({ lesson, modelId, ask, onClose, onFinish }: {
   })) as Record<MasteryDimension, number>, [activities, results])
   const scoreAverage = (scores.recognition + scores.understanding + scores.construction + scores.application) / 4
   const lessonMastered = scoreAverage >= 70 && Math.min(scores.recognition, scores.understanding, scores.construction, scores.application) >= 50
+  const lessonPageContext = useMemo<AskContext>(() => ({
+    scopeId: `learning:${lesson.id}:${phase}`,
+    source: 'learning',
+    sourceLabel: `系统学习 · ${lesson.title}`,
+    pageContent: phase === 'learn'
+      ? `当前页面：课程学习内容\n本课：${lesson.title}\n本课目标：${lesson.objective}\n场景：${lesson.situation}\n当前页面包含本课例句、逐句拆解、解释、使用规则和易错对比。`
+      : `当前页面：本课结果\n本课：${lesson.title}\n本课目标：${lesson.objective}\n四项结果：${JSON.stringify(scores)}\n本课总结：${lesson.summary.join('；')}\n后续复习：${lesson.reviewPrompt}`,
+    lessonId: lesson.id,
+    lessonTitle: lesson.title,
+  }), [lesson.id, lesson.objective, lesson.reviewPrompt, lesson.situation, lesson.summary, lesson.title, phase, scores])
   const finish = () => { onFinish(scores); setPhase('result') }
   const preparePractice = async (enterWhenReady: boolean) => {
     generationControllerRef.current?.abort()
@@ -299,6 +332,9 @@ function LessonPlayer({ lesson, modelId, ask, onClose, onFinish }: {
     void preparePractice(false)
     return () => generationControllerRef.current?.abort()
   }, [lesson.id, modelId])
+  useEffect(() => {
+    if (phase !== 'practice') onPageContextChange(lessonPageContext)
+  }, [lessonPageContext, onPageContextChange, phase])
   return <div className="flex h-full min-h-0 flex-col bg-leaf dark:bg-leaf-dark">
     <header className="flex shrink-0 items-center gap-3 border-b ui-rule px-4 py-3 sm:px-6"><button type="button" onClick={onClose} className="cursor-pointer rounded-md p-2 ui-text-muted hover:bg-ink/5 dark:hover:bg-ink-dark/10" aria-label="返回课程"><ArrowLeft className="h-4 w-4" /></button><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{lessonConcept && <span className="margin-code mr-2">{conceptCode(lessonConcept)}</span>}{lesson.title}</p><p className="margin-code mt-0.5">{phase === 'learn' ? '学习内容' : phase === 'practice' ? `AI 引导练习 ${activityIndex + 1} / ${activities.length}` : '本课结果'}</p></div><span className="flex items-center gap-1 text-[10px] ui-text-faint"><Clock3 className="h-3.5 w-3.5" />约 {lesson.estimatedMinutes} 分钟</span></header>
     <div className="ui-scroll min-h-0 flex-1 overflow-y-auto">
@@ -306,21 +342,22 @@ function LessonPlayer({ lesson, modelId, ask, onClose, onFinish }: {
         {lessonConcept && <details className="mt-5 rounded-md border ui-rule px-4 py-3"><summary className="cursor-pointer text-xs font-bold ui-text-muted">查看掌握标准</summary><div className="mt-3 grid gap-3 sm:grid-cols-2">{DIMENSIONS.map((item) => <div key={item.id}><p className="margin-code !text-forest dark:!text-forest-dark">{item.label}</p><p className="mt-1 text-[11px] leading-5 ui-text-muted">{lessonConcept.mastery[item.id]}</p></div>)}</div></details>}
         <section className="mt-8 border-l-2 border-gilt pl-4 dark:border-gilt-dark"><h3 className="margin-code">场景</h3><p className="mt-1 text-sm leading-6 ui-text-muted">{lesson.situation}</p></section>
         <section className="mt-8"><h3 className="text-sm font-bold">观察与逐句拆解</h3><div className="mt-3 divide-y divide-ink/10 border-y ui-rule dark:divide-ink-dark/15">{lesson.examples.map((example, index) => { const speechId = `${lesson.id}-example-${index}`; return <div key={example.english} className="py-5"><div className="flex items-start gap-3"><p className="target-lang min-w-0 flex-1 text-lg">{example.english}</p><button type="button" onClick={() => speech.toggle(speechId, example.english, '课程例句')} aria-label={`朗读：${example.english}`} className={`cursor-pointer rounded-md border p-2 transition ${speech.activeId === speechId ? 'border-forest bg-forest/10 text-forest dark:border-forest-dark dark:bg-forest-dark/15 dark:text-forest-dark' : 'ui-rule ui-text-faint hover:text-forest dark:hover:text-forest-dark'}`}><Volume2 className="h-4 w-4" /></button></div><p className="mt-1 text-xs ui-text-muted">{example.chinese}</p><dl className="mt-3 space-y-1.5">{example.parts.map((part) => { const [form, ...meaning] = part.split('='); return <div key={part} className="grid grid-cols-[minmax(5rem,auto)_1fr] gap-3 text-[11px] leading-5"><dt className="font-display font-semibold">{form.trim()}</dt><dd className="ui-text-muted">{meaning.join('=').trim() || '在句中共同完成这一表达作用'}</dd></div> })}</dl></div> })}</div><p className="mt-4 border-l-2 border-gilt bg-gilt/10 p-4 text-xs font-semibold leading-5 text-ink/80 dark:border-gilt-dark dark:bg-gilt-dark/10 dark:text-ink-dark/80">需要你发现：{lesson.observation}</p></section>
-        <section className="mt-9"><h3 className="text-sm font-bold">为什么这样表达</h3><div className="mt-3 space-y-5">{lesson.explanation.map((item) => <div key={item.title}><p className="text-xs font-bold text-ink/85 dark:text-ink-dark/85">{item.title}</p><p className="mt-1 text-sm leading-6 ui-text-muted">{item.body}</p></div>)}</div><button type="button" onClick={() => ask.openLesson({ lessonId: lesson.id, lessonTitle: lesson.title }, '我没有理解本课。请只围绕本课目标和例句，换一种更简单的方式分步骤解释，并补充一个新的生活化例子。')} className="ui-link mt-5 flex items-center gap-1.5 text-xs"><HelpCircle className="h-3.5 w-3.5" />让 AI 重新讲解这部分</button></section>
+        <section className="mt-9"><h3 className="text-sm font-bold">为什么这样表达</h3><div className="mt-3 space-y-5">{lesson.explanation.map((item) => <div key={item.title}><p className="text-xs font-bold text-ink/85 dark:text-ink-dark/85">{item.title}</p><p className="mt-1 text-sm leading-6 ui-text-muted">{item.body}</p></div>)}</div><button type="button" onClick={() => ask.openAndAsk({ ...lessonPageContext, scopeId: `${lessonPageContext.scopeId}:explanation`, focusType: 'section', focusText: '为什么这样表达' }, '我没有理解本课。请只围绕本课目标和例句，换一种更简单的方式分步骤解释，并补充一个新的生活化例子。')} className="ui-link mt-5 flex items-center gap-1.5 text-xs"><HelpCircle className="h-3.5 w-3.5" />让 AI 重新讲解这部分</button></section>
         <section className="mt-9 grid gap-7 sm:grid-cols-2"><div><h3 className="text-sm font-bold">使用规则</h3><ol className="mt-3 space-y-2">{lesson.rules.map((rule, index) => <li key={rule} className="flex gap-2.5 text-xs leading-5 ui-text-muted"><span className="margin-code pt-px">{index + 1}</span>{rule}</li>)}</ol></div><div><h3 className="text-sm font-bold">易错对比</h3><div className="mt-3 space-y-3">{lesson.contrasts.map((item) => <div key={item.wrong} className="text-xs"><p className="target-lang text-scarlet line-through dark:text-scarlet-dark">{item.wrong}</p><p className="target-lang mt-1 font-semibold text-forest dark:text-forest-dark">{item.right}</p><p className="mt-1 leading-5 ui-text-muted">{item.reason}</p></div>)}</div></div></section>
         <details className="mt-9 border-y ui-rule py-4 text-xs"><summary className="flex cursor-pointer items-center gap-2 font-bold ui-text-muted"><ShieldCheck className="h-4 w-4 text-forest dark:text-forest-dark" />本课如何控制准确性</summary><p className="mt-3 leading-5 ui-text-muted">课程目标、规则、例句和易错点由项目固定提供，并校验课程前置关系与内容结构；AI 只能围绕这些内容生成新情境和反馈，不能修改知识规则。外部框架用于校准能力范围，不等于对每句话的逐条背书。</p><div className="mt-3 flex flex-col gap-2">{CURRICULUM_REFERENCES.map((reference) => <a key={reference.url} href={reference.url} target="_blank" rel="noreferrer" className="ui-link w-fit">{reference.title}</a>)}</div></details>
         {generationError && <p role="alert" className="mt-6 border-l-2 border-scarlet bg-scarlet/5 p-3 text-xs leading-5 text-scarlet dark:border-scarlet-dark dark:bg-scarlet-dark/10 dark:text-scarlet-dark">{generationError}</p>}
         <div className="mt-8 flex flex-col items-end gap-2"><button type="button" disabled={isGenerating} onClick={() => { if (activities.length === DIMENSIONS.length) setPhase('practice'); else void preparePractice(true) }} className="ui-btn ui-btn-primary !h-12 px-5">{isGenerating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{isGenerating ? 'AI 正在后台准备练习' : activities.length === DIMENSIONS.length ? '开始 AI 引导练习' : '重新准备 AI 练习'}</button><p className="text-[10px] ui-text-faint">打开课程后即开始准备；你可以先阅读，准备完成后直接进入</p></div>
       </article>}
-      {phase === 'practice' && activity && <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-12"><div className="mb-3 flex items-center gap-2 text-[11px] ui-text-muted"><Sparkles className="h-3.5 w-3.5 text-gilt dark:text-gilt-dark" />本组题目根据本课内容即时生成，不会照搬上次题目</div><div className="mb-7 flex gap-1">{activities.map((item, index) => <span key={item.id} className={`h-1 flex-1 rounded-full ${index <= activityIndex ? 'bg-forest dark:bg-forest-dark' : 'bg-ink/10 dark:bg-ink-dark/15'}`} />)}</div><ActivityPlayer key={activity.id} activity={activity} conceptId={lesson.conceptId} lesson={lesson} modelId={modelId} ask={ask} onComplete={(score) => setResults((current) => ({ ...current, [activity.id]: score }))} />{results[activity.id] !== undefined && <div className="mt-6 flex justify-end">{activityIndex < activities.length - 1 ? <button type="button" onClick={() => setActivityIndex((index) => index + 1)} className="ui-btn ui-btn-primary !h-10 px-4">下一题<ArrowRight className="h-4 w-4" /></button> : <button type="button" onClick={finish} className="ui-btn ui-btn-primary !h-10 px-4">完成本课</button>}</div>}</div>}
+      {phase === 'practice' && activity && <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-12"><div className="mb-3 flex items-center gap-2 text-[11px] ui-text-muted"><Sparkles className="h-3.5 w-3.5 text-gilt dark:text-gilt-dark" />本组题目根据本课内容即时生成，不会照搬上次题目</div><div className="mb-7 flex gap-1">{activities.map((item, index) => <span key={item.id} className={`h-1 flex-1 rounded-full ${index <= activityIndex ? 'bg-forest dark:bg-forest-dark' : 'bg-ink/10 dark:bg-ink-dark/15'}`} />)}</div><ActivityPlayer key={activity.id} activity={activity} conceptId={lesson.conceptId} lesson={lesson} modelId={modelId} ask={ask} onPageContextChange={onPageContextChange} onComplete={(score) => setResults((current) => ({ ...current, [activity.id]: score }))} />{results[activity.id] !== undefined && <div className="mt-6 flex justify-end">{activityIndex < activities.length - 1 ? <button type="button" onClick={() => setActivityIndex((index) => index + 1)} className="ui-btn ui-btn-primary !h-10 px-4">下一题<ArrowRight className="h-4 w-4" /></button> : <button type="button" onClick={finish} className="ui-btn ui-btn-primary !h-10 px-4">完成本课</button>}</div>}</div>}
       {phase === 'result' && <div className="mx-auto max-w-2xl px-4 py-10 text-center sm:px-8"><div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 ${lessonMastered ? 'border-forest text-forest dark:border-forest-dark dark:text-forest-dark' : 'border-gilt text-gilt dark:border-gilt-dark dark:text-gilt-dark'}`}>{lessonMastered ? <CheckCircle2 className="h-6 w-6" /> : <RotateCcw className="h-6 w-6" />}</div><h2 className="mt-4 font-display text-2xl font-semibold">{lessonMastered ? '本课已达到掌握标准' : '本课仍需巩固'}</h2><p className="mt-2 text-xs leading-5 ui-text-muted">{lessonMastered ? '四项能力均达到最低要求，系统已安排后续复习。' : '至少一项能力尚未达到要求，系统将在较近日期安排复习。'}</p><div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">{DIMENSIONS.map((item) => <div key={item.id} className="border-t ui-rule pt-3"><p className="margin-code">{item.label}</p><p className="mt-1 font-display text-xl font-semibold">{scores[item.id]}</p></div>)}</div><div className="mt-8 text-left"><h3 className="text-sm font-bold">本课总结</h3><ul className="mt-3 space-y-2">{lesson.summary.map((item) => <li key={item} className="flex gap-2 text-xs leading-5 ui-text-muted"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-forest dark:text-forest-dark" />{item}</li>)}</ul><p className="mt-5 rounded-md border border-gilt/40 bg-gilt/10 p-4 text-xs leading-5 ui-text-muted dark:border-gilt-dark/40 dark:bg-gilt-dark/10"><strong>复习时尝试：</strong>{lesson.reviewPrompt}</p></div><button type="button" onClick={onClose} className="ui-btn ui-btn-primary mt-7 !h-10 px-5">返回课程</button></div>}
     </div>
   </div>
 }
 
-export default function SystemLearning({ modelId, ask }: {
+export default function SystemLearning({ modelId, ask, onPageContextChange }: {
   modelId: string
   ask: AskPanel
+  onPageContextChange: (context: AskContext) => void
 }) {
   const learning = useSystemLearning()
   const [view, setView] = useState<LearningView>('home')
@@ -328,6 +365,62 @@ export default function SystemLearning({ modelId, ask }: {
   const [outlineConcept, setOutlineConcept] = useState<LearningConcept | null>(null)
   const [loadingConceptId, setLoadingConceptId] = useState<string | null>(null)
   const [courseLoadError, setCourseLoadError] = useState(false)
+  const overviewPageContext = useMemo<AskContext>(() => {
+    if (outlineConcept) {
+      return {
+        scopeId: `learning:outline:${outlineConcept.id}`,
+        source: 'learning',
+        sourceLabel: `系统学习 · ${outlineConcept.title}`,
+        focusType: 'section',
+        focusText: '知识概览',
+        pageContent: [
+          `当前页面：知识概览`,
+          `知识点：${outlineConcept.title}`,
+          `简介：${outlineConcept.summary}`,
+          `学完能够：${outlineConcept.canDo}`,
+          `内容范围：${outlineConcept.topics.join('；')}`,
+        ].join('\n'),
+      }
+    }
+    if (view === 'routes') {
+      const route = LEARNING_ROUTES.find((item) => item.id === learning.selectedRouteId) ?? LEARNING_ROUTES[0]
+      const concepts = route.conceptIds
+        .map((id) => LEARNING_CONCEPTS.find((concept) => concept.id === id))
+        .filter((concept): concept is LearningConcept => !!concept)
+      return {
+        scopeId: `learning:routes:${route.id}`,
+        source: 'learning',
+        sourceLabel: `系统学习 · ${route.title}`,
+        pageContent: `当前页面：全部路线\n路线：${route.title}\n路线说明：${route.description}\n课程顺序：${concepts.map((concept) => concept.title).join(' → ')}`,
+      }
+    }
+    if (view === 'review') {
+      const due = learning.dueReviews
+        .map((progress) => LEARNING_CONCEPTS.find((concept) => concept.id === progress.conceptId)?.title)
+        .filter(Boolean)
+      return {
+        scopeId: `learning:review:${due.join(',') || 'empty'}`,
+        source: 'learning',
+        sourceLabel: '系统学习 · 复习',
+        pageContent: due.length
+          ? `当前页面：复习\n当前到期内容：${due.join('；')}`
+          : '当前页面：复习\n今天没有到期内容。',
+      }
+    }
+    const suggested = LEARNING_CONCEPTS.find((concept) => concept.id === learning.suggestedConceptId)
+    return {
+      scopeId: `learning:home:${suggested?.id ?? 'none'}`,
+      source: 'learning',
+      sourceLabel: '系统学习 · 我的学习',
+      pageContent: suggested
+        ? `当前页面：我的学习\n当前建议课程：${suggested.title}\n课程简介：${suggested.summary}\n学完能够：${suggested.canDo}`
+        : '当前页面：我的学习\n当前没有待开始的建议课程。',
+    }
+  }, [learning.dueReviews, learning.selectedRouteId, learning.suggestedConceptId, outlineConcept, view])
+
+  useEffect(() => {
+    if (!activeLesson) onPageContextChange(overviewPageContext)
+  }, [activeLesson, onPageContextChange, overviewPageContext])
   const openConcept = (concept: LearningConcept) => {
     if (!concept.lessonId) { setOutlineConcept(concept); return }
     setCourseLoadError(false)
@@ -342,7 +435,7 @@ export default function SystemLearning({ modelId, ask }: {
       .catch(() => setCourseLoadError(true))
       .finally(() => setLoadingConceptId(null))
   }
-  if (activeLesson) return <LessonPlayer lesson={activeLesson} modelId={modelId} ask={ask} onClose={() => setActiveLesson(null)} onFinish={(scores) => learning.completeLesson(activeLesson.conceptId, scores)} />
+  if (activeLesson) return <LessonPlayer lesson={activeLesson} modelId={modelId} ask={ask} onPageContextChange={onPageContextChange} onClose={() => setActiveLesson(null)} onFinish={(scores) => learning.completeLesson(activeLesson.conceptId, scores)} />
   return <div className="ui-surface relative flex h-full min-h-0 flex-col overflow-hidden lg:flex-row">
     <LearningSidebar view={view} setView={setView} dueCount={learning.dueReviews.length} />
     <div className="min-h-0 flex-1 overflow-hidden">

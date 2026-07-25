@@ -57,7 +57,7 @@ function ChatMessageList({
   onRegenerateMessage: () => void
   onCopyMessage: (text: string, e: React.MouseEvent) => void
   messagesEndRef: React.RefObject<HTMLDivElement | null>
-  onWordClick: (word: string) => void
+  onWordClick: (word: string, message: Message) => void
 }) {
   const speech = useSpeech()
   let turn = 0
@@ -119,14 +119,14 @@ function ChatMessageList({
                 </div>
               </div>
 
-              <div data-msg-bubble className={`mt-1 break-words leading-relaxed ${isUser
+              <div data-msg-bubble data-message-id={message.id} className={`mt-1 break-words leading-relaxed ${isUser
                 ? 'font-body text-[15px]'
                 : 'target-lang text-[16.5px]'}`}>
                 {isUser
                   ? message.content
                   : message.streaming
                     ? message.content
-                    : renderClickableContent(message.content, onWordClick)}
+                    : renderClickableContent(message.content, (word) => onWordClick(word, message))}
                 {message.streaming && <span className="ml-0.5 inline-block h-4 w-1 animate-pulse bg-scarlet align-middle not-italic dark:bg-scarlet-dark" />}
               </div>
             </div>
@@ -218,8 +218,8 @@ interface ChatWindowProps {
   inputRef: React.RefObject<HTMLTextAreaElement | null>
   inputText: string
   setInputText: React.Dispatch<React.SetStateAction<string>>
-  onWordClick: (word: string) => void
-  onSelectSentence: (sentence: string) => void
+  onWordClick: (word: string, message: Message) => void
+  onSelectSentence: (sentence: string, message: Message) => void
   regeneratableAssistantId: string | null
   onRegenerateMessage: () => void
   onOpenFeedback: () => void
@@ -235,7 +235,7 @@ export default function ChatWindow({
   const [isRecording, setIsRecording] = useState(false)
   const [recognitionError, setRecognitionError] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
-  const [selectionBox, setSelectionBox] = useState<{ text: string; x: number; y: number } | null>(null)
+  const [selectionBox, setSelectionBox] = useState<{ text: string; messageId: string; x: number; y: number } | null>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -247,8 +247,10 @@ export default function ChatWindow({
     const range = sel.getRangeAt(0)
     const bubble = (range.commonAncestorContainer as HTMLElement).closest?.('[data-msg-bubble]')
     if (!bubble) { setSelectionBox(null); return }
+    const messageId = bubble.getAttribute('data-message-id')
+    if (!messageId) { setSelectionBox(null); return }
     const rect = range.getBoundingClientRect()
-    setSelectionBox({ text, x: rect.left + rect.width / 2, y: rect.top })
+    setSelectionBox({ text, messageId, x: rect.left + rect.width / 2, y: rect.top })
   }
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, isLoading])
@@ -323,7 +325,12 @@ export default function ChatWindow({
         <div className="fixed z-50 flex -translate-x-1/2 -translate-y-full items-center rounded-md bg-ink p-1 text-paper shadow-lg dark:bg-ink-dark dark:text-paper-dark"
           style={{ left: selectionBox.x, top: selectionBox.y - 8 }}>
           <button type="button"
-            onClick={() => { onSelectSentence(selectionBox.text); setSelectionBox(null); window.getSelection()?.removeAllRanges() }}
+            onClick={() => {
+              const sourceMessage = messages.find((message) => message.id === selectionBox.messageId)
+              if (sourceMessage) onSelectSentence(selectionBox.text, sourceMessage)
+              setSelectionBox(null)
+              window.getSelection()?.removeAllRanges()
+            }}
             className="whitespace-nowrap rounded px-2 py-1 text-[11px] font-bold hover:bg-paper/15 dark:hover:bg-paper-dark/15">
             深讲
           </button>

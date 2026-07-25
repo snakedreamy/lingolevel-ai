@@ -1,5 +1,5 @@
 // src/App.tsx — 应用外壳：偏好、工作区切换、全局服务（发音/答疑）与各工作区的装配
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PropsWithChildren } from 'react'
 import { AppHeader, WorkspaceNav } from './components/AppShell'
 import type { Workspace } from './components/AppShell'
@@ -13,7 +13,7 @@ import { SCENARIOS } from './data/scenarios'
 import { useBrowserPrefs } from './hooks/useBrowserPrefs'
 import { useAskPanel } from './hooks/useAskPanel'
 import { useSpeechPlayer } from './lib/speech'
-import type { Scenario } from './types'
+import type { AskContext, Scenario } from './types'
 
 /** Keep inactive workspaces mounted so their in-memory session state survives tab switches. */
 function KeepMountedWorkspace({
@@ -36,6 +36,16 @@ export default function App() {
   )
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [workspace, setWorkspace] = useState<Workspace>('learning')
+  const workspaceAskContextsRef = useRef<Partial<Record<Workspace, AskContext>>>({})
+  const setLearningAskContext = useCallback((context: AskContext) => {
+    workspaceAskContextsRef.current.learning = context
+  }, [])
+  const setChatAskContext = useCallback((context: AskContext) => {
+    workspaceAskContextsRef.current.chat = context
+  }, [])
+  const setFillBlankAskContext = useCallback((context: AskContext) => {
+    workspaceAskContextsRef.current['fill-blank'] = context
+  }, [])
   const speech = useSpeechPlayer({
     accent: prefs.speechAccent,
     speed: prefs.speechSpeed,
@@ -69,14 +79,17 @@ export default function App() {
           theme={prefs.theme}
           onToggleTheme={() => setPrefs((p) => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' }))}
           onOpenSettings={() => { ask.close(); setIsSettingsOpen(true) }}
-          onOpenAsk={() => { setIsSettingsOpen(false); ask.open() }}
+          onOpenAsk={() => {
+            setIsSettingsOpen(false)
+            ask.open(workspaceAskContextsRef.current[workspace] ?? null)
+          }}
         />
 
         <main className="app-main mx-auto flex min-h-0 w-full max-w-[1550px] flex-1 flex-col overflow-hidden px-2.5 py-2.5 sm:px-4 sm:py-4 md:px-6">
           <WorkspaceNav workspace={workspace} onSelect={setWorkspace} />
 
           <KeepMountedWorkspace active={workspace === 'learning'} className="min-h-0 flex-1 overflow-hidden">
-            <SystemLearning modelId={prefs.modelId} ask={ask} />
+            <SystemLearning modelId={prefs.modelId} ask={ask} onPageContextChange={setLearningAskContext} />
           </KeepMountedWorkspace>
 
           <KeepMountedWorkspace
@@ -89,6 +102,7 @@ export default function App() {
               modelId={prefs.modelId}
               maxContextMessages={serverConfig?.maxContextMessages}
               ask={ask}
+              onPageContextChange={setChatAskContext}
             />
           </KeepMountedWorkspace>
 
@@ -102,6 +116,7 @@ export default function App() {
               modelId={prefs.modelId}
               onLevelChange={(level) => setPrefs((p) => ({ ...p, level }))}
               ask={ask}
+              onPageContextChange={setFillBlankAskContext}
             />
           </KeepMountedWorkspace>
         </main>

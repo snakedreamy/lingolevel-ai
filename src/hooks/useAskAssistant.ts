@@ -12,7 +12,8 @@ export function useAskAssistant(args: { level: DifficultyLevel; modelId: string;
 
   const ask = useCallback(async (question: string, context?: AskContext, options?: { resetHistory?: boolean }) => {
     const q = question.trim()
-    if (!q || isLoading) return
+    if (!q || (isLoading && !options?.resetHistory)) return
+    if (options?.resetHistory) abortRef.current?.abort()
     const userMsg: AskMessage = { id: createMessageId('ask-user'), role: 'user', content: q, timestamp: Date.now(), context }
     const assistantId = createMessageId('ask-assistant')
     const assistantMsg: AskMessage = { id: assistantId, role: 'assistant', content: '', timestamp: Date.now(), streaming: true }
@@ -63,8 +64,10 @@ export function useAskAssistant(args: { level: DifficultyLevel; modelId: string;
         }
         : m))
     } finally {
-      setIsLoading(false)
-      abortRef.current = null
+      if (abortRef.current === controller) {
+        setIsLoading(false)
+        abortRef.current = null
+      }
     }
   }, [level, isLoading, maxContextMessages, messages, modelId])
 
@@ -75,6 +78,8 @@ export function useAskAssistant(args: { level: DifficultyLevel; modelId: string;
 
   const reset = useCallback(() => {
     abortRef.current?.abort()
+    abortRef.current = null
+    setIsLoading(false)
     setMessages([])
   }, [])
 
