@@ -13,7 +13,15 @@ import { SCENARIOS } from './data/scenarios'
 import { useBrowserPrefs } from './hooks/useBrowserPrefs'
 import { useAskPanel } from './hooks/useAskPanel'
 import { useSpeechPlayer } from './lib/speech'
+import { loadStoredJson, saveStoredJson } from './lib/storage'
 import type { AskContext, Scenario } from './types'
+
+const WORKSPACE_KEY = 'lingolevel_current_workspace'
+
+function loadWorkspace(): Workspace {
+  const value = loadStoredJson<unknown>(WORKSPACE_KEY, 'learning')
+  return value === 'learning' || value === 'chat' || value === 'fill-blank' ? value : 'learning'
+}
 
 /** Keep inactive workspaces mounted so their in-memory session state survives tab switches. */
 function KeepMountedWorkspace({
@@ -35,7 +43,7 @@ export default function App() {
     [prefs.scenarioId],
   )
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [workspace, setWorkspace] = useState<Workspace>('learning')
+  const [workspace, setWorkspace] = useState<Workspace>(loadWorkspace)
   const workspaceAskContextsRef = useRef<Partial<Record<Workspace, AskContext>>>({})
   const setLearningAskContext = useCallback((context: AskContext) => {
     workspaceAskContextsRef.current.learning = context
@@ -57,6 +65,8 @@ export default function App() {
     modelId: prefs.modelId,
     maxContextMessages: serverConfig?.maxContextMessages,
   })
+
+  useEffect(() => saveStoredJson(WORKSPACE_KEY, workspace), [workspace])
 
   useEffect(() => {
     const viewport = window.visualViewport

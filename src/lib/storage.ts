@@ -8,6 +8,10 @@ export function loadStoredJson<T>(key: string, fallback: T): T {
   }
 }
 
+export function isStoredRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 export function saveStoredJson<T>(key: string, value: T): void {
   try {
     window.localStorage.setItem(key, JSON.stringify(value))

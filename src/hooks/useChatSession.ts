@@ -2,10 +2,98 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { sendAnalyze, streamChat } from '../lib/api'
 import { createMessageId } from '../lib/ids'
-import { incrementStoredCounter } from '../lib/storage'
+import { incrementStoredCounter, isStoredRecord, loadStoredJson, saveStoredJson } from '../lib/storage'
 import type { AnalysisHistoryEntry, AnalysisResult, DifficultyLevel, Message, Scenario } from '../types'
 
 const CHAT_VARIETY_KEY = 'lingolevel_chat_variety'
+const CHAT_SESSION_KEY = 'lingolevel_chat_session_v1'
+const LEVEL_IDS = new Set<DifficultyLevel>(['kindergarten', 'primary_low', 'primary_high', 'junior', 'senior', 'college', 'ielts'])
+
+interface StoredChatSession {
+  version: 1
+  scenarioId: string
+  diversitySeed: number
+  messages: Message[]
+  analysisHistory: AnalysisHistoryEntry[]
+  selectedAnalysisIndex: number
+}
+
+function isText(value: unknown): value is string {
+  return typeof value === 'string'
+}
+
+function isTextArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(isText)
+}
+
+function isAnalysisResult(value: unknown): value is AnalysisResult {
+  if (!isStoredRecord(value) || !isText(value.translation) || !Array.isArray(value.grammarCorrections)
+    || !isStoredRecord(value.assistantReplyInsight) || !Array.isArray(value.keyWords) || !isTextArray(value.suggestions)) return false
+  const insight = value.assistantReplyInsight
+  return value.grammarCorrections.every((item) => isStoredRecord(item)
+      && isText(item.original) && isText(item.corrected) && isText(item.explanation)
+      && (item.politeForm === undefined || isText(item.politeForm))
+      && typeof item.score === 'number' && Number.isFinite(item.score))
+    && isText(insight.structure) && isText(insight.grammar) && isText(insight.whyThisReply)
+    && value.keyWords.every((item) => isStoredRecord(item)
+      && isText(item.word) && isText(item.phonetic) && isText(item.definition)
+      && isText(item.exampleEn) && isText(item.exampleZh))
+    && (value.isFallback === undefined || typeof value.isFallback === 'boolean')
+}
+
+function storedMessage(value: unknown): Message | null {
+  if (!isStoredRecord(value) || !isText(value.id) || !isText(value.content)
+    || (value.role !== 'user' && value.role !== 'assistant' && value.role !== 'system')
+    || typeof value.timestamp !== 'number' || !Number.isFinite(value.timestamp)) return null
+  return {
+    id: value.id,
+    role: value.role,
+    content: value.content,
+    timestamp: value.timestamp,
+    translation: isText(value.translation) ? value.translation : undefined,
+    pronunciation: isText(value.pronunciation) ? value.pronunciation : undefined,
+    isFallback: value.isFallback === true,
+  }
+}
+
+function storedAnalysisEntry(value: unknown): AnalysisHistoryEntry | null {
+  if (!isStoredRecord(value) || !isText(value.id) || !isText(value.userMessage)
+    || !isText(value.assistantMessage) || !isAnalysisResult(value.analysis)
+    || typeof value.createdAt !== 'number' || !Number.isFinite(value.createdAt)) return null
+  return {
+    id: value.id,
+    userMessageId: isText(value.userMessageId) ? value.userMessageId : undefined,
+    assistantMessageId: isText(value.assistantMessageId) ? value.assistantMessageId : undefined,
+    userMessage: value.userMessage,
+    assistantMessage: value.assistantMessage,
+    level: isText(value.level) && LEVEL_IDS.has(value.level as DifficultyLevel) ? value.level as DifficultyLevel : undefined,
+    scenarioContext: isText(value.scenarioContext) ? value.scenarioContext : undefined,
+    analysis: value.analysis,
+    createdAt: value.createdAt,
+  }
+}
+
+function loadChatSession(scenarioId: string): StoredChatSession | null {
+  const value = loadStoredJson<unknown>(CHAT_SESSION_KEY, null)
+  if (!isStoredRecord(value) || value.version !== 1 || value.scenarioId !== scenarioId
+    || !Array.isArray(value.messages) || !Array.isArray(value.analysisHistory)) return null
+  const messages = value.messages.map(storedMessage)
+  const analysisHistory = value.analysisHistory.map(storedAnalysisEntry)
+  if (messages.some((item) => !item) || analysisHistory.some((item) => !item)) return null
+  const selectedIndex = typeof value.selectedAnalysisIndex === 'number' && Number.isSafeInteger(value.selectedAnalysisIndex)
+    ? Math.min(Math.max(0, value.selectedAnalysisIndex), Math.max(0, analysisHistory.length - 1))
+    : Math.max(0, analysisHistory.length - 1)
+  return {
+    version: 1,
+    scenarioId,
+    diversitySeed: typeof value.diversitySeed === 'number' && Number.isSafeInteger(value.diversitySeed) && value.diversitySeed >= 0
+      ? value.diversitySeed
+      : 0,
+    messages: messages as Message[],
+    analysisHistory: analysisHistory as AnalysisHistoryEntry[],
+    selectedAnalysisIndex: selectedIndex,
+  }
+}
 
 function getStarterMessage(scenario: Scenario, diversitySeed: number): string {
   const index = scenario.id === 'free_chat'
@@ -23,14 +111,17 @@ function trimChatContext(messages: Message[], max?: number) {
 
 export function useChatSession(args: { currentLevel: DifficultyLevel; activeScenario: Scenario; maxContextMessages?: number; modelId: string }) {
   const { currentLevel, activeScenario, maxContextMessages, modelId } = args
-  const [messages, setMessages] = useState<Message[]>([])
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
-  const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistoryEntry[]>([])
-  const [selectedAnalysisIndex, setSelectedAnalysisIndex] = useState(0)
+  const [initialSession] = useState(() => loadChatSession(activeScenario.id))
+  const [messages, setMessages] = useState<Message[]>(() => initialSession?.messages ?? [])
+  const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistoryEntry[]>(() => initialSession?.analysisHistory ?? [])
+  const [selectedAnalysisIndex, setSelectedAnalysisIndex] = useState(() => initialSession?.selectedAnalysisIndex ?? 0)
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(() =>
+    initialSession?.analysisHistory[initialSession.selectedAnalysisIndex]?.analysis ?? null)
   const [isChatLoading, setIsChatLoading] = useState(false)
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false)
   const sessionIdRef = useRef(0)
-  const diversitySeedRef = useRef(0)
+  const diversitySeedRef = useRef(initialSession?.diversitySeed ?? 0)
+  const scenarioIdRef = useRef(activeScenario.id)
   const requestIdRef = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
   const analysisQueueRef = useRef<Promise<void>>(Promise.resolve())
@@ -65,7 +156,28 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
     setIsAnalysisLoading(false)
   }, [activeScenario])
 
-  useEffect(() => { void resetConversation() }, [activeScenario, resetConversation])
+  useEffect(() => {
+    if (scenarioIdRef.current === activeScenario.id && messages.length > 0) return
+    scenarioIdRef.current = activeScenario.id
+    void resetConversation()
+  }, [activeScenario.id, messages.length, resetConversation])
+
+  const messagePersistenceRevision = messages
+    .map((message) => message.streaming
+      ? `${message.id}:pending`
+      : `${message.id}:${message.timestamp}:${message.content.length}:${message.isFallback ? 1 : 0}`)
+    .join('|')
+  useEffect(() => {
+    const stableMessages = messages.filter((message) => !message.streaming)
+    saveStoredJson<StoredChatSession>(CHAT_SESSION_KEY, {
+      version: 1,
+      scenarioId: activeScenario.id,
+      diversitySeed: diversitySeedRef.current,
+      messages: stableMessages,
+      analysisHistory,
+      selectedAnalysisIndex: Math.min(selectedAnalysisIndex, Math.max(0, analysisHistory.length - 1)),
+    })
+  }, [activeScenario.id, analysisHistory, messagePersistenceRevision, selectedAnalysisIndex])
 
   const streamAssistantReply = useCallback(async (args: {
     contextMessages: Message[]

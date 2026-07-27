@@ -280,7 +280,7 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
   const activeStepRef = useRef<HTMLLIElement | null>(null)
   const pageAskContext = useMemo(() => buildFillBlankAskContext({
     phase: practice.phase,
-    level: props.level,
+    level: practice.phase === 'setup' || practice.phase === 'loading' ? props.level : practice.practiceLevel,
     count: practice.count,
     focus: practice.focus,
     cards: practice.cards,
@@ -297,6 +297,7 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
     practice.currentProgress,
     practice.focus,
     practice.phase,
+    practice.practiceLevel,
     practice.progress,
     props.level,
     showHint,
@@ -383,6 +384,9 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
           </section>
 
           <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button type="button" onClick={() => practice.goTo(practice.cards.length - 1)} className="ui-btn !h-11 px-5 !text-sm">
+              <ArrowLeft className="h-4 w-4" /> 回看题目
+            </button>
             <button type="button" onClick={practice.resetToSetup} className="ui-btn ui-btn-primary !h-11 px-5 !text-sm"><RotateCcw className="h-4 w-4" /> 再练一组</button>
           </div>
         </div>
@@ -406,18 +410,24 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
       <aside className="ui-well hidden w-64 shrink-0 flex-col border-r ui-rule p-5 md:flex">
         <div>
           <p className="margin-code">练习卷 · 进度</p>
-          <p className="mt-2 text-sm font-semibold">{LEVELS.find((entry) => entry.id === props.level)?.name}</p>
+          <p className="mt-2 text-sm font-semibold">{LEVELS.find((entry) => entry.id === practice.practiceLevel)?.name}</p>
         </div>
         <ol className="ui-scroll mt-7 min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
           {practice.cards.map((entry, index) => {
             const state = practice.progress[entry.id]
             const active = index === practice.currentIndex
+            const firstAnsweringIndex = practice.cards.findIndex((card) => practice.progress[card.id]?.status === 'answering')
+            const reachable = index <= (firstAnsweringIndex < 0 ? practice.cards.length - 1 : firstAnsweringIndex)
             return (
-              <li ref={active ? activeStepRef : undefined} key={entry.id} className={`flex items-center gap-3 rounded-md px-2.5 py-2 text-xs font-semibold transition ${active ? 'bg-leaf dark:bg-leaf-dark' : 'ui-text-faint'}`}>
-                <span className={`grid h-6 w-6 place-items-center rounded-full border text-[10px] ${state?.status === 'correct' ? 'border-forest bg-forest text-paper dark:border-forest-dark dark:bg-forest-dark dark:text-paper-dark' : state?.status === 'revealed' ? 'border-gilt bg-gilt text-paper dark:border-gilt-dark dark:bg-gilt-dark dark:text-paper-dark' : active ? 'border-forest text-forest dark:border-forest-dark dark:text-forest-dark' : 'border-ink/25 dark:border-ink-dark/30'}`}>
-                  {state?.status === 'correct' ? <Check className="h-3.5 w-3.5" /> : index + 1}
-                </span>
-                句子 {index + 1}
+              <li ref={active ? activeStepRef : undefined} key={entry.id}>
+                <button type="button" disabled={!reachable} onClick={() => practice.goTo(index)}
+                  aria-current={active ? 'step' : undefined}
+                  className={`flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-xs font-semibold transition ${active ? 'bg-leaf dark:bg-leaf-dark' : 'ui-text-faint'} ${reachable ? 'cursor-pointer hover:bg-ink/5 dark:hover:bg-ink-dark/10' : 'cursor-not-allowed opacity-55'}`}>
+                  <span className={`grid h-6 w-6 place-items-center rounded-full border text-[10px] ${state?.status === 'correct' ? 'border-forest bg-forest text-paper dark:border-forest-dark dark:bg-forest-dark dark:text-paper-dark' : state?.status === 'revealed' ? 'border-gilt bg-gilt text-paper dark:border-gilt-dark dark:bg-gilt-dark dark:text-paper-dark' : active ? 'border-forest text-forest dark:border-forest-dark dark:text-forest-dark' : 'border-ink/25 dark:border-ink-dark/30'}`}>
+                    {state?.status === 'correct' ? <Check className="h-3.5 w-3.5" /> : index + 1}
+                  </span>
+                  句子 {index + 1}
+                </button>
               </li>
             )
           })}
@@ -427,6 +437,11 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
 
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <div className="flex shrink-0 items-center gap-3 border-b ui-rule px-4 py-3 sm:px-7">
+          {practice.currentIndex > 0 && (
+            <button type="button" onClick={() => practice.goTo(practice.currentIndex - 1)}
+              className="rounded-md p-1.5 ui-text-faint hover:bg-ink/5 dark:hover:bg-ink-dark/10 md:hidden"
+              aria-label="查看上一题"><ArrowLeft className="h-4 w-4" /></button>
+          )}
           <div className="flex flex-1 gap-1.5 md:hidden" aria-label="答题进度">
             {practice.cards.map((entry, index) => (
               <span key={entry.id} className={`h-1 flex-1 rounded-full transition-colors ${index < practice.currentIndex ? 'bg-forest dark:bg-forest-dark' : index === practice.currentIndex ? 'bg-gilt dark:bg-gilt-dark' : 'bg-ink/10 dark:bg-ink-dark/15'}`} />
@@ -584,7 +599,12 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
 
         {settled && (
           <div className="ui-well border-t ui-rule px-5 py-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] sm:px-9">
-            <div className="mx-auto flex max-w-3xl justify-end">
+            <div className="mx-auto flex max-w-3xl justify-between gap-3">
+              {practice.currentIndex > 0 ? (
+                <button type="button" onClick={() => practice.goTo(practice.currentIndex - 1)} className="ui-btn !h-11 px-4 !text-sm">
+                  <ArrowLeft className="h-4 w-4" /> 上一题
+                </button>
+              ) : <span />}
               <button type="button" onClick={practice.next} className="ui-btn ui-btn-primary !h-11 w-full px-5 !text-sm sm:w-auto">
                 {practice.currentIndex === practice.cards.length - 1 ? '查看本组总结' : '下一题'} {practice.currentIndex === practice.cards.length - 1 ? <BookOpenCheck className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
               </button>
