@@ -60,4 +60,6 @@ export interface ProviderConfig {
   analyzeModel: string
   timeoutMs: number
   maxOutputTokens: number
+  /** Optional per-provider HTTP(S) proxy URL; empty/absent means direct connection. */
+  proxyUrl?: string
 }

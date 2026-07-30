@@ -2,6 +2,7 @@ import type {
   Provider, ProviderConfig, ProviderChatInput, ProviderChatStreamOutput, ProviderAnalyzeInput
 } from './types'
 import { callWithRetry } from './retry'
+import { fetchViaProxy } from './proxy'
 import { fallbackChatReply, fallbackAnalyzeOutput } from './fallback'
 import { buildAnalysisUserPrompt } from './schema'
 import { JSON_EXTRACT_HINT, errorMessage, extractJsonObject, looksLikeErrorContent } from './util'
@@ -18,7 +19,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
     parseResponse: (json: unknown) => T
   ): Promise<T> {
     const url = `${baseUrl}/v1/messages`
-    const res = await fetch(url, {
+    const res = await fetchViaProxy(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -27,7 +28,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
       },
       body: JSON.stringify(body),
       signal
-    })
+    }, cfg.proxyUrl)
     if (!res.ok) {
       let bodySummary = ''
       try {
@@ -55,7 +56,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
     signal: AbortSignal,
   ): AsyncGenerator<string> {
     const url = `${baseUrl}/v1/messages`
-    const res = await fetch(url, {
+    const res = await fetchViaProxy(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -64,7 +65,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
       },
       body: JSON.stringify({ ...(body as object), stream: true }),
       signal,
-    })
+    }, cfg.proxyUrl)
     if (!res.ok) {
       let bodySummary = ''
       try { bodySummary = (await res.text()).slice(0, 200) } catch { bodySummary = '<failed to read body>' }

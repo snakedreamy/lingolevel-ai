@@ -2,6 +2,7 @@
 import type { Provider, ProviderConfig } from './types'
 import { createOpenAIProvider } from './openai-compatible'
 import { createAnthropicProvider } from './anthropic'
+import { resolveProxyDispatcher } from './proxy'
 
 export type {
   Provider,
@@ -33,6 +34,7 @@ interface ResolvedProviderEnv {
   maxContextMessages: number
   fillBlankBatchSize: number
   fillBlankAttempts: number
+  proxyUrl?: string
 }
 
 function readPositiveInteger(name: string, fallback: number): number {
@@ -89,6 +91,18 @@ function resolveProviderEnv(): ResolvedProviderEnv {
   }
   const availableModels = readModelList(modelsVar, [chatModel, analyzeModel])
 
+  // Optional per-provider proxy. Empty/missing = direct connection.
+  const proxyUrl = (isOpenAI ? process.env.OPENAI_PROXY : process.env.ANTHROPIC_PROXY)?.trim()
+  if (proxyUrl) {
+    try {
+      resolveProxyDispatcher(proxyUrl)
+    } catch {
+      throw new Error(
+        `${isOpenAI ? 'OPENAI_PROXY' : 'ANTHROPIC_PROXY'} is not a valid URL (got "${proxyUrl}")`
+      )
+    }
+  }
+
   const timeoutRaw = readPositiveInteger('REQUEST_TIMEOUT_MS', 180_000)
   const maxOutputTokens = readPositiveInteger('MAX_OUTPUT_TOKENS', 32_768)
   const maxContextMessagesRaw = readPositiveInteger('MAX_CONTEXT_MESSAGES', 12)
@@ -107,6 +121,7 @@ function resolveProviderEnv(): ResolvedProviderEnv {
     maxContextMessages: maxContextMessagesRaw,
     fillBlankBatchSize,
     fillBlankAttempts,
+    proxyUrl: proxyUrl || undefined,
   }
 }
 
@@ -120,6 +135,7 @@ export function loadProviderFromEnv(): Provider {
     analyzeModel: env.analyzeModel,
     timeoutMs: env.timeoutMs,
     maxOutputTokens: env.maxOutputTokens,
+    proxyUrl: env.proxyUrl,
   })
 }
 

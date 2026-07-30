@@ -3,6 +3,7 @@ import type {
   Provider, ProviderConfig, ProviderChatInput, ProviderChatStreamOutput, ProviderAnalyzeInput
 } from './types'
 import { callWithRetry } from './retry'
+import { fetchViaProxy } from './proxy'
 import { fallbackChatReply, fallbackAnalyzeOutput } from './fallback'
 import { analysisJsonSchema, buildAnalysisUserPrompt } from './schema'
 import { JSON_EXTRACT_HINT, errorMessage, extractJsonObject, looksLikeErrorContent } from './util'
@@ -15,7 +16,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
     const url = `${baseUrl}/chat/completions`
     // Always request streaming — some relay proxies (e.g. CPA/Cline) only
     // forward SSE responses and silently drop non-streaming content.
-    const res = await fetch(url, {
+    const res = await fetchViaProxy(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -23,7 +24,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
       },
       body: JSON.stringify({ ...(body as object), stream: true }),
       signal
-    })
+    }, cfg.proxyUrl)
     if (!res.ok) {
       const err: unknown = Object.assign(
         new Error(`OpenAI HTTP ${res.status}`),
@@ -96,7 +97,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
     signal: AbortSignal,
   ): AsyncGenerator<string> {
     const url = `${baseUrl}/chat/completions`
-    const res = await fetch(url, {
+    const res = await fetchViaProxy(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -104,7 +105,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
       },
       body: JSON.stringify({ ...(body as object), stream: true }),
       signal,
-    })
+    }, cfg.proxyUrl)
     if (!res.ok) {
       const err: unknown = Object.assign(new Error(`OpenAI HTTP ${res.status}`), { status: res.status })
       throw err
