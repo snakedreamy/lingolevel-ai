@@ -3,12 +3,16 @@ export interface ChatMessage {
   content: string
 }
 
+export type ProviderThinkingEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+
 export interface ProviderChatInput {
   messages: ChatMessage[]
   systemInstruction: string
   /** Server-validated model selected for this request. */
   model?: string
   temperature?: number
+  /** Optional request-specific reasoning/thinking effort for models that support it. */
+  thinkingEffort?: ProviderThinkingEffort
   /** Maximum transport attempts; structured callers may own their own retry loop. */
   maxAttempts?: number
   scenarioId?: string | null
@@ -36,6 +40,8 @@ export interface ProviderAnalyzeInput {
   level: string
   /** Server-validated model selected for this request. */
   model?: string
+  /** Optional request-specific reasoning/thinking effort for models that support it. */
+  thinkingEffort?: ProviderThinkingEffort
   /** Optional scenario context injected into the analysis prompt (e.g. "Ordering Coffee at Starbucks"). */
   scenarioContext?: string
 }

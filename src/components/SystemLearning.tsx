@@ -18,7 +18,7 @@ import type { LearningEvaluationResult } from '../lib/api'
 import { incrementStoredCounter, loadStoredJson, saveStoredJson } from '../lib/storage'
 import { Modal, useSpeech } from './ui'
 import type { AskPanel } from '../hooks/useAskPanel'
-import type { AskContext } from '../types'
+import type { AskContext, ThinkingEffort } from '../types'
 
 type LearningView = 'home' | 'routes' | 'review'
 
@@ -178,11 +178,12 @@ function ReviewView({ dueReviews, getProgress, onOpenConcept }: { dueReviews: Co
   </div>
 }
 
-function ActivityPlayer({ activity, conceptId, lesson, modelId, ask, onComplete, onPageContextChange }: {
+function ActivityPlayer({ activity, conceptId, lesson, modelId, thinkingEffort, ask, onComplete, onPageContextChange }: {
   activity: LearningActivity
   conceptId: string
   lesson: LearningLesson
   modelId: string
+  thinkingEffort: ThinkingEffort
   ask: AskPanel
   onComplete: (score: number) => void
   onPageContextChange: (context: AskContext) => void
@@ -227,7 +228,7 @@ function ActivityPlayer({ activity, conceptId, lesson, modelId, ask, onComplete,
       controllerRef.current = controller
       setIsChecking(true)
       try {
-        const evaluation = await evaluateLearningAnswer({ conceptId, activity, answer: inputValue.trim(), model: modelId || undefined }, controller.signal)
+        const evaluation = await evaluateLearningAnswer({ conceptId, activity, answer: inputValue.trim(), model: modelId || undefined, thinkingEffort: thinkingEffort || undefined }, controller.signal)
         setResult(evaluation)
         onComplete(evaluation.score)
       } catch {
@@ -264,9 +265,10 @@ function ActivityPlayer({ activity, conceptId, lesson, modelId, ask, onComplete,
   </div>
 }
 
-function LessonPlayer({ lesson, modelId, ask, onClose, onFinish, onPageContextChange }: {
+function LessonPlayer({ lesson, modelId, thinkingEffort, ask, onClose, onFinish, onPageContextChange }: {
   lesson: LearningLesson
   modelId: string
+  thinkingEffort: ThinkingEffort
   ask: AskPanel
   onClose: () => void
   onFinish: (scores: Record<MasteryDimension, number>) => void
@@ -314,6 +316,7 @@ function LessonPlayer({ lesson, modelId, ask, onClose, onFinish, onPageContextCh
         recentPrompts,
         diversitySeed: incrementStoredCounter(PRACTICE_VARIETY_KEY),
         model: modelId || undefined,
+        thinkingEffort: thinkingEffort || undefined,
       }, controller.signal)
       if (response.activities.length !== DIMENSIONS.length) throw new Error('INCOMPLETE_PRACTICE')
       savePracticeHistory(lesson.conceptId, response.activities.map((item) => item.prompt))
@@ -331,7 +334,7 @@ function LessonPlayer({ lesson, modelId, ask, onClose, onFinish, onPageContextCh
   useEffect(() => {
     void preparePractice(false)
     return () => generationControllerRef.current?.abort()
-  }, [lesson.id, modelId])
+  }, [lesson.id, modelId, thinkingEffort])
   useEffect(() => {
     if (phase !== 'practice') onPageContextChange(lessonPageContext)
   }, [lessonPageContext, onPageContextChange, phase])
@@ -348,14 +351,15 @@ function LessonPlayer({ lesson, modelId, ask, onClose, onFinish, onPageContextCh
         {generationError && <p role="alert" className="mt-6 border-l-2 border-mark bg-mark-tint-bg p-3 text-xs leading-5 text-mark">{generationError}</p>}
         <div className="mt-8 flex flex-col items-end gap-2"><button type="button" disabled={isGenerating} onClick={() => { if (activities.length === DIMENSIONS.length) setPhase('practice'); else void preparePractice(true) }} className="ui-btn ui-btn-primary ui-btn-2xl">{isGenerating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{isGenerating ? 'AI 正在后台准备练习' : activities.length === DIMENSIONS.length ? '开始 AI 引导练习' : '重新准备 AI 练习'}</button><p className="text-[10px] ui-text-faint">打开课程后即开始准备；你可以先阅读，准备完成后直接进入</p></div>
       </article>}
-      {phase === 'practice' && activity && <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-12"><div className="mb-3 flex items-center gap-2 text-[11px] ui-text-muted"><Sparkles className="h-3.5 w-3.5 text-giltc" />本组题目根据本课内容即时生成，不会照搬上次题目</div><div className="mb-7 flex gap-1">{activities.map((item, index) => <span key={item.id} className={`h-1 flex-1 rounded-full ${index <= activityIndex ? 'bg-accent' : 'bg-muted-bg'}`} />)}</div><ActivityPlayer key={activity.id} activity={activity} conceptId={lesson.conceptId} lesson={lesson} modelId={modelId} ask={ask} onPageContextChange={onPageContextChange} onComplete={(score) => setResults((current) => ({ ...current, [activity.id]: score }))} />{results[activity.id] !== undefined && <div className="mt-6 flex justify-end">{activityIndex < activities.length - 1 ? <button type="button" onClick={() => setActivityIndex((index) => index + 1)} className="ui-btn ui-btn-primary ui-btn-lg">下一题<ArrowRight className="h-4 w-4" /></button> : <button type="button" onClick={finish} className="ui-btn ui-btn-primary ui-btn-lg">完成本课</button>}</div>}</div>}
+      {phase === 'practice' && activity && <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-12"><div className="mb-3 flex items-center gap-2 text-[11px] ui-text-muted"><Sparkles className="h-3.5 w-3.5 text-giltc" />本组题目根据本课内容即时生成，不会照搬上次题目</div><div className="mb-7 flex gap-1">{activities.map((item, index) => <span key={item.id} className={`h-1 flex-1 rounded-full ${index <= activityIndex ? 'bg-accent' : 'bg-muted-bg'}`} />)}</div><ActivityPlayer key={activity.id} activity={activity} conceptId={lesson.conceptId} lesson={lesson} modelId={modelId} thinkingEffort={thinkingEffort} ask={ask} onPageContextChange={onPageContextChange} onComplete={(score) => setResults((current) => ({ ...current, [activity.id]: score }))} />{results[activity.id] !== undefined && <div className="mt-6 flex justify-end">{activityIndex < activities.length - 1 ? <button type="button" onClick={() => setActivityIndex((index) => index + 1)} className="ui-btn ui-btn-primary ui-btn-lg">下一题<ArrowRight className="h-4 w-4" /></button> : <button type="button" onClick={finish} className="ui-btn ui-btn-primary ui-btn-lg">完成本课</button>}</div>}</div>}
       {phase === 'result' && <div className="mx-auto max-w-2xl px-4 py-10 text-center sm:px-8"><div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 ${lessonMastered ? 'border-accent text-accent' : 'border-giltc text-giltc'}`}>{lessonMastered ? <CheckCircle2 className="h-6 w-6" /> : <RotateCcw className="h-6 w-6" />}</div><h2 className="mt-4 font-display text-2xl font-semibold">{lessonMastered ? '本课已达到掌握标准' : '本课仍需巩固'}</h2><p className="mt-2 text-xs leading-5 ui-text-muted">{lessonMastered ? '四项能力均达到最低要求，系统已安排后续复习。' : '至少一项能力尚未达到要求，系统将在较近日期安排复习。'}</p><div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">{DIMENSIONS.map((item) => <div key={item.id} className="border-t ui-rule pt-3"><p className="margin-code">{item.label}</p><p className="mt-1 font-display text-xl font-semibold">{scores[item.id]}</p></div>)}</div><div className="mt-8 text-left"><h3 className="text-sm font-bold">本课总结</h3><ul className="mt-3 space-y-2">{lesson.summary.map((item) => <li key={item} className="flex gap-2 text-xs leading-5 ui-text-muted"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />{item}</li>)}</ul><p className="mt-5 rounded-md border border-giltc/40 bg-giltc/10 p-4 text-xs leading-5 ui-text-muted"><strong>复习时尝试：</strong>{lesson.reviewPrompt}</p></div><button type="button" onClick={onClose} className="ui-btn ui-btn-primary ui-btn-lg mt-7 px-5">返回课程</button></div>}
     </div>
   </div>
 }
 
-export default function SystemLearning({ modelId, ask, onPageContextChange }: {
+export default function SystemLearning({ modelId, thinkingEffort, ask, onPageContextChange }: {
   modelId: string
+  thinkingEffort: ThinkingEffort
   ask: AskPanel
   onPageContextChange: (context: AskContext) => void
 }) {
@@ -435,7 +439,7 @@ export default function SystemLearning({ modelId, ask, onPageContextChange }: {
       .catch(() => setCourseLoadError(true))
       .finally(() => setLoadingConceptId(null))
   }
-  if (activeLesson) return <LessonPlayer lesson={activeLesson} modelId={modelId} ask={ask} onPageContextChange={onPageContextChange} onClose={() => setActiveLesson(null)} onFinish={(scores) => learning.completeLesson(activeLesson.conceptId, scores)} />
+  if (activeLesson) return <LessonPlayer lesson={activeLesson} modelId={modelId} thinkingEffort={thinkingEffort} ask={ask} onPageContextChange={onPageContextChange} onClose={() => setActiveLesson(null)} onFinish={(scores) => learning.completeLesson(activeLesson.conceptId, scores)} />
   return <div className="ui-surface relative flex h-full min-h-0 flex-col overflow-hidden lg:flex-row">
     <LearningSidebar view={view} setView={setView} dueCount={learning.dueReviews.length} />
     <div className="min-h-0 flex-1 overflow-hidden">

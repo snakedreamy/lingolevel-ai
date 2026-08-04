@@ -9,7 +9,8 @@ export type {
   ChatMessage,
   ProviderChatInput,
   ProviderChatOutput,
-  ProviderAnalyzeInput
+  ProviderAnalyzeInput,
+  ProviderThinkingEffort
 } from './types'
 
 export interface CreateProviderOptions extends ProviderConfig {

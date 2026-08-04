@@ -1,7 +1,7 @@
 // server/routes.ts
 import { Router } from 'express'
 import type { Request, Response } from 'express'
-import type { Provider, ProviderChatInput } from '../providers'
+import type { Provider, ProviderChatInput, ProviderThinkingEffort } from '../providers'
 import type { ServerConfig } from '../providers'
 import { loadServerConfigFromEnv } from '../providers'
 import { errorMessage, extractJsonObject } from '../providers/util'
@@ -31,6 +31,7 @@ import {
 } from './learningPractice'
 
 const LEVEL_IDS = new Set(['kindergarten', 'primary_low', 'primary_high', 'junior', 'senior', 'college', 'ielts'])
+const THINKING_EFFORTS = new Set<ProviderThinkingEffort>(['low', 'medium', 'high', 'xhigh', 'max'])
 const ASK_CONTEXT_SOURCES = new Set(['chat', 'fill-blank', 'learning'])
 const ASK_FOCUS_TYPES = new Set(['word', 'sentence', 'section'])
 
@@ -105,6 +106,12 @@ function resolveDiversitySeed(value: unknown): number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0
 }
 
+function resolveThinkingEffort(value: unknown): ProviderThinkingEffort | undefined {
+  return typeof value === 'string' && THINKING_EFFORTS.has(value as ProviderThinkingEffort)
+    ? value as ProviderThinkingEffort
+    : undefined
+}
+
 export function createApiRouter(args: { provider: Provider; cfg: ServerConfig }): Router {
   const { provider, cfg } = args
   const router = Router()
@@ -128,6 +135,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     }
     const model = resolveRequestedModel(req.body?.model, cfg.chatModel, cfg.availableModels)
     if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
+    const thinkingEffort = resolveThinkingEffort(req.body?.thinkingEffort)
     const normalizedLevel = resolveLevel(level)
     if (!normalizedLevel) return res.status(400).json({ error: 'INVALID_LEVEL' })
     const normalizedScenario = scenarioInfo == null ? null : resolveScenario(scenarioInfo)
@@ -169,6 +177,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
           diversitySeed,
         }),
         temperature: 0.7,
+        thinkingEffort,
         scenarioId: normalizedScenario?.id ?? 'free_chat',
         diversitySeed,
         signal: abortController.signal,
@@ -202,6 +211,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     if (!normalizedLevel) return res.status(400).json({ error: 'INVALID_LEVEL' })
     const model = resolveRequestedModel(req.body?.model, cfg.analyzeModel, cfg.availableModels)
     if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
+    const thinkingEffort = resolveThinkingEffort(req.body?.thinkingEffort)
     const normalizedScenarioContext = optionalText(scenarioContext)
     try {
       const { data, isFallback } = await provider.analyzeJSON({
@@ -209,6 +219,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
         assistantMessage: normalizedAssistantMessage ?? '',
         level: normalizedLevel,
         model,
+        thinkingEffort,
         scenarioContext: normalizedScenarioContext,
       })
       logRequest({ endpoint: 'analyze', provider: cfg.provider, model, status: 200, latencyMs: Date.now() - start, fallback: !!isFallback })
@@ -228,6 +239,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     }
     const model = resolveRequestedModel(req.body?.model, cfg.chatModel, cfg.availableModels)
     if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
+    const thinkingEffort = resolveThinkingEffort(req.body?.thinkingEffort)
     const level = resolveLevel(req.body?.level)
     if (!level) return res.status(400).json({ error: 'INVALID_LEVEL' })
     const focus: FillBlankFocus = ['mixed', 'vocabulary', 'grammar'].includes(req.body?.focus)
@@ -260,6 +272,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
             model,
             systemInstruction: prompts.systemInstruction,
             temperature: 0.65,
+            thinkingEffort,
             maxAttempts: 1,
             scenarioId: null,
             signal: abortController.signal,
@@ -312,6 +325,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     if (!lesson) return res.status(400).json({ error: 'UNKNOWN_LEARNING_CONCEPT' })
     const model = resolveRequestedModel(req.body?.model, cfg.chatModel, cfg.availableModels)
     if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
+    const thinkingEffort = resolveThinkingEffort(req.body?.thinkingEffort)
     const diversitySeed = resolveDiversitySeed(req.body?.diversitySeed)
     const recentPrompts = Array.isArray(req.body?.recentPrompts)
       ? req.body.recentPrompts.filter((item: unknown): item is string => typeof item === 'string').map((item: string) => item.slice(0, 600)).slice(-20)
@@ -325,6 +339,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
           model,
           systemInstruction: prompts.systemInstruction,
           temperature: 0.45,
+          thinkingEffort,
           maxAttempts: 1,
           scenarioId: null,
           signal: abortController.signal,
@@ -355,6 +370,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     if (!lesson) return res.status(400).json({ error: 'UNKNOWN_LEARNING_CONCEPT' })
     const model = resolveRequestedModel(req.body?.model, cfg.analyzeModel, cfg.availableModels)
     if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
+    const thinkingEffort = resolveThinkingEffort(req.body?.thinkingEffort)
     const answer = typeof req.body?.answer === 'string' ? req.body.answer.trim().slice(0, 2000) : ''
     const rawActivity = req.body?.activity
     if (!answer || !rawActivity || rawActivity.type !== 'apply' || !Array.isArray(rawActivity.checklist)) {
@@ -373,7 +389,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     try {
       const output = await collectProviderStream(provider, {
         messages: [{ role: 'user', content: prompts.userPrompt }], model,
-        systemInstruction: prompts.systemInstruction, temperature: 0.2, maxAttempts: 2,
+        systemInstruction: prompts.systemInstruction, temperature: 0.2, thinkingEffort, maxAttempts: 2,
         scenarioId: null, signal: abortController.signal,
       })
       if (output.isFallback) throw new Error('provider fallback')
@@ -400,6 +416,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
     if (!normalizedLevel) return res.status(400).json({ error: 'INVALID_LEVEL' })
     const model = resolveRequestedModel(req.body?.model, cfg.chatModel, cfg.availableModels)
     if (!model) return res.status(400).json({ error: 'MODEL_NOT_ALLOWED' })
+    const thinkingEffort = resolveThinkingEffort(req.body?.thinkingEffort)
     const contextRecord = isRecord(context) ? context : undefined
     const requestedSource = optionalText(contextRecord?.source)
     if (requestedSource && !ASK_CONTEXT_SOURCES.has(requestedSource)) {
@@ -452,6 +469,7 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
         model,
         systemInstruction: composeAskSystemPrompt(normalizedLevel),
         temperature: 0.4,
+        thinkingEffort,
         maxAttempts: 2,
         scenarioId: null,
         signal: abortController.signal,

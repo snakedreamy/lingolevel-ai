@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { generateFillBlank } from '../lib/api'
 import { incrementStoredCounter, isStoredRecord, loadStoredJson, saveStoredJson } from '../lib/storage'
 import { FILL_BLANK_MAX_COUNT, FILL_BLANK_MIN_COUNT } from '../types'
-import type { DifficultyLevel, FillBlankCard, FillBlankFocus, FillBlankProgress } from '../types'
+import type { DifficultyLevel, FillBlankCard, FillBlankFocus, FillBlankProgress, ThinkingEffort } from '../types'
 
 const HISTORY_KEY = 'lingolevel_fill_blank_history'
 const VARIETY_KEY = 'lingolevel_fill_blank_variety'
@@ -128,8 +128,8 @@ function loadHistory(): string[] {
     : []
 }
 
-export function useFillBlankPractice(args: { level: DifficultyLevel; modelId: string }) {
-  const { level, modelId } = args
+export function useFillBlankPractice(args: { level: DifficultyLevel; modelId: string; thinkingEffort: ThinkingEffort }) {
+  const { level, modelId, thinkingEffort } = args
   const [initialSession] = useState(() => loadSession(level))
   const [phase, setPhase] = useState<PracticePhase>(initialSession.phase)
   const [practiceLevel, setPracticeLevel] = useState<DifficultyLevel>(initialSession.level)
@@ -180,6 +180,7 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; modelId: st
         focus,
         recentSentences: history,
         model: modelId || undefined,
+        thinkingEffort: thinkingEffort || undefined,
         diversitySeed: incrementStoredCounter(VARIETY_KEY),
       }, controller.signal)
       if (result.cards.length !== count) throw new Error('CARD_COUNT_MISMATCH')
@@ -206,7 +207,7 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; modelId: st
     } finally {
       if (controllerRef.current === controller) controllerRef.current = null
     }
-  }, [count, focus, level, modelId])
+  }, [count, focus, level, modelId, thinkingEffort])
 
   const currentCard = cards[currentIndex] ?? null
   const currentProgress = currentCard ? progress[currentCard.id] : undefined

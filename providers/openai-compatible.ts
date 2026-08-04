@@ -1,6 +1,6 @@
 // providers/openai-compatible.ts
 import type {
-  Provider, ProviderConfig, ProviderChatInput, ProviderChatStreamOutput, ProviderAnalyzeInput
+  Provider, ProviderConfig, ProviderChatInput, ProviderChatStreamOutput, ProviderAnalyzeInput, ProviderThinkingEffort
 } from './types'
 import { callWithRetry } from './retry'
 import { fetchViaProxy } from './proxy'
@@ -8,6 +8,10 @@ import { fallbackChatReply, fallbackAnalyzeOutput } from './fallback'
 import { analysisJsonSchema, buildAnalysisUserPrompt } from './schema'
 import { JSON_EXTRACT_HINT, errorMessage, extractJsonObject, looksLikeErrorContent } from './util'
 import { normalizeAnalysisShape } from './normalize'
+
+function openAIReasoning(effort?: ProviderThinkingEffort): { reasoning_effort: ProviderThinkingEffort } | object {
+  return effort ? { reasoning_effort: effort } : {}
+}
 
 export function createOpenAIProvider(cfg: ProviderConfig): Provider {
   const baseUrl = cfg.baseUrl.replace(/\/$/, '')
@@ -143,6 +147,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
       ],
       temperature: input.temperature ?? 0.7,
       max_tokens: cfg.maxOutputTokens,
+      ...openAIReasoning(input.thinkingEffort),
     }
     try {
       const text = await callWithRetry(
@@ -170,6 +175,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
       ],
       temperature: input.temperature ?? 0.7,
       max_tokens: cfg.maxOutputTokens,
+      ...openAIReasoning(input.thinkingEffort),
     }
     // The upstream request is lazy: it only starts when the returned stream is
     // consumed. Keep the timeout and error boundary inside that same lifecycle;
@@ -214,15 +220,16 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
       model: input.model ?? cfg.analyzeModel,
       max_tokens: cfg.maxOutputTokens,
       messages: [
-        { 
-          role: 'system', 
-          content: 'You are an expert English-Chinese Bilingual Teacher. You MUST return a valid JSON object matching this exact schema:\n' + JSON.stringify(analysisJsonSchema, null, 2) 
+        {
+          role: 'system',
+          content: 'You are an expert English-Chinese Bilingual Teacher. You MUST return a valid JSON object matching this exact schema:\n' + JSON.stringify(analysisJsonSchema, null, 2)
         },
-        { 
-          role: 'user', 
-          content: buildAnalysisUserPrompt(input.level, input.userMessage, input.assistantMessage, input.scenarioContext) + JSON_EXTRACT_HINT 
+        {
+          role: 'user',
+          content: buildAnalysisUserPrompt(input.level, input.userMessage, input.assistantMessage, input.scenarioContext) + JSON_EXTRACT_HINT
         }
-      ]
+      ],
+      ...openAIReasoning(input.thinkingEffort),
     }
     try {
       const text = await callWithRetry(

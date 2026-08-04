@@ -1,5 +1,5 @@
 import { Bot, Keyboard, Server, Settings } from './Icon'
-import type { DifficultyLevel, ProviderId, Scenario } from '../types'
+import type { DifficultyLevel, ProviderId, Scenario, ThinkingEffort } from '../types'
 import type { ServerConfig } from '../lib/api'
 import { Modal, Switch } from './ui'
 import LevelSelector from './LevelSelector'
@@ -16,6 +16,8 @@ interface SettingsModalProps {
   serverConfigError?: boolean
   currentModelId: string
   onModelChange: (modelId: string) => void
+  currentThinkingEffort: ThinkingEffort
+  onThinkingEffortChange: (effort: ThinkingEffort) => void
   sendOnCtrlEnter: boolean
   onToggleSendOnCtrlEnter: () => void
 }
@@ -41,7 +43,8 @@ function ConfigRow({ label, value }: { label: string; value: string }) {
 
 export default function SettingsModal({
   isOpen, onClose, currentLevel, onLevelChange, activeScenario, onScenarioSelect,
-  serverConfig, serverConfigError, currentModelId, onModelChange, sendOnCtrlEnter, onToggleSendOnCtrlEnter,
+  serverConfig, serverConfigError, currentModelId, onModelChange,
+  currentThinkingEffort, onThinkingEffortChange, sendOnCtrlEnter, onToggleSendOnCtrlEnter,
 }: SettingsModalProps) {
   if (!isOpen) return null
 
@@ -63,15 +66,33 @@ export default function SettingsModal({
             <Bot className="h-4.5 w-4.5 text-accent" />
             <h3 className="text-sm font-bold">模型</h3>
           </div>
-          <label htmlFor="active-model" className="sr-only">后续请求使用的模型</label>
-          <select id="active-model" value={currentModelId} disabled={!serverConfig}
-            onChange={(event) => onModelChange(event.target.value)}
-            className="ui-input h-11 font-mono text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50">
-            <option value="" className="ui-option">按任务使用服务端默认模型</option>
-            {serverConfig?.availableModels.map((model) => (
-              <option key={model} value={model} className="ui-option">{model}</option>
-            ))}
-          </select>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="active-model" className="mb-1.5 block text-xs font-semibold ui-text-muted">模型</label>
+              <select id="active-model" value={currentModelId} disabled={!serverConfig}
+                onChange={(event) => onModelChange(event.target.value)}
+                className="ui-input h-11 font-mono text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50">
+                <option value="" className="ui-option">按任务使用服务端默认模型</option>
+                {serverConfig?.availableModels.map((model) => (
+                  <option key={model} value={model} className="ui-option">{model}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="thinking-effort" className="mb-1.5 block text-xs font-semibold ui-text-muted">思考强度</label>
+              <select id="thinking-effort" value={currentThinkingEffort}
+                onChange={(event) => onThinkingEffortChange(event.target.value as ThinkingEffort)}
+                className="ui-input h-11 text-xs font-semibold">
+                <option value="" className="ui-option">自动 / 不指定</option>
+                <option value="low" className="ui-option">low · 更快</option>
+                <option value="medium" className="ui-option">medium · 平衡</option>
+                <option value="high" className="ui-option">high · 更细致</option>
+                <option value="xhigh" className="ui-option">xhigh · 深度思考</option>
+                <option value="max" className="ui-option">max · 最强思考</option>
+              </select>
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] leading-5 ui-text-faint">仅对支持 reasoning_effort / thinking 的模型生效；不支持的模型可能由上游忽略或报错。</p>
         </section>
 
         <section className="border-t ui-rule pt-5">

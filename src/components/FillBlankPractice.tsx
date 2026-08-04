@@ -10,7 +10,7 @@ import {
 import { LEVELS } from '../data/levels'
 import { useFillBlankPractice } from '../hooks/useFillBlankPractice'
 import { FILL_BLANK_MAX_COUNT, FILL_BLANK_MIN_COUNT } from '../types'
-import type { AskContext, DifficultyLevel, FillBlankCard, FillBlankFocus, FillBlankProgress } from '../types'
+import type { AskContext, DifficultyLevel, FillBlankCard, FillBlankFocus, FillBlankProgress, ThinkingEffort } from '../types'
 import { useSpeech } from './ui'
 import SpeechButton from './SpeechButton'
 import type { AskPanel } from '../hooks/useAskPanel'
@@ -19,6 +19,7 @@ interface FillBlankPracticeProps {
   active: boolean
   level: DifficultyLevel
   modelId: string
+  thinkingEffort: ThinkingEffort
   onLevelChange: (level: DifficultyLevel) => void
   ask: AskPanel
   onPageContextChange: (context: AskContext) => void
@@ -272,7 +273,7 @@ function LoadingView({ count }: { count: number }) {
 
 export default function FillBlankPractice(props: FillBlankPracticeProps) {
   const speech = useSpeech()
-  const practice = useFillBlankPractice({ level: props.level, modelId: props.modelId })
+  const practice = useFillBlankPractice({ level: props.level, modelId: props.modelId, thinkingEffort: props.thinkingEffort })
   const [showHint, setShowHint] = useState(false)
   const [answerError, setAnswerError] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)

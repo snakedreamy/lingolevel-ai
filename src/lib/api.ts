@@ -1,4 +1,4 @@
-import type { AnalysisResult, AskContext, DifficultyLevel, FillBlankCard, FillBlankFocus, ProviderId, Scenario } from "../types"
+import type { AnalysisResult, AskContext, DifficultyLevel, FillBlankCard, FillBlankFocus, ProviderId, Scenario, ThinkingEffort } from "../types"
 import type { ApplyActivity, LearningActivity } from '../data/learningLessons'
 
 export interface ServerConfig {
@@ -19,6 +19,7 @@ export interface ChatRequest {
   level: DifficultyLevel
   scenarioInfo: Scenario | null
   model?: string
+  thinkingEffort?: Exclude<ThinkingEffort, ''>
   diversitySeed: number
 }
 
@@ -27,6 +28,7 @@ export interface AnalyzeRequest {
   assistantMessage: string
   level: DifficultyLevel
   model?: string
+  thinkingEffort?: Exclude<ThinkingEffort, ''>
   /** Scenario display name forwarded to the analysis prompt for context-aware suggestions. */
   scenarioContext?: string
 }
@@ -126,6 +128,7 @@ export interface AskRequest {
   context?: AskContext
   history?: Array<{ role: 'user' | 'assistant'; content: string }>
   model?: string
+  thinkingEffort?: Exclude<ThinkingEffort, ''>
 }
 
 export function streamAsk(body: AskRequest, handlers: SSEHandlers, signal?: AbortSignal) {
@@ -137,6 +140,7 @@ export async function generateLearningPractice(request: {
   recentPrompts: string[]
   diversitySeed: number
   model?: string
+  thinkingEffort?: Exclude<ThinkingEffort, ''>
 }, signal?: AbortSignal): Promise<{ activities: LearningActivity[] }> {
   const response = await fetch('/api/learning-practice', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -159,6 +163,7 @@ export async function evaluateLearningAnswer(request: {
   activity: ApplyActivity
   answer: string
   model?: string
+  thinkingEffort?: Exclude<ThinkingEffort, ''>
 }, signal?: AbortSignal): Promise<LearningEvaluationResult> {
   const response = await fetch('/api/learning-evaluate', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -174,6 +179,7 @@ export interface GenerateFillBlankRequest {
   focus: FillBlankFocus
   recentSentences: string[]
   model?: string
+  thinkingEffort?: Exclude<ThinkingEffort, ''>
   diversitySeed: number
 }
 

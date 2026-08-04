@@ -6,7 +6,7 @@ import ChatWindow from './ChatWindow'
 import AnalysisSidebar from './AnalysisSidebar'
 import { BottomDrawer } from './ui'
 import { useChatSession } from '../hooks/useChatSession'
-import type { AnalysisHistoryEntry, AskContext, AskFocusType, BrowserPrefs, Message, Scenario } from '../types'
+import type { AnalysisHistoryEntry, AskContext, AskFocusType, BrowserPrefs, Message, Scenario, ThinkingEffort } from '../types'
 import type { AskPanel } from '../hooks/useAskPanel'
 
 function buildChatAskContext(args: {
@@ -51,10 +51,11 @@ function buildChatAskContext(args: {
   }
 }
 
-export default function ChatWorkspace({ prefs, activeScenario, modelId, maxContextMessages, ask, onPageContextChange }: {
+export default function ChatWorkspace({ prefs, activeScenario, modelId, thinkingEffort, maxContextMessages, ask, onPageContextChange }: {
   prefs: BrowserPrefs
   activeScenario: Scenario
   modelId: string
+  thinkingEffort: ThinkingEffort
   maxContextMessages?: number
   ask: AskPanel
   onPageContextChange: (context: AskContext) => void
@@ -64,6 +65,7 @@ export default function ChatWorkspace({ prefs, activeScenario, modelId, maxConte
     activeScenario,
     maxContextMessages,
     modelId,
+    thinkingEffort,
   })
   const {
     messages, analysis, analysisHistory, selectedAnalysisIndex,

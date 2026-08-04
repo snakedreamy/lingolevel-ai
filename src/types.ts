@@ -158,6 +158,7 @@ export interface AnalysisHistoryEntry {
 
 export type ProviderId = 'openai' | 'anthropic'
 export type SpeechAccent = 'us' | 'uk'
+export type ThinkingEffort = '' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
 /**
  * Browser-side, non-sensitive preferences persisted in `localStorage`.
@@ -175,6 +176,8 @@ export interface BrowserPrefs {
   theme: 'light' | 'dark'
   /** Empty means use each task's server-configured default model. */
   modelId: string
+  /** Empty means do not send an explicit reasoning/thinking setting to the provider. */
+  thinkingEffort: ThinkingEffort
   /** Accent used by browser speech synthesis. */
   speechAccent: SpeechAccent
   /** Browser speech-synthesis rate, matching the UI range of 0.5–1.5. */
@@ -209,6 +212,7 @@ export const DEFAULT_BROWSER_PREFS: Readonly<Omit<BrowserPrefs, 'theme'>> = {
   level: 'junior',
   scenarioId: 'free_chat',
   modelId: '',
+  thinkingEffort: '',
   speechAccent: 'us',
   speechSpeed: 1,
   sendOnCtrlEnter: false

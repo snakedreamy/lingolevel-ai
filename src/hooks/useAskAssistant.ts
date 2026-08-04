@@ -2,10 +2,10 @@ import { useCallback, useRef, useState } from 'react'
 import type { AskContext, AskMessage } from '../types'
 import { createMessageId } from '../lib/ids'
 import { streamAsk } from '../lib/api'
-import type { DifficultyLevel } from '../types'
+import type { DifficultyLevel, ThinkingEffort } from '../types'
 
-export function useAskAssistant(args: { level: DifficultyLevel; modelId: string; maxContextMessages?: number }) {
-  const { level, modelId, maxContextMessages } = args
+export function useAskAssistant(args: { level: DifficultyLevel; modelId: string; thinkingEffort: ThinkingEffort; maxContextMessages?: number }) {
+  const { level, modelId, thinkingEffort, maxContextMessages } = args
   const [messages, setMessages] = useState<AskMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
@@ -33,7 +33,7 @@ export function useAskAssistant(args: { level: DifficultyLevel; modelId: string;
 
     try {
       await streamAsk(
-        { question: q, level, context, history, model: modelId || undefined },
+        { question: q, level, context, history, model: modelId || undefined, thinkingEffort: thinkingEffort || undefined },
         {
           onDelta: (delta) => {
             setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: m.content + delta } : m))
@@ -69,7 +69,7 @@ export function useAskAssistant(args: { level: DifficultyLevel; modelId: string;
         abortRef.current = null
       }
     }
-  }, [level, isLoading, maxContextMessages, messages, modelId])
+  }, [level, isLoading, maxContextMessages, messages, modelId, thinkingEffort])
 
   const stop = useCallback(() => {
     abortRef.current?.abort()

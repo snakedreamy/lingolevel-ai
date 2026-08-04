@@ -4,7 +4,7 @@
 import { useCallback, useState } from 'react'
 import type { AskContext } from '../types'
 import { useAskAssistant } from './useAskAssistant'
-import type { DifficultyLevel } from '../types'
+import type { DifficultyLevel, ThinkingEffort } from '../types'
 
 export type AskSession = ReturnType<typeof useAskAssistant>
 
@@ -19,7 +19,7 @@ export interface AskPanel {
   close: () => void
 }
 
-export function useAskPanel(args: { level: DifficultyLevel; modelId: string; maxContextMessages?: number }): AskPanel {
+export function useAskPanel(args: { level: DifficultyLevel; modelId: string; thinkingEffort: ThinkingEffort; maxContextMessages?: number }): AskPanel {
   const session = useAskAssistant(args)
   const [isOpen, setIsOpen] = useState(false)
   const [context, setContext] = useState<AskContext | null>(null)

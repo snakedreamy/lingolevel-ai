@@ -63,6 +63,7 @@ export default function App() {
   const ask = useAskPanel({
     level: prefs.level,
     modelId: prefs.modelId,
+    thinkingEffort: prefs.thinkingEffort,
     maxContextMessages: serverConfig?.maxContextMessages,
   })
 
@@ -99,7 +100,7 @@ export default function App() {
           <WorkspaceNav workspace={workspace} onSelect={setWorkspace} />
 
           <KeepMountedWorkspace active={workspace === 'learning'} className="min-h-0 flex-1 overflow-hidden">
-            <SystemLearning modelId={prefs.modelId} ask={ask} onPageContextChange={setLearningAskContext} />
+            <SystemLearning modelId={prefs.modelId} thinkingEffort={prefs.thinkingEffort} ask={ask} onPageContextChange={setLearningAskContext} />
           </KeepMountedWorkspace>
 
           <KeepMountedWorkspace
@@ -110,6 +111,7 @@ export default function App() {
               prefs={prefs}
               activeScenario={activeScenario}
               modelId={prefs.modelId}
+              thinkingEffort={prefs.thinkingEffort}
               maxContextMessages={serverConfig?.maxContextMessages}
               ask={ask}
               onPageContextChange={setChatAskContext}
@@ -124,6 +126,7 @@ export default function App() {
               active={workspace === 'fill-blank'}
               level={prefs.level}
               modelId={prefs.modelId}
+              thinkingEffort={prefs.thinkingEffort}
               onLevelChange={(level) => setPrefs((p) => ({ ...p, level }))}
               ask={ask}
               onPageContextChange={setFillBlankAskContext}
@@ -147,6 +150,8 @@ export default function App() {
           serverConfig={serverConfig} serverConfigError={serverConfigError}
           currentModelId={prefs.modelId}
           onModelChange={(modelId) => setPrefs((p) => ({ ...p, modelId }))}
+          currentThinkingEffort={prefs.thinkingEffort}
+          onThinkingEffortChange={(thinkingEffort) => setPrefs((p) => ({ ...p, thinkingEffort }))}
           sendOnCtrlEnter={prefs.sendOnCtrlEnter}
           onToggleSendOnCtrlEnter={() => setPrefs((p) => ({ ...p, sendOnCtrlEnter: !p.sendOnCtrlEnter }))} />
       </div>

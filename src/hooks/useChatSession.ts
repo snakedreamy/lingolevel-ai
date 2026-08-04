@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { sendAnalyze, streamChat } from '../lib/api'
 import { createMessageId } from '../lib/ids'
 import { incrementStoredCounter, isStoredRecord, loadStoredJson, saveStoredJson } from '../lib/storage'
-import type { AnalysisHistoryEntry, AnalysisResult, DifficultyLevel, Message, Scenario } from '../types'
+import type { AnalysisHistoryEntry, AnalysisResult, DifficultyLevel, Message, Scenario, ThinkingEffort } from '../types'
 
 const CHAT_VARIETY_KEY = 'lingolevel_chat_variety'
 const CHAT_SESSION_KEY = 'lingolevel_chat_session_v1'
@@ -109,8 +109,8 @@ function trimChatContext(messages: Message[], max?: number) {
   return max === undefined ? context : context.slice(-max)
 }
 
-export function useChatSession(args: { currentLevel: DifficultyLevel; activeScenario: Scenario; maxContextMessages?: number; modelId: string }) {
-  const { currentLevel, activeScenario, maxContextMessages, modelId } = args
+export function useChatSession(args: { currentLevel: DifficultyLevel; activeScenario: Scenario; maxContextMessages?: number; modelId: string; thinkingEffort: ThinkingEffort }) {
+  const { currentLevel, activeScenario, maxContextMessages, modelId, thinkingEffort } = args
   const [initialSession] = useState(() => loadChatSession(activeScenario.id))
   const [messages, setMessages] = useState<Message[]>(() => initialSession?.messages ?? [])
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistoryEntry[]>(() => initialSession?.analysisHistory ?? [])
@@ -199,6 +199,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
           level,
           scenarioInfo: activeScenario.id === 'free_chat' ? null : activeScenario,
           model: modelId || undefined,
+          thinkingEffort: thinkingEffort || undefined,
           diversitySeed: diversitySeedRef.current,
         },
         {
@@ -237,7 +238,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
       }
     }
     return assistantContent || null
-  }, [activeScenario, maxContextMessages, modelId])
+  }, [activeScenario, maxContextMessages, modelId, thinkingEffort])
 
   const enqueueAnalysis = useCallback((args: {
     entryId?: string
@@ -270,6 +271,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
           assistantMessage: args.assistantMessage,
           level: args.level,
           model: modelId || undefined,
+          thinkingEffort: thinkingEffort || undefined,
           scenarioContext: args.scenarioContext,
         }, controller.signal)
         if (sessionIdRef.current !== args.sessionId || analysisVersionRef.current.get(versionKey) !== version) return
@@ -311,7 +313,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
       }
     }
     analysisQueueRef.current = analysisQueueRef.current.then(runAnalysis, runAnalysis)
-  }, [modelId])
+  }, [modelId, thinkingEffort])
 
   const sendMessage = useCallback(async (text: string) => {
     const userText = text.trim()
