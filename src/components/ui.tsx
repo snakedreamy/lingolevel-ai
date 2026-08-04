@@ -29,7 +29,7 @@ function Toast({ kind = 'info', children, onDismiss, className = '' }: PropsWith
   return (
     <div role="status" aria-live="polite"
       className={`fixed bottom-4 left-1/2 z-[70] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-lg border px-3 py-2 text-xs shadow-lg backdrop-blur animate-slide-up ${kind === 'error'
-        ? 'border-scarlet/40 bg-scarlet/10 text-scarlet dark:border-scarlet-dark/50 dark:bg-scarlet-dark/15 dark:text-scarlet-dark'
+        ? 'ui-danger-soft'
         : 'ui-sheet ui-text-muted'} ${className}`}>
       {children}
       {onDismiss && (
@@ -47,11 +47,11 @@ export function SpeechNoticeToast() {
   const isError = speech.notice.kind === 'error'
   return (
     <Toast kind={speech.notice.kind} onDismiss={speech.clearNotice}>
-      <Volume2 className={`h-4 w-4 shrink-0 ${isError ? '' : 'text-forest dark:text-forest-dark'}`} />
+      <Volume2 className={`h-4 w-4 shrink-0 ${isError ? '' : 'text-accent'}`} />
       <span className="min-w-0 text-center">{speech.notice.message}</span>
       {speech.activeId && (
         <button type="button" onClick={speech.stop}
-          className="ml-1 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[10px] font-bold text-paper dark:bg-ink-dark dark:text-paper-dark">
+          className="ml-1 whitespace-nowrap rounded-md bg-inverse px-2 py-1 text-[10px] font-bold text-on-accent">
           停止
         </button>
       )}
@@ -234,8 +234,8 @@ export function Switch({ checked, onToggle, label }: {
 }) {
   return (
     <button type="button" role="switch" aria-label={label} aria-checked={checked} onClick={onToggle}
-      className={`relative inline-flex h-6 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${checked ? 'bg-forest dark:bg-forest-dark' : 'bg-ink/25 dark:bg-ink-dark/30'}`}>
-      <span className={`inline-block h-5 w-5 rounded-full bg-paper shadow-sm transition-transform dark:bg-paper-dark ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
+      className={`relative inline-flex h-6 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${checked ? 'bg-accent' : 'bg-disabled-bg'}`}>
+      <span className={`inline-block h-5 w-5 rounded-full bg-control-thumb shadow-sm transition-transform ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
     </button>
   )
 }

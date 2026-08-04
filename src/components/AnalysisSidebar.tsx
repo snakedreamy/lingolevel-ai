@@ -54,7 +54,7 @@ function GrammarFeedbackCard({ corrections, speechScope, isFallback = false }: {
     <section className="space-y-3 border-b ui-rule pb-5">
       <div className="flex items-center justify-between">
         <span className="margin-code">旁批 · 表达反馈</span>
-        {isFallback && <span className="text-[10px] text-scarlet dark:text-scarlet-dark">参考模式</span>}
+        {isFallback && <span className="text-[10px] text-mark">参考模式</span>}
       </div>
 
       {corrections.length > 0 ? corrections.map((correction, i) => {
@@ -66,8 +66,8 @@ function GrammarFeedbackCard({ corrections, speechScope, isFallback = false }: {
 
         return (
           <div key={i} className="space-y-2">
-            <div className={`flex items-center justify-between border-l-2 py-0.5 pl-2.5 pr-1 ${isCorrect ? 'border-forest dark:border-forest-dark' : 'border-scarlet dark:border-scarlet-dark'}`}>
-              <span className={`text-[10px] font-bold ${isCorrect ? 'text-forest dark:text-forest-dark' : 'text-scarlet dark:text-scarlet-dark'}`}>
+            <div className={`flex items-center justify-between border-l-2 py-0.5 pl-2.5 pr-1 ${isCorrect ? 'border-accent' : 'border-mark'}`}>
+              <span className={`text-[10px] font-bold ${isCorrect ? 'text-accent' : 'text-mark'}`}>
                 {isCorrect ? '✓ 这句没问题' : `✗ 评分 ${correction.score}/100`}
               </span>
               {isCorrect && <SpeechButton active={speech.activeId === correctedSpeechId}
@@ -79,10 +79,10 @@ function GrammarFeedbackCard({ corrections, speechScope, isFallback = false }: {
               <div className="space-y-1.5">
                 <div className="flex items-start gap-2">
                   <span className="w-10 shrink-0 pt-0.5 text-[10px] font-bold ui-text-faint">原句</span>
-                  <p className="target-lang text-[13px] ui-text-muted line-through decoration-scarlet/60 dark:decoration-scarlet-dark/60">{correction.original}</p>
+                  <p className="target-lang text-[13px] ui-text-muted line-through decoration-mark/60">{correction.original}</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="w-10 shrink-0 pt-0.5 text-[10px] font-bold text-scarlet dark:text-scarlet-dark">更正</span>
+                  <span className="w-10 shrink-0 pt-0.5 text-[10px] font-bold text-mark">更正</span>
                   <div className="flex items-center gap-2">
                     <p className="target-lang text-[13px] font-semibold">{correction.corrected}</p>
                     <SpeechButton active={speech.activeId === correctedSpeechId}
@@ -92,9 +92,9 @@ function GrammarFeedbackCard({ corrections, speechScope, isFallback = false }: {
                 </div>
                 {correction.politeForm && correction.politeForm !== correction.corrected && (
                   <div className="flex items-start gap-2">
-                    <span className="w-10 shrink-0 pt-0.5 text-[10px] font-bold text-forest dark:text-forest-dark">地道</span>
+                    <span className="w-10 shrink-0 pt-0.5 text-[10px] font-bold text-accent">地道</span>
                     <div className="flex items-center gap-2">
-                      <p className="target-lang text-[13px] text-forest dark:text-forest-dark">{correction.politeForm}</p>
+                      <p className="target-lang text-[13px] text-accent">{correction.politeForm}</p>
                       <SpeechButton active={speech.activeId === politeSpeechId}
                         onClick={() => speech.toggle(politeSpeechId, correction.politeForm ?? '', '地道表达')}
                         label="地道表达" />
@@ -105,13 +105,13 @@ function GrammarFeedbackCard({ corrections, speechScope, isFallback = false }: {
             )}
 
             <div className="space-y-1 border-l ui-rule pl-3">
-              <p className="text-[10px] font-bold text-forest dark:text-forest-dark">{focus.label}</p>
+              <p className="text-[10px] font-bold text-accent">{focus.label}</p>
               <p className="text-[11px] leading-relaxed ui-text-muted">{explanation}</p>
             </div>
           </div>
         )
       }) : (
-        <div className="flex items-center gap-2 border-l-2 border-forest py-0.5 pl-2.5 text-[11px] text-forest dark:border-forest-dark dark:text-forest-dark">
+        <div className="flex items-center gap-2 border-l-2 border-accent py-0.5 pl-2.5 text-[11px] text-accent">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           <span>未发现明显语法问题。</span>
         </div>
@@ -153,7 +153,7 @@ function AnalysisTranslationCard({ translation, assistantReplyInsight, isFallbac
       <div className="border-t ui-rule pt-3">
         <div className="mb-2 flex items-center justify-between gap-2">
           <span className="margin-code">这句怎么学</span>
-          {isFallback && <span className="text-[10px] text-scarlet dark:text-scarlet-dark">参考说明</span>}
+          {isFallback && <span className="text-[10px] text-mark">参考说明</span>}
         </div>
         <div className="space-y-2.5">
           <InsightLine label="作用" value={insight.structure} />
@@ -185,15 +185,15 @@ function SuggestionListSection({ suggestions, onSelectSuggestion, speechScope }:
           const chinese = match ? match[2].trim() : ''
           const speechId = `${speechScope}:suggestion:${i}`
           return (
-            <li key={i} className="group/sug flex items-stretch rounded-md border ui-rule ui-surface transition hover:border-forest dark:hover:border-forest-dark">
-              <span aria-hidden="true" className="w-0.5 shrink-0 self-stretch rounded-l-md transition bg-transparent group-hover/sug:bg-forest dark:group-hover/sug:bg-forest-dark" />
+            <li key={i} className="group/sug flex items-stretch rounded-md border ui-rule ui-surface transition hover:border-accent">
+              <span aria-hidden="true" className="w-0.5 shrink-0 self-stretch rounded-l-md transition bg-transparent group-hover/sug:bg-accent" />
               <button onClick={() => onSelectSuggestion(english)} className="group min-w-0 flex-1 cursor-pointer px-3 py-2.5 text-left">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="target-lang text-[13px] group-hover:text-forest dark:group-hover:text-forest-dark">{english}</p>
+                    <p className="target-lang text-[13px] group-hover:text-accent">{english}</p>
                     {chinese && <p className="mt-0.5 text-[10.5px] ui-text-faint">{chinese}</p>}
                   </div>
-                  <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 ui-text-faint group-hover:text-forest dark:group-hover:text-forest-dark" />
+                  <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 ui-text-faint group-hover:text-accent" />
                 </div>
               </button>
               <SpeechButton active={speech.activeId === speechId}
@@ -297,14 +297,14 @@ export default function AnalysisSidebar({
             </div>
             <div className="flex items-center gap-1.5">
               <button type="button" onClick={onRetryAnalysis} disabled={isLoading}
-                className="ui-btn !h-7 !px-2.5 !text-[11px] hover:!border-forest hover:!text-forest dark:hover:!border-forest-dark dark:hover:!text-forest-dark"
+                className="ui-btn ui-btn-xs ui-btn-accent"
                 title="重新生成本轮分析">
                 <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
                 重新分析
               </button>
               {!isViewingLatest && (
                 <button type="button" onClick={onLatestAnalysis}
-                  className="rounded-md bg-forest px-2.5 py-1 text-[11px] font-medium text-paper transition hover:bg-forest/90 dark:bg-forest-dark dark:text-paper-dark dark:hover:bg-forest-dark/90">
+                  className="rounded-md bg-accent px-2.5 py-1 text-[11px] font-medium text-on-accent transition hover:bg-accent/90">
                   回到最新
                 </button>
               )}
@@ -316,7 +316,7 @@ export default function AnalysisSidebar({
               { label: '下一轮', icon: ArrowRight, action: onNextAnalysis, disabled: selectedAnalysisIndex >= analysisHistory.length - 1, iconAfter: true },
             ].map(({ label, icon: Icon, action, disabled, iconAfter }) => (
               <button key={label} onClick={action} disabled={disabled}
-                className="ui-btn !h-7 !px-2.5 !text-[11px]">
+                className="ui-btn ui-btn-xs">
                 {!iconAfter && <Icon className="h-3.5 w-3.5" />}
                 {label}
                 {iconAfter && <Icon className="h-3.5 w-3.5" />}
@@ -329,14 +329,14 @@ export default function AnalysisSidebar({
       <div className="ui-scroll ui-well min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 sm:space-y-5 sm:p-4">
         {isLoading ? (
           <div className="space-y-4">
-            <div className="rounded-md border border-forest/30 bg-forest/5 px-3 py-2.5 text-[11px] leading-relaxed text-forest dark:border-forest-dark/40 dark:bg-forest-dark/10 dark:text-forest-dark">
+            <div className="rounded-md border ui-accent-soft px-3 py-2.5 text-[11px] leading-relaxed">
               正在分析…
             </div>
             <div className="animate-pulse space-y-4">
               {[
-                'h-20 bg-ink/5 dark:bg-ink-dark/10 rounded-md',
-                'h-28 bg-ink/5 dark:bg-ink-dark/10 rounded-md',
-                'h-32 bg-ink/5 dark:bg-ink-dark/10 rounded-md',
+                'h-20 bg-muted-bg rounded-md',
+                'h-28 bg-muted-bg rounded-md',
+                'h-32 bg-muted-bg rounded-md',
               ].map((cls, i) => (
                 <div key={i} className={cls} />
               ))}
@@ -352,7 +352,7 @@ export default function AnalysisSidebar({
         ) : (
           <div className="animate-fade-in space-y-5">
             {analysis.isFallback && (
-              <div className="rounded-md border border-scarlet/30 bg-scarlet/5 px-3 py-2.5 text-[11px] leading-relaxed text-scarlet dark:border-scarlet-dark/40 dark:bg-scarlet-dark/10 dark:text-scarlet-dark">
+              <div className="rounded-md border border-mark-tint-border bg-mark-tint-bg px-3 py-2.5 text-[11px] leading-relaxed text-mark">
                 当前分析服务暂时不可用，本轮未进行语法评分、纠错、翻译或词汇提取，请稍后继续练习或重试。
               </div>
             )}

@@ -14,13 +14,13 @@ export default function SpeechButton({
 }: SpeechButtonProps) {
   const actionLabel = active ? `停止朗读${label}` : `朗读${label}`
   const sizeClass = size === 'md'
-    ? 'h-9 min-w-9 border border-ink/20 bg-leaf px-2.5 dark:border-ink-dark/25 dark:bg-leaf-dark'
+    ? 'h-9 min-w-9 border border-input-border bg-surface px-2.5'
     : 'h-7 min-w-7 px-1.5'
   const toneClass = tone === 'inverse'
-    ? active ? 'bg-paper/20 text-paper dark:bg-paper-dark/20 dark:text-paper-dark' : 'text-paper/70 hover:bg-paper/15 hover:text-paper dark:text-paper-dark/70 dark:hover:bg-paper-dark/15 dark:hover:text-paper-dark'
+    ? active ? 'bg-on-accent/20 text-on-accent' : 'text-on-accent/70 hover:bg-on-accent/15 hover:text-on-accent'
     : active
-      ? 'bg-forest/10 text-forest dark:bg-forest-dark/15 dark:text-forest-dark'
-      : 'text-ink/40 hover:bg-ink/5 hover:text-forest dark:text-ink-dark/40 dark:hover:bg-ink-dark/10 dark:hover:text-forest-dark'
+      ? 'bg-accent-tint-hover-bg text-accent'
+      : 'ui-text-faint hover:bg-muted-bg hover:text-accent'
 
   return (
     <button type="button" onClick={onClick} aria-label={actionLabel} aria-pressed={active} title={actionLabel}

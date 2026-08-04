@@ -5,7 +5,7 @@
 # Stage 2 — production runtime with only what's needed
 # ----------------------------------------------------------------------
 
-ARG NODE_VERSION=20
+ARG NODE_VERSION=22.19.0
 
 # ---------- Stage 1: builder ----------
 FROM node:${NODE_VERSION}-bookworm-slim AS builder

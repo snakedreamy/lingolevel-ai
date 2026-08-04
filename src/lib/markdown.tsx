@@ -117,12 +117,12 @@ function renderInline(text: string, keyBase: string): React.ReactNode[] {
     if (m.index > last) nodes.push(text.slice(last, m.index))
     const tok = m[0]
     if (tok.startsWith('`')) {
-      nodes.push(<code key={`${keyBase}-c-${k}`} className="px-1 py-0.5 rounded bg-zinc-200/70 dark:bg-zinc-700/60 font-mono text-[0.9em]">{tok.slice(1, -1)}</code>)
+      nodes.push(<code key={`${keyBase}-c-${k}`} className="ui-md-code font-mono text-[0.9em]">{tok.slice(1, -1)}</code>)
     } else if (tok.startsWith('[')) {
       const lm = tok.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
       const href = lm?.[2]?.trim()
       if (lm && href && /^(https?:\/\/|mailto:)/i.test(href)) {
-        nodes.push(<a key={`${keyBase}-a-${k}`} href={href} target="_blank" rel="noreferrer" className="text-indigo-600 dark:text-indigo-400 underline">{lm[1]}</a>)
+        nodes.push(<a key={`${keyBase}-a-${k}`} href={href} target="_blank" rel="noreferrer" className="ui-md-link">{lm[1]}</a>)
       }
       else if (lm) nodes.push(lm[1])
       else nodes.push(tok)
@@ -148,7 +148,7 @@ export function renderMarkdown(text: string): React.ReactNode {
     switch (b.type) {
       case 'code':
         return (
-          <pre key={idx} className="my-1.5 overflow-x-auto rounded-lg bg-zinc-900 dark:bg-black/60 p-2.5 text-[11px] font-mono text-zinc-100">
+          <pre key={idx} className="ui-md-code-block my-1.5 overflow-x-auto rounded-lg p-2.5 text-[11px] font-mono">
             <code>{b.content}</code>
           </pre>
         )
@@ -157,9 +157,9 @@ export function renderMarkdown(text: string): React.ReactNode {
         return <p key={idx} className={`my-1 font-bold ${sizes[b.level - 1] ?? 'text-[12px]'}`}>{renderInline(b.content, `h${idx}`)}</p>
       }
       case 'quote':
-        return <blockquote key={idx} className="my-1.5 border-l-2 border-indigo-300 dark:border-indigo-700 pl-2.5 text-zinc-600 dark:text-zinc-300">{b.content.split('\n').map((l, j) => <p key={j}>{renderInline(l, `q${idx}-${j}`)}</p>)}</blockquote>
+        return <blockquote key={idx} className="ui-md-quote my-1.5 border-l-2 pl-2.5">{b.content.split('\n').map((l, j) => <p key={j}>{renderInline(l, `q${idx}-${j}`)}</p>)}</blockquote>
       case 'hr':
-        return <hr key={idx} className="my-2 border-zinc-200 dark:border-zinc-700" />
+        return <hr key={idx} className="ui-md-rule my-2" />
       case 'ul':
         return <ul key={idx} className="my-1.5 ml-4 list-disc space-y-0.5">{b.items.map((it, j) => <li key={j}>{renderInline(it, `u${idx}-${j}`)}</li>)}</ul>
       case 'ol':

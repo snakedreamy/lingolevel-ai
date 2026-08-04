@@ -30,13 +30,13 @@ function ChatToolbar({
 
       <div className="flex w-full justify-end gap-2 sm:w-auto">
         <button type="button" onClick={onOpenFeedback}
-          className="ui-btn !h-8 !text-[11px] lg:hidden"
+          className="ui-btn ui-btn-sm lg:hidden"
           aria-label="打开旁批反馈">
           <BookOpen className="h-3.5 w-3.5" />
           旁批
         </button>
         <button type="button" onClick={onResetChat}
-          className="ui-btn !h-8 !text-[11px] hover:!border-scarlet hover:!text-scarlet dark:hover:!border-scarlet-dark dark:hover:!text-scarlet-dark"
+          className="ui-btn ui-btn-sm ui-btn-mark"
           title="清空记录重新开始对话">
           <RefreshCw className="h-3.5 w-3.5" />
           重开对话
@@ -65,7 +65,7 @@ function ChatMessageList({
     <div className="ui-scroll flex-1 space-y-1 overflow-y-auto px-3 py-4 sm:px-6">
       {messages.length === 0 && (
         <div className="mx-auto flex h-full max-w-sm flex-col items-center justify-center py-16 text-center">
-          <div className="mb-5 grid h-16 w-16 place-items-center rounded-full border ui-rule text-forest dark:text-forest-dark">
+          <div className="mb-5 grid h-16 w-16 place-items-center rounded-full border ui-rule text-accent">
             <Languages className="h-7 w-7" />
           </div>
           <p className="target-lang text-lg ui-text-muted">Say something in English to begin.</p>
@@ -79,9 +79,9 @@ function ChatMessageList({
         if (message.role === 'system') {
           return (
             <div key={message.id} className="my-4 flex items-center gap-3 animate-fade-in" role="note">
-              <span aria-hidden="true" className="h-px flex-1 bg-ink/10 dark:bg-ink-dark/15" />
+              <span aria-hidden="true" className="h-px flex-1 bg-muted-bg" />
               <span className="text-[11px] tracking-wide ui-text-faint">{message.content}</span>
-              <span aria-hidden="true" className="h-px flex-1 bg-ink/10 dark:bg-ink-dark/15" />
+              <span aria-hidden="true" className="h-px flex-1 bg-muted-bg" />
             </div>
           )
         }
@@ -93,15 +93,15 @@ function ChatMessageList({
               {String(turn).padStart(2, '0')}
             </span>
 
-            <div className={`min-w-0 max-w-[86%] flex-1 sm:max-w-[78%] ${isUser ? 'border-r-2 border-scarlet pr-3 text-right dark:border-scarlet-dark sm:pr-4' : 'border-l ui-rule pl-3 sm:pl-4'}`}>
+            <div className={`min-w-0 max-w-[86%] flex-1 sm:max-w-[78%] ${isUser ? 'border-r-2 border-mark pr-3 text-right sm:pr-4' : 'border-l ui-rule pl-3 sm:pl-4'}`}>
               <div className={`flex items-center gap-2 ${isUser ? 'flex-row-reverse' : ''}`}>
-                <span className={`margin-code ${message.isFallback ? '!text-scarlet dark:!text-scarlet-dark' : ''}`}>
+                <span className={`margin-code ${message.isFallback ? 'margin-code--scarlet' : ''}`}>
                   {isUser ? '你' : message.isFallback ? '教师 · 备用回复' : '教师'}
                 </span>
                 <div className={`message-actions flex items-center gap-1 transition-opacity ${isUser ? 'flex-row-reverse' : ''}`}>
                   {!isUser && message.id === regeneratableAssistantId && (
                     <button onClick={onRegenerateMessage}
-                      className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-semibold ui-text-faint transition-colors hover:bg-ink/5 hover:text-forest dark:hover:bg-ink-dark/10 dark:hover:text-forest-dark"
+                      className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-semibold ui-text-faint transition-colors hover:bg-muted-bg hover:text-accent"
                       title={message.isFallback ? '重试回复' : '换一个回答'}
                       aria-label={message.isFallback ? '重试回复' : '换一个回答'}>
                       <RefreshCw className="h-3 w-3" />
@@ -112,7 +112,7 @@ function ChatMessageList({
                     onClick={() => speech.toggle(speechId, message.content, isUser ? '你的消息' : 'AI 回复')}
                     label={isUser ? '你的消息' : 'AI 回复'} />
                   <button onClick={(e) => onCopyMessage(message.content, e)}
-                    className="rounded p-1 ui-text-faint transition-colors hover:bg-ink/5 hover:text-forest dark:hover:bg-ink-dark/10 dark:hover:text-forest-dark"
+                    className="rounded p-1 ui-text-faint transition-colors hover:bg-muted-bg hover:text-accent"
                     title="复制" aria-label="复制消息">
                     <Copy className="h-3 w-3" />
                   </button>
@@ -127,7 +127,7 @@ function ChatMessageList({
                   : message.streaming
                     ? message.content
                     : renderClickableContent(message.content, (word) => onWordClick(word, message))}
-                {message.streaming && <span className="ml-0.5 inline-block h-4 w-1 animate-pulse bg-scarlet align-middle not-italic dark:bg-scarlet-dark" />}
+                {message.streaming && <span className="ml-0.5 inline-block h-4 w-1 animate-pulse bg-mark align-middle not-italic" />}
               </div>
             </div>
           </div>
@@ -145,7 +145,7 @@ function renderClickableContent(text: string, onWord: (w: string) => void) {
     if (/^[A-Za-z]+(?:'[A-Za-z]+)?$/.test(part)) {
       return (
         <button key={i} onClick={() => onWord(part)}
-          className="cursor-pointer rounded-sm px-px not-italic underline decoration-forest/0 decoration-dotted underline-offset-4 transition hover:bg-forest/10 hover:decoration-forest dark:hover:bg-forest-dark/15 dark:hover:decoration-forest-dark">
+          className="cursor-pointer rounded-sm px-px not-italic underline decoration-accent/0 decoration-dotted underline-offset-4 transition hover:bg-accent-tint-hover-bg hover:decoration-accent">
           {part}
         </button>
       )
@@ -171,15 +171,15 @@ function ChatInputBar({
   sendOnCtrlEnter?: boolean
 }) {
   return (
-    <div className="z-10 border-t-2 border-ink/70 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 dark:border-ink-dark/60 sm:px-5 sm:pt-4">
+    <div className="z-10 border-t-2 ui-strong-rule px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 sm:px-5 sm:pt-4">
       <form onSubmit={onSubmit} className="flex gap-2">
         <button type="button" onClick={onToggleRecord}
-          className={`relative flex h-[52px] w-11 flex-shrink-0 cursor-pointer items-center justify-center rounded-md border transition ${isRecording ? 'border-scarlet bg-scarlet/10 text-scarlet dark:border-scarlet-dark dark:bg-scarlet-dark/15 dark:text-scarlet-dark' : 'ui-btn !h-[52px] !w-11 !px-0 hover:!border-forest hover:!text-forest dark:hover:!border-forest-dark dark:hover:!text-forest-dark'}`}
+          className={`relative flex flex-shrink-0 cursor-pointer items-center justify-center rounded-md border transition ${isRecording ? 'ui-btn ui-btn-input-icon border-mark bg-mark-tint-bg text-mark hover:border-mark hover:text-mark' : 'ui-btn ui-btn-input-icon ui-btn-accent'}`}
           title={isRecording ? '正在倾听... 点击停止' : '开启口语录音'}
           aria-label={isRecording ? '停止语音录入' : '开始语音录入'}>
           {isRecording ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
           {isRecording && (
-            <span className="absolute -right-1 -top-1 grid h-3.5 w-3.5 place-items-center rounded-full bg-scarlet text-[8px] font-extrabold text-paper dark:bg-scarlet-dark dark:text-paper-dark">!</span>
+            <span className="absolute -right-1 -top-1 grid h-3.5 w-3.5 place-items-center rounded-full bg-mark text-[8px] font-extrabold text-on-accent">!</span>
           )}
         </button>
 
@@ -192,14 +192,14 @@ function ChatInputBar({
             disabled={isLoading} />
           {inputText.trim() && (
             <button type="button" onClick={onClearInput}
-              className="absolute right-3 top-2.5 p-1 ui-text-faint hover:text-ink dark:hover:text-ink-dark" title="清空输入框" aria-label="清空输入框">
+              className="absolute right-3 top-2.5 p-1 ui-text-faint hover:text-body" title="清空输入框" aria-label="清空输入框">
               &times;
             </button>
           )}
         </div>
 
         <button type="submit" disabled={!inputText.trim() || isLoading} aria-label="发送消息"
-          className={`flex h-[52px] flex-shrink-0 cursor-pointer items-center justify-center rounded-md px-4 transition-all ${!inputText.trim() || isLoading ? 'cursor-not-allowed bg-ink/10 text-ink/35 dark:bg-ink-dark/15 dark:text-ink-dark/35' : 'bg-forest text-paper hover:bg-forest/90 dark:bg-forest-dark dark:text-paper-dark dark:hover:bg-forest-dark/90'}`}>
+          className="ui-btn ui-btn-input ui-btn-primary flex-shrink-0 transition-all">
           <Send className="h-4 w-4" />
         </button>
       </form>
@@ -322,7 +322,7 @@ export default function ChatWindow({
       </div>
 
       {selectionBox && (
-        <div className="fixed z-50 flex -translate-x-1/2 -translate-y-full items-center rounded-md bg-ink p-1 text-paper shadow-lg dark:bg-ink-dark dark:text-paper-dark"
+        <div className="fixed z-50 flex -translate-x-1/2 -translate-y-full items-center rounded-md bg-inverse p-1 text-on-accent shadow-lg"
           style={{ left: selectionBox.x, top: selectionBox.y - 8 }}>
           <button type="button"
             onClick={() => {
@@ -331,10 +331,10 @@ export default function ChatWindow({
               setSelectionBox(null)
               window.getSelection()?.removeAllRanges()
             }}
-            className="whitespace-nowrap rounded px-2 py-1 text-[11px] font-bold hover:bg-paper/15 dark:hover:bg-paper-dark/15">
+            className="whitespace-nowrap rounded px-2 py-1 text-[11px] font-bold hover:bg-on-accent/15">
             深讲
           </button>
-          <span className="mx-0.5 h-4 w-px bg-paper/20 dark:bg-paper-dark/20" />
+          <span className="mx-0.5 h-4 w-px bg-on-accent/20" />
           <SpeechButton active={speech.activeId === 'chat:selection'}
             onClick={() => {
               speech.toggle('chat:selection', selectionBox.text, '选中内容')
@@ -346,7 +346,7 @@ export default function ChatWindow({
       )}
 
       {(recognitionError || statusMessage) && (
-        <div className="absolute bottom-24 left-1/2 z-20 flex max-w-[90%] -translate-x-1/2 items-center gap-2 rounded-md border border-scarlet/30 bg-scarlet/5 px-4 py-2 text-xs text-scarlet shadow-md animate-slide-up dark:border-scarlet-dark/40 dark:bg-scarlet-dark/10 dark:text-scarlet-dark">
+        <div className="absolute bottom-24 left-1/2 z-20 flex max-w-[90%] -translate-x-1/2 items-center gap-2 rounded-md border border-mark-tint-border bg-mark-tint-bg px-4 py-2 text-xs text-mark shadow-md animate-slide-up">
           <HelpCircle className="h-4 w-4 flex-shrink-0" />
           <span>{recognitionError ?? statusMessage}</span>
           {recognitionError && (

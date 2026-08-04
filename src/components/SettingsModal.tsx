@@ -34,7 +34,7 @@ function ConfigRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 border-t ui-rule py-2.5 first:border-t-0">
       <p className="margin-code">{label}</p>
-      <p className="mt-1 break-all font-mono text-xs font-semibold text-ink/85 dark:text-ink-dark/85">{value || '未配置'}</p>
+      <p className="mt-1 break-all font-mono text-xs font-semibold text-ink-strong">{value || '未配置'}</p>
     </div>
   )
 }
@@ -48,7 +48,7 @@ export default function SettingsModal({
   return (
     <Modal wide onClose={onClose}
       title="学习设置"
-      icon={<Settings className="h-5 w-5 text-forest dark:text-forest-dark" />}
+      icon={<Settings className="h-5 w-5 text-accent" />}
       footer={
         <button type="button" onClick={onClose} className="ui-btn ui-btn-primary">
           完成
@@ -60,28 +60,28 @@ export default function SettingsModal({
 
         <section className="border-t ui-rule pt-5">
           <div className="mb-3 flex items-center gap-2">
-            <Bot className="h-4.5 w-4.5 text-forest dark:text-forest-dark" />
+            <Bot className="h-4.5 w-4.5 text-accent" />
             <h3 className="text-sm font-bold">模型</h3>
           </div>
           <label htmlFor="active-model" className="sr-only">后续请求使用的模型</label>
           <select id="active-model" value={currentModelId} disabled={!serverConfig}
             onChange={(event) => onModelChange(event.target.value)}
             className="ui-input h-11 font-mono text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50">
-            <option value="" className="bg-leaf text-ink dark:bg-leaf-dark dark:text-ink-dark">按任务使用服务端默认模型</option>
+            <option value="" className="ui-option">按任务使用服务端默认模型</option>
             {serverConfig?.availableModels.map((model) => (
-              <option key={model} value={model} className="bg-leaf text-ink dark:bg-leaf-dark dark:text-ink-dark">{model}</option>
+              <option key={model} value={model} className="ui-option">{model}</option>
             ))}
           </select>
         </section>
 
         <section className="border-t ui-rule pt-5">
           <div className="mb-3 flex items-center gap-2">
-            <Keyboard className="h-4.5 w-4.5 text-forest dark:text-forest-dark" />
+            <Keyboard className="h-4.5 w-4.5 text-accent" />
             <h3 className="text-sm font-bold">输入偏好</h3>
           </div>
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold text-ink/85 dark:text-ink-dark/85">Ctrl+Enter 发送</p>
+              <p className="text-xs font-semibold text-ink-strong">Ctrl+Enter 发送</p>
               <p className="mt-1 text-[11px] leading-5 ui-text-faint">开启后，Enter 换行，Ctrl/Cmd+Enter 发送。</p>
             </div>
             <Switch checked={sendOnCtrlEnter} onToggle={onToggleSendOnCtrlEnter} label="切换 Ctrl+Enter 发送" />
@@ -91,7 +91,7 @@ export default function SettingsModal({
         <details className="group border-t ui-rule pt-5">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold ui-text-muted">
             <span className="flex items-center gap-2"><Server className="h-4 w-4 ui-text-faint" /> 服务连接信息</span>
-            <span className={`h-2 w-2 rounded-full ${serverConfig ? 'bg-forest dark:bg-forest-dark' : serverConfigError ? 'bg-scarlet dark:bg-scarlet-dark' : 'bg-gilt dark:bg-gilt-dark'}`} />
+            <span className={`h-2 w-2 rounded-full ${serverConfig ? 'bg-accent' : serverConfigError ? 'bg-mark' : 'bg-giltc'}`} />
           </summary>
           <div className="ui-surface mt-4 px-4 py-2">
             {serverConfig ? (

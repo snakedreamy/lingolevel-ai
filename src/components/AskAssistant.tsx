@@ -40,7 +40,7 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
     <SideDrawer title="答疑助手" subtitle="问老师" onClose={onClose}
       actions={messages.length > 0 ? (
         <button type="button" onClick={onReset} title="清空答疑" aria-label="清空答疑记录"
-          className="ui-btn ui-btn-icon border-transparent hover:!text-scarlet dark:hover:!text-scarlet-dark">
+          className="ui-btn ui-btn-icon ui-btn-mark border-transparent">
           <RotateCcw className="h-4 w-4" />
         </button>
       ) : undefined}>
@@ -53,19 +53,19 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
         ) : messages.map((m) => (
           <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'border-l ui-rule pl-3'}>
             <div className={m.role === 'user'
-              ? 'max-w-[88%] border-r-2 border-scarlet pr-3 text-right dark:border-scarlet-dark'
+              ? 'max-w-[88%] border-r-2 border-mark pr-3 text-right'
               : 'max-w-full'}>
               {m.context && (
                 <div className="margin-code mb-1.5">
                   {m.context.sourceLabel}{m.context.focusText ? ` · 关注：${m.context.focusText}` : ''}
                 </div>
               )}
-              <div className={`break-words leading-relaxed ${m.role === 'user' ? 'font-body text-[13px]' : 'text-[13px] text-ink/90 dark:text-ink-dark/90'}`}>
+              <div className={`break-words leading-relaxed ${m.role === 'user' ? 'font-body text-[13px]' : 'text-[13px] text-ink-strong'}`}>
                 {m.content
                   ? (m.streaming ? (
-                      <span className="whitespace-pre-wrap">{m.content}<span className="ml-0.5 inline-block h-3.5 w-1 animate-pulse bg-scarlet align-middle dark:bg-scarlet-dark" /></span>
+                      <span className="whitespace-pre-wrap">{m.content}<span className="ml-0.5 inline-block h-3.5 w-1 animate-pulse bg-mark align-middle" /></span>
                     ) : renderMarkdown(m.content))
-                  : (m.streaming ? <span className="inline-block h-3.5 w-1 animate-pulse bg-scarlet align-middle dark:bg-scarlet-dark" /> : null)}
+                  : (m.streaming ? <span className="inline-block h-3.5 w-1 animate-pulse bg-mark align-middle" /> : null)}
               </div>
               {m.role === 'assistant' && m.content && !m.streaming && (
                 <div className="mt-1.5">
@@ -81,14 +81,14 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
 
       <div className="border-t ui-rule p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {ctx && ctxLabel && (
-          <div className="mb-2 flex items-center justify-between gap-2 rounded-md border border-gilt/40 bg-gilt/10 px-2.5 py-1.5 text-[11px] ui-text-muted dark:border-gilt-dark/40 dark:bg-gilt-dark/10">
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-md border border-giltc/40 bg-giltc/10 px-2.5 py-1.5 text-[11px] ui-text-muted">
             <span className="min-w-0">
               <span className="block truncate">{ctxLabel}</span>
               <span className="block truncate ui-text-faint">
                 已附带当前页面{ctx.focusText ? ` · 关注：${ctx.focusText}` : ''}
               </span>
             </span>
-            <button type="button" onClick={() => setCtx(null)} aria-label="移除已选上下文" className="ui-text-faint hover:text-ink dark:hover:text-ink-dark"><X className="h-3 w-3" /></button>
+            <button type="button" onClick={() => setCtx(null)} aria-label="移除已选上下文" className="ui-text-faint hover:text-body"><X className="h-3 w-3" /></button>
           </div>
         )}
         <div className="flex gap-2">
@@ -100,7 +100,7 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
             placeholder={"问：为什么这样用？能再举一个例子吗？" + (sendOnCtrlEnter ? ' (Ctrl+Enter 发送)' : '')}
             className="ui-input flex-1 resize-none px-3 py-2 text-[13px]" />
           <button type="button" onClick={submit} disabled={!question.trim() || isLoading} aria-label="发送答疑问题"
-            className={`flex items-center justify-center rounded-md px-3 ${!question.trim() || isLoading ? 'bg-ink/10 text-ink/35 dark:bg-ink-dark/15 dark:text-ink-dark/35' : 'bg-forest text-paper hover:bg-forest/90 dark:bg-forest-dark dark:text-paper-dark dark:hover:bg-forest-dark/90'}`}>
+            className={`flex items-center justify-center rounded-md px-3 ${!question.trim() || isLoading ? 'bg-disabled-bg text-disabled-text' : 'bg-accent text-on-accent hover:bg-accent/90'}`}>
             <Send className="h-4 w-4" />
           </button>
         </div>

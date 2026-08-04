@@ -21,7 +21,7 @@ export function AppHeader({
 }) {
   const speech = useSpeech()
   return (
-    <header className="app-header relative z-30 flex w-full flex-shrink-0 items-center justify-between gap-2 border-b-2 border-ink bg-paper px-3 py-2.5 dark:border-transparent dark:bg-paper-dark sm:px-6 sm:py-3">
+    <header className="app-header relative z-30 flex w-full flex-shrink-0 items-center justify-between gap-2 border-b-2 bg-page px-3 py-2.5 sm:px-6 sm:py-3">
       <div className="flex min-w-0 items-baseline gap-2.5">
         <h1 className="truncate font-display text-lg font-semibold leading-none tracking-tight sm:text-xl">
           LingoLevel&nbsp;AI
@@ -44,7 +44,7 @@ export function AppHeader({
             {(['us', 'uk'] as const).map((accent) => (
               <button key={accent} type="button" onClick={() => speech.setAccent(accent)} aria-pressed={speech.accent === accent}
                 className={`h-9 cursor-pointer rounded-md border text-xs font-semibold transition ${speech.accent === accent
-                  ? 'border-forest bg-forest/10 text-forest dark:border-forest-dark dark:bg-forest-dark/10 dark:text-forest-dark'
+                  ? 'border-accent bg-accent/10 text-accent'
                   : 'ui-btn'}`}>
                 {accent === 'us' ? '美音 US' : '英音 UK'}
               </button>
@@ -54,8 +54,8 @@ export function AppHeader({
             <span className="text-xs font-semibold ui-text-muted">语速</span>
             <input type="range" min="0.5" max="1.5" step="0.1" value={speech.speed}
               onChange={(event) => speech.setSpeed(Number(event.target.value))}
-              className="h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded-lg bg-ink/15 accent-forest dark:bg-ink-dark/20 dark:accent-forest-dark" />
-            <output className="w-9 text-right font-mono text-xs font-bold text-forest dark:text-forest-dark">{speech.speed.toFixed(1)}x</output>
+              className="h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded-lg bg-disabled-bg accent-accent" />
+            <output className="w-9 text-right font-mono text-xs font-bold text-accent">{speech.speed.toFixed(1)}x</output>
           </label>
         </Dropdown>
 
@@ -86,10 +86,10 @@ export function WorkspaceNav({ workspace, onSelect }: {
             onClick={() => onSelect(item.id)} aria-current={active ? 'page' : undefined}
             className={`relative flex h-11 flex-1 cursor-pointer items-baseline justify-center gap-2 px-3 transition sm:flex-none sm:px-5 ${active
               ? ''
-              : 'ui-text-faint hover:text-ink dark:hover:text-ink-dark'}`}>
-            <span className={`margin-code ${active ? '!text-scarlet dark:!text-scarlet-dark' : ''}`}>{item.code}</span>
+              : 'ui-text-faint hover:text-body'}`}>
+            <span className={`margin-code ${active ? 'margin-code--scarlet' : ''}`}>{item.code}</span>
             <span className={`font-display text-base ${active ? 'font-bold' : 'font-medium'}`}>{item.label}</span>
-            {active && <span aria-hidden="true" className="absolute inset-x-2 -bottom-px h-0.5 bg-scarlet dark:bg-scarlet-dark" />}
+            {active && <span aria-hidden="true" className="absolute inset-x-2 -bottom-px h-0.5 bg-mark" />}
           </button>
         )
       })}

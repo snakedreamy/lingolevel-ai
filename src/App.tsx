@@ -84,7 +84,7 @@ export default function App() {
 
   return (
     <SpeechProvider value={speech}>
-      <div id="app" className="flex h-screen max-h-screen flex-col overflow-hidden bg-paper font-body text-ink dark:bg-paper-dark dark:text-ink-dark">
+      <div id="app" className="flex h-screen max-h-screen flex-col overflow-hidden bg-page font-body text-body">
         <AppHeader
           theme={prefs.theme}
           onToggleTheme={() => setPrefs((p) => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' }))}

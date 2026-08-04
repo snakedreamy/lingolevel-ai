@@ -30,6 +30,49 @@
   --color-sheet-dark: #182433;
   --color-well-dark: #0D151F;
   --color-selected-dark: #172A36;
+
+  /* 语义别名：同一 token 在 .dark 下直接换值，组件无需写 dark: 配对。
+     accent=松绿（主色）、mark=朱红（批错/标记）、giltc=泥金（页码/提示）。 */
+  --color-page: var(--color-paper);
+  --color-surface: var(--color-leaf);
+  --color-body: var(--color-ink);
+  --color-inverse: var(--color-ink);
+  --color-accent: var(--color-forest);
+  --color-mark: var(--color-scarlet);
+  --color-giltc: var(--color-gilt);
+  --color-ink-strong: color-mix(in srgb, var(--color-ink) 85%, transparent);
+  --color-on-accent: var(--color-paper);
+  --color-muted-bg: color-mix(in srgb, var(--color-ink) 5%, transparent);
+  --color-disabled-bg: color-mix(in srgb, var(--color-ink) 10%, transparent);
+  --color-disabled-text: color-mix(in srgb, var(--color-ink) 35%, transparent);
+  --color-input-border: color-mix(in srgb, var(--color-ink) 25%, transparent);
+  --color-accent-tint-bg: color-mix(in srgb, var(--color-forest) 5%, transparent);
+  --color-accent-tint-hover-bg: color-mix(in srgb, var(--color-forest) 10%, transparent);
+  --color-accent-tint-border: color-mix(in srgb, var(--color-forest) 40%, transparent);
+  --color-mark-tint-bg: color-mix(in srgb, var(--color-scarlet) 5%, transparent);
+  --color-mark-tint-border: color-mix(in srgb, var(--color-scarlet) 30%, transparent);
+  --color-control-thumb: var(--color-paper);
+}
+.dark {
+  --color-page: var(--color-paper-dark);
+  --color-surface: var(--color-leaf-dark);
+  --color-body: var(--color-ink-dark);
+  --color-inverse: var(--color-ink-dark);
+  --color-accent: var(--color-forest-dark);
+  --color-mark: var(--color-scarlet-dark);
+  --color-giltc: var(--color-gilt-dark);
+  --color-ink-strong: color-mix(in srgb, var(--color-ink-dark) 85%, transparent);
+  --color-on-accent: var(--color-paper-dark);
+  --color-muted-bg: color-mix(in srgb, var(--color-ink-dark) 10%, transparent);
+  --color-disabled-bg: color-mix(in srgb, var(--color-ink-dark) 15%, transparent);
+  --color-disabled-text: color-mix(in srgb, var(--color-ink-dark) 40%, transparent);
+  --color-input-border: color-mix(in srgb, var(--color-ink-dark) 30%, transparent);
+  --color-accent-tint-bg: color-mix(in srgb, var(--color-forest-dark) 10%, transparent);
+  --color-accent-tint-hover-bg: color-mix(in srgb, var(--color-forest-dark) 15%, transparent);
+  --color-accent-tint-border: color-mix(in srgb, var(--color-forest-dark) 50%, transparent);
+  --color-mark-tint-bg: color-mix(in srgb, var(--color-scarlet-dark) 10%, transparent);
+  --color-mark-tint-border: color-mix(in srgb, var(--color-scarlet-dark) 40%, transparent);
+  --color-control-thumb: var(--color-ink-dark);
 }
 
 /* ── Design tokens ────────────────────────────────────────────────────── */
@@ -69,27 +112,17 @@
   }
 
   body {
-    background-color: var(--color-paper);
-    color: var(--color-ink);
-  }
-  .dark body {
-    background-color: var(--color-paper-dark);
-    color: var(--color-ink-dark);
+    background-color: var(--color-page);
+    color: var(--color-body);
   }
 
   ::selection {
-    background: color-mix(in srgb, var(--color-forest) 22%, transparent);
-  }
-  .dark ::selection {
-    background: color-mix(in srgb, var(--color-forest-dark) 30%, transparent);
+    background: color-mix(in srgb, var(--color-accent) 24%, transparent);
   }
 
   :where(button, input, textarea, summary, select, [tabindex]):focus-visible {
-    outline: 2px solid var(--color-forest);
+    outline: 2px solid var(--color-accent);
     outline-offset: 2px;
-  }
-  .dark :where(button, input, textarea, summary, select, [tabindex]):focus-visible {
-    outline-color: var(--color-forest-dark);
   }
 
   summary {
@@ -105,13 +138,11 @@
 @layer components {
   /* 工作区底纸：页面上的主面板 */
   .ui-surface {
-    background-color: var(--color-leaf);
+    background-color: var(--color-surface);
     border: 1px solid var(--line);
     border-radius: 0.5rem;
   }
-  .dark .ui-surface {
-    background-color: var(--color-leaf-dark);
-  }
+  .ui-surface-bg { background-color: var(--color-surface); }
 
   /* 次级底纸（答题栏、输入区贴底）；夜间用更深一档的输入槽底色 */
   .ui-well {
@@ -128,6 +159,18 @@
   .ui-rule {
     border-color: var(--line);
   }
+  .ui-strong-rule {
+    border-color: color-mix(in srgb, var(--color-ink) 70%, transparent);
+  }
+  .dark .ui-strong-rule {
+    border-color: color-mix(in srgb, var(--color-ink-dark) 60%, transparent);
+  }
+  .ui-divide-y > :not(:last-child) {
+    border-bottom: 1px solid var(--line);
+  }
+  .ui-divide-x > :not(:last-child) {
+    border-right: 1px solid var(--line);
+  }
   .ui-border-faint {
     border-color: color-mix(in srgb, var(--color-ink) 40%, transparent);
   }
@@ -137,6 +180,27 @@
 
   .ui-text-muted { color: var(--ink-muted); }
   .ui-text-faint { color: var(--ink-faint); }
+  .ui-hover-muted-bg:hover { background-color: var(--color-muted-bg); }
+  .ui-danger-soft {
+    border-color: var(--color-mark-tint-border);
+    background-color: var(--color-mark-tint-bg);
+    color: var(--color-mark);
+  }
+  .ui-accent-soft {
+    border-color: var(--color-accent-tint-border);
+    background-color: var(--color-accent-tint-bg);
+    color: var(--color-accent);
+  }
+  .ui-option {
+    background-color: var(--color-surface);
+    color: var(--color-body);
+  }
+  .ui-input-shell {
+    background-color: var(--color-surface);
+    border-color: var(--color-input-border);
+  }
+  .ui-color-scheme { color-scheme: light; }
+  .dark .ui-color-scheme { color-scheme: dark; }
 
   /* 页边编码：小号章节编号，如一本编过页码的语法书 */
   .margin-code {
@@ -191,25 +255,76 @@
     width: 2.25rem;
     padding-inline: 0;
   }
+  .ui-btn.ui-btn-square {
+    width: 2.25rem;
+    padding-inline: 0;
+  }
+  .ui-btn.ui-btn-input-icon {
+    width: 2.75rem;
+    height: 52px;
+    padding-inline: 0;
+  }
+  .ui-btn.ui-btn-input {
+    height: 52px;
+    padding-inline: 1rem;
+  }
 
-  /* 主按钮：日间墨绿实底；夜间蓝绿实底（与日间的松绿同族） */
+  /* 尺寸变体：工具栏小号 / 主操作大号 / 输入行超高号。
+     用高特异性选择器压过 .ui-btn 与 .ui-btn-primary 的基础值，调用方不再需要 ! 前缀。 */
+  .ui-btn.ui-btn-xs {
+    height: 1.75rem;
+    padding-inline: 0.625rem;
+    font-size: 11px;
+  }
+  .ui-btn.ui-btn-sm {
+    height: 2rem;
+    font-size: 11px;
+  }
+  .ui-btn.ui-btn-lg {
+    height: 2.5rem;
+    padding-inline: 1rem;
+    font-size: 0.875rem;
+  }
+  .ui-btn.ui-btn-xl {
+    height: 2.75rem;
+    padding-inline: 1.25rem;
+    font-size: 0.875rem;
+  }
+  .ui-btn.ui-btn-2xl {
+    height: 3rem;
+    padding-inline: 1.25rem;
+    font-size: 0.875rem;
+  }
+
+  /* 语义着色：激活态朱红（编码）、语义文字色（accent/mark 配对）。 */
+  .margin-code.margin-code--scarlet { color: var(--color-mark); }
+  .margin-code.margin-code--accent { color: var(--color-accent); }
+  .ui-btn.ui-btn-accent:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+  .ui-btn.ui-btn-mark:hover {
+    border-color: var(--color-mark);
+    color: var(--color-mark);
+  }
+
+  /* 主按钮：实底跟随 accent 语义色，深浅模式只换 token。 */
   .ui-btn-primary {
-    background-color: var(--color-forest);
+    background-color: var(--color-accent);
     border-color: transparent;
-    color: var(--color-paper);
+    color: var(--color-on-accent);
   }
   .ui-btn-primary:hover {
-    background-color: color-mix(in srgb, var(--color-forest) 92%, transparent);
+    background-color: color-mix(in srgb, var(--color-accent) 92%, transparent);
     border-color: transparent;
-    color: var(--color-paper);
+    color: var(--color-on-accent);
   }
-  .dark .ui-btn-primary {
-    background-color: var(--color-forest-dark);
-    color: var(--color-paper-dark);
-  }
-  .dark .ui-btn-primary:hover {
-    background-color: color-mix(in srgb, var(--color-forest-dark) 92%, transparent);
-    color: var(--color-paper-dark);
+  .ui-btn-primary:disabled,
+  .ui-btn-primary:disabled:hover {
+    background-color: var(--color-disabled-bg);
+    border-color: transparent;
+    color: var(--color-disabled-text);
+    opacity: 1;
   }
 
   /* 表单控件 */
@@ -217,34 +332,26 @@
     width: 100%;
     border-radius: 0.375rem;
     border: 1px solid var(--line-strong);
-    background-color: var(--color-leaf);
+    background-color: var(--color-surface);
     padding-inline: 0.75rem;
     font-size: 0.875rem;
-    color: var(--color-ink);
+    color: var(--color-body);
+    color-scheme: light;
     outline: none;
     transition: border-color 150ms, box-shadow 150ms;
   }
   .dark .ui-input {
-    background-color: var(--color-leaf-dark);
-    color: var(--color-ink-dark);
     color-scheme: dark;
   }
   .ui-input::placeholder {
     color: var(--ink-faint);
   }
   .ui-input:hover {
-    border-color: color-mix(in srgb, var(--color-ink) 50%, transparent);
-  }
-  .dark .ui-input:hover {
-    border-color: color-mix(in srgb, var(--color-ink-dark) 60%, transparent);
+    border-color: color-mix(in srgb, var(--color-body) 50%, transparent);
   }
   .ui-input:focus {
-    border-color: var(--color-forest);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-forest) 40%, transparent);
-  }
-  .dark .ui-input:focus {
-    border-color: var(--color-forest-dark);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-forest-dark) 40%, transparent);
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 40%, transparent);
   }
 
   /* 遮罩与抽屉 */
@@ -260,24 +367,58 @@
     background-color: var(--color-sheet-dark);
   }
 
-  /* 文本链接（forest + 泥金下划线） */
+  .app-header {
+    border-bottom-color: var(--color-ink);
+  }
+  .dark .app-header {
+    border-bottom-color: transparent;
+  }
+
+  /* 文本链接（accent + 泥金下划线） */
   .ui-link {
-    color: var(--color-forest);
+    color: var(--color-accent);
     font-weight: 700;
     text-decoration: underline;
-    text-decoration-color: var(--color-gilt);
+    text-decoration-color: var(--color-giltc);
     text-underline-offset: 4px;
     cursor: pointer;
   }
   .ui-link:hover {
-    text-decoration-color: var(--color-forest);
+    text-decoration-color: var(--color-accent);
   }
-  .dark .ui-link {
-    color: var(--color-forest-dark);
-    text-decoration-color: var(--color-gilt-dark);
+
+  /* Markdown 局部排版：颜色跟随语义 token，调用方不再写 dark: 配对。 */
+  .ui-md-code {
+    border-radius: 0.25rem;
+    background-color: var(--color-muted-bg);
+    padding: 0.125rem 0.25rem;
   }
-  .dark .ui-link:hover {
-    text-decoration-color: var(--color-forest-dark);
+  .ui-md-link {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-decoration-color: var(--color-giltc);
+    text-underline-offset: 2px;
+  }
+  .ui-md-link:hover {
+    text-decoration-color: var(--color-accent);
+  }
+  .ui-md-code-block {
+    background-color: color-mix(in srgb, var(--color-ink) 92%, transparent);
+    color: var(--color-paper);
+  }
+  .dark .ui-md-code-block {
+    background-color: color-mix(in srgb, var(--color-paper-dark) 65%, black);
+    color: var(--color-ink-dark);
+  }
+  .ui-md-quote {
+    border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+    color: var(--ink-muted);
+  }
+  .dark .ui-md-quote {
+    border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+  .ui-md-rule {
+    border-color: var(--line);
   }
 
   /* 滚动条 */
