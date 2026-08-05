@@ -13,6 +13,43 @@ function openAIReasoning(effort?: ProviderThinkingEffort): { reasoning_effort: P
   return effort ? { reasoning_effort: effort } : {}
 }
 
+interface OpenAISseResult {
+  done: boolean
+  delta?: string
+}
+
+function parseOpenAISseData(data: string): OpenAISseResult {
+  if (data === '[DONE]') return { done: true }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(data)
+  } catch {
+    return { done: false }
+  }
+  if (typeof parsed !== 'object' || parsed === null) return { done: false }
+
+  const payload = parsed as {
+    choices?: Array<{ delta?: { content?: unknown } }>
+    error?: { message?: unknown; type?: unknown; code?: unknown }
+  }
+  if (payload.error) {
+    const message = typeof payload.error.message === 'string' ? payload.error.message : 'unknown error'
+    const type = typeof payload.error.type === 'string' ? payload.error.type : undefined
+    const code = payload.error.code
+    const suffix = [type, typeof code === 'string' || typeof code === 'number' ? String(code) : undefined]
+      .filter(Boolean)
+      .join('/')
+    const error = new Error(`OpenAI stream error${suffix ? ` (${suffix})` : ''}: ${message}`) as Error & { status?: number }
+    const numericStatus = typeof code === 'number' ? code : typeof code === 'string' ? Number(code) : NaN
+    if (Number.isInteger(numericStatus) && numericStatus >= 400 && numericStatus <= 599) error.status = numericStatus
+    throw error
+  }
+
+  const delta = payload.choices?.[0]?.delta?.content
+  return { done: false, delta: typeof delta === 'string' && delta ? delta : undefined }
+}
+
 export function createOpenAIProvider(cfg: ProviderConfig): Provider {
   const baseUrl = cfg.baseUrl.replace(/\/$/, '')
 
@@ -41,42 +78,36 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
     let content: string
 
     if (contentType.includes('text/event-stream')) {
-      // --- SSE streaming path ---
       const reader = res.body?.getReader()
       if (!reader) throw new Error(`OpenAI ${label} returned no body`)
       const decoder = new TextDecoder()
       let accumulated = ''
       let buffer = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        // Keep the last partial line in the buffer
-        buffer = lines.pop() ?? ''
-        
-        for (const line of lines) {
-          const trimmed = line.trim()
-          if (!trimmed.startsWith('data:')) continue
-          const data = trimmed.slice(5).trim()
-          if (data === '[DONE]') break
-          try {
-            const parsed = JSON.parse(data) as { choices?: { delta?: { content?: string } }[] }
-            const delta = parsed.choices?.[0]?.delta?.content
-            if (delta) accumulated += delta
-          } catch { /* ignore malformed SSE lines */ }
-        }
+      let completed = false
+      const consumeLine = (line: string) => {
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data:')) return
+        const result = parseOpenAISseData(trimmed.slice(5).trim())
+        if (result.delta) accumulated += result.delta
+        if (result.done) completed = true
       }
-      // Flush the remaining buffer if it contains data
-      if (buffer.trim().startsWith('data:')) {
-         const data = buffer.trim().slice(5).trim()
-         if (data !== '[DONE]') {
-           try {
-             const parsed = JSON.parse(data) as { choices?: { delta?: { content?: string } }[] }
-             const delta = parsed.choices?.[0]?.delta?.content
-             if (delta) accumulated += delta
-           } catch {}
-         }
+
+      try {
+        while (!completed) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+          for (const line of lines) {
+            consumeLine(line)
+            if (completed) break
+          }
+        }
+        buffer += decoder.decode()
+        if (!completed && buffer.trim()) consumeLine(buffer)
+      } finally {
+        await reader.cancel().catch(() => undefined)
       }
       content = accumulated
     } else {
@@ -118,23 +149,34 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
     if (!reader) throw new Error(`OpenAI ${label} returned no body`)
     const decoder = new TextDecoder()
     let buffer = ''
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() ?? ''
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed.startsWith('data:')) continue
-        const data = trimmed.slice(5).trim()
-        if (data === '[DONE]') return
-        try {
-          const parsed = JSON.parse(data) as { choices?: { delta?: { content?: string } }[] }
-          const delta = parsed.choices?.[0]?.delta?.content
-          if (delta) yield delta
-        } catch { /* ignore malformed SSE lines */ }
+    const consumeLine = (line: string): OpenAISseResult | null => {
+      const trimmed = line.trim()
+      return trimmed.startsWith('data:')
+        ? parseOpenAISseData(trimmed.slice(5).trim())
+        : null
+    }
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+        for (const line of lines) {
+          const result = consumeLine(line)
+          if (result?.done) return
+          if (result?.delta) yield result.delta
+        }
       }
+      buffer += decoder.decode()
+      if (buffer.trim()) {
+        const result = consumeLine(buffer)
+        if (result?.done) return
+        if (result?.delta) yield result.delta
+      }
+    } finally {
+      await reader.cancel().catch(() => undefined)
     }
   }
 

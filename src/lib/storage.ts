@@ -12,11 +12,12 @@ export function isStoredRecord(value: unknown): value is Record<string, unknown>
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-export function saveStoredJson<T>(key: string, value: T): void {
+export function saveStoredJson<T>(key: string, value: T): boolean {
   try {
     window.localStorage.setItem(key, JSON.stringify(value))
+    return true
   } catch {
-    // Ignore storage write failures so the UI still works in restricted browsers.
+    return false
   }
 }
 

@@ -4,11 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "npm run validate:data",
     "dev": "tsx watch server/index.ts",
-    "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "npm run validate:data && vite build && esbuild server/index.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "NODE_ENV=production node dist/server.cjs",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "test": "npm run validate:data && npm run test:providers && npm run test:storage && npm run test:fill-blank && npm run test:tts",
+    "validate:data": "tsx src/data/learningData.selftest.ts",
+    "test:providers": "tsx providers/openai-compatible.selftest.ts",
+    "test:storage": "tsx src/lib/chatSessionStorage.selftest.ts",
+    "test:fill-blank": "tsx server/fillBlank.selftest.ts && tsx src/hooks/useFillBlankPractice.selftest.ts",
     "test:tts": "tsx src/lib/tts/fallback.selftest.ts && tsx providers/tts/mimo.selftest.ts"
   },
   "dependencies": {

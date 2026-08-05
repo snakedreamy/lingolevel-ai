@@ -216,6 +216,10 @@ export async function generateFillBlank(
     body: JSON.stringify(request),
     signal,
   })
-  if (!response.ok) throw new Error('FILL_BLANK_GENERATION_FAILED')
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { error?: unknown } | null
+    if (payload?.error === 'INSUFFICIENT_FILL_BLANK_CARDS') throw new Error('CARD_COUNT_MISMATCH')
+    throw new Error('FILL_BLANK_GENERATION_FAILED')
+  }
   return (await response.json()) as GenerateFillBlankResponse
 }

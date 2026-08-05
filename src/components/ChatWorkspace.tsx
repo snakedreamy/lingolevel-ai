@@ -68,7 +68,7 @@ export default function ChatWorkspace({ prefs, activeScenario, modelId, thinking
     thinkingEffort,
   })
   const {
-    messages, analysis, analysisHistory, selectedAnalysisIndex,
+    messages, analysis, analysisHistory, selectedAnalysisIndex, persistenceWarning,
     isChatLoading, isAnalysisLoading, resetConversation, sendMessage,
     regeneratableAssistantId, regenerateLastReply, retrySelectedAnalysis,
     showPreviousAnalysis, showNextAnalysis, showLatestAnalysis,
@@ -132,6 +132,7 @@ export default function ChatWorkspace({ prefs, activeScenario, modelId, thinking
           onRegenerateMessage={() => { void regenerateLastReply() }}
           onOpenFeedback={() => setShowMobileSidebar(true)}
           sendOnCtrlEnter={prefs.sendOnCtrlEnter}
+          persistenceWarning={persistenceWarning}
         />
       </div>
       <div className="hidden h-full min-h-0 animate-fade-in lg:col-span-1 lg:block">

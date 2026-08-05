@@ -345,17 +345,28 @@ export function createApiRouter(args: {
       if (batch.length < count) isFallback = true
     }
     if (abortController.signal.aborted) return
+    const fallbackCards = fallbackFillBlankCards(level, focus, diversitySeed)
+    const fallbackIds = new Set(fallbackCards.map((card) => card.id))
     const cards = selectUniqueCards({
       generated,
-      fallback: fallbackFillBlankCards(level, focus, diversitySeed),
+      fallback: fallbackCards,
       count: rawCount,
       recentSentences,
     })
-    const generatedCount = selectUniqueCards({ generated, fallback: [], count: rawCount, recentSentences }).length
-    const fallbackCount = Math.max(0, rawCount - generatedCount)
-    if (fallbackCount > 0) {
-      isFallback = true
+    if (focus !== 'mixed' && cards.some((card) => card.focusType !== focus)) {
+      logRequest({ endpoint: 'fill-blank', provider: cfg.provider, model, status: 500, latencyMs: Date.now() - start, fallback: true })
+      return res.status(500).json({ error: 'FILL_BLANK_FOCUS_MISMATCH' })
     }
+    if (cards.length < rawCount) {
+      logRequest({ endpoint: 'fill-blank', provider: cfg.provider, model, status: 503, latencyMs: Date.now() - start, fallback: true })
+      return res.status(503).json({
+        error: 'INSUFFICIENT_FILL_BLANK_CARDS',
+        requestedCount: rawCount,
+        availableCount: cards.length,
+      })
+    }
+    const fallbackCount = cards.filter((card) => fallbackIds.has(card.id)).length
+    if (fallbackCount > 0) isFallback = true
     logRequest({ endpoint: 'fill-blank', provider: cfg.provider, model, status: 200, latencyMs: Date.now() - start, fallback: isFallback })
     res.json({ cards, isFallback, fallbackCount })
   })

@@ -2001,5 +2001,3 @@ export function validateLearningLessons(): void {
     if (!lessonIds.has(concept.lessonId ?? '')) throw new Error(`Missing lesson ${concept.lessonId}`)
   }
 }
-
-validateLearningLessons()

@@ -225,11 +225,13 @@ interface ChatWindowProps {
   onOpenFeedback: () => void
   /** When true, only Ctrl/Cmd+Enter sends; bare Enter inserts a newline. */
   sendOnCtrlEnter?: boolean
+  persistenceWarning?: string | null
 }
 
 export default function ChatWindow({
   messages, onSendMessage, isLoading, activeScenario, onResetChat, inputRef, inputText, setInputText,
   onWordClick, onSelectSentence, regeneratableAssistantId, onRegenerateMessage, onOpenFeedback, sendOnCtrlEnter = false,
+  persistenceWarning = null,
 }: ChatWindowProps) {
   const speech = useSpeech()
   const [isRecording, setIsRecording] = useState(false)
@@ -345,10 +347,10 @@ export default function ChatWindow({
         </div>
       )}
 
-      {(recognitionError || statusMessage) && (
+      {(recognitionError || persistenceWarning || statusMessage) && (
         <div className="absolute bottom-24 left-1/2 z-20 flex max-w-[90%] -translate-x-1/2 items-center gap-2 rounded-md border border-mark-tint-border bg-mark-tint-bg px-4 py-2 text-xs text-mark shadow-md animate-slide-up">
           <HelpCircle className="h-4 w-4 flex-shrink-0" />
-          <span>{recognitionError ?? statusMessage}</span>
+          <span>{recognitionError ?? persistenceWarning ?? statusMessage}</span>
           {recognitionError && (
             <button onClick={() => setRecognitionError(null)} className="cursor-pointer pl-2 text-[10px] font-bold underline">我已知晓</button>
           )}

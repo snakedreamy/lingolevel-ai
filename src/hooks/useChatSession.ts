@@ -2,21 +2,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { sendAnalyze, streamChat } from '../lib/api'
 import { createMessageId } from '../lib/ids'
+import { hasOrphanedUserMessage, removeOldestChatTurn, trimChatSessionToBudget } from '../lib/chatSessionStorage'
+import type { StoredChatSession } from '../lib/chatSessionStorage'
 import { incrementStoredCounter, isStoredRecord, loadStoredJson, saveStoredJson } from '../lib/storage'
 import type { AnalysisHistoryEntry, AnalysisResult, DifficultyLevel, Message, Scenario, ThinkingEffort } from '../types'
 
 const CHAT_VARIETY_KEY = 'lingolevel_chat_variety'
 const CHAT_SESSION_KEY = 'lingolevel_chat_session_v1'
 const LEVEL_IDS = new Set<DifficultyLevel>(['kindergarten', 'primary_low', 'primary_high', 'junior', 'senior', 'college', 'ielts'])
-
-interface StoredChatSession {
-  version: 1
-  scenarioId: string
-  diversitySeed: number
-  messages: Message[]
-  analysisHistory: AnalysisHistoryEntry[]
-  selectedAnalysisIndex: number
-}
 
 function isText(value: unknown): value is string {
   return typeof value === 'string'
@@ -80,19 +73,21 @@ function loadChatSession(scenarioId: string): StoredChatSession | null {
   const messages = value.messages.map(storedMessage)
   const analysisHistory = value.analysisHistory.map(storedAnalysisEntry)
   if (messages.some((item) => !item) || analysisHistory.some((item) => !item)) return null
+  const normalizedMessages = messages as Message[]
+  if (hasOrphanedUserMessage(normalizedMessages)) return null
   const selectedIndex = typeof value.selectedAnalysisIndex === 'number' && Number.isSafeInteger(value.selectedAnalysisIndex)
     ? Math.min(Math.max(0, value.selectedAnalysisIndex), Math.max(0, analysisHistory.length - 1))
     : Math.max(0, analysisHistory.length - 1)
-  return {
+  return trimChatSessionToBudget({
     version: 1,
     scenarioId,
     diversitySeed: typeof value.diversitySeed === 'number' && Number.isSafeInteger(value.diversitySeed) && value.diversitySeed >= 0
       ? value.diversitySeed
       : 0,
-    messages: messages as Message[],
+    messages: normalizedMessages,
     analysisHistory: analysisHistory as AnalysisHistoryEntry[],
     selectedAnalysisIndex: selectedIndex,
-  }
+  }).session
 }
 
 function getStarterMessage(scenario: Scenario, diversitySeed: number): string {
@@ -119,9 +114,11 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
     initialSession?.analysisHistory[initialSession.selectedAnalysisIndex]?.analysis ?? null)
   const [isChatLoading, setIsChatLoading] = useState(false)
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false)
+  const [persistenceWarning, setPersistenceWarning] = useState<string | null>(null)
   const sessionIdRef = useRef(0)
   const diversitySeedRef = useRef(initialSession?.diversitySeed ?? 0)
   const scenarioIdRef = useRef(activeScenario.id)
+  const skipPersistenceRef = useRef(false)
   const requestIdRef = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
   const analysisQueueRef = useRef<Promise<void>>(Promise.resolve())
@@ -154,11 +151,13 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
     setSelectedAnalysisIndex(0)
     setIsChatLoading(false)
     setIsAnalysisLoading(false)
+    setPersistenceWarning(null)
   }, [activeScenario])
 
   useEffect(() => {
     if (scenarioIdRef.current === activeScenario.id && messages.length > 0) return
     scenarioIdRef.current = activeScenario.id
+    skipPersistenceRef.current = true
     void resetConversation()
   }, [activeScenario.id, messages.length, resetConversation])
 
@@ -168,8 +167,14 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
       : `${message.id}:${message.timestamp}:${message.content.length}:${message.isFallback ? 1 : 0}`)
     .join('|')
   useEffect(() => {
-    const stableMessages = messages.filter((message) => !message.streaming)
-    saveStoredJson<StoredChatSession>(CHAT_SESSION_KEY, {
+    if (skipPersistenceRef.current) {
+      skipPersistenceRef.current = false
+      return
+    }
+    const hasStreamingMessage = messages.some((message) => message.streaming)
+    if (hasStreamingMessage) return
+    const stableMessages = messages
+    const initial = trimChatSessionToBudget({
       version: 1,
       scenarioId: activeScenario.id,
       diversitySeed: diversitySeedRef.current,
@@ -177,6 +182,31 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
       analysisHistory,
       selectedAnalysisIndex: Math.min(selectedAnalysisIndex, Math.max(0, analysisHistory.length - 1)),
     })
+    let candidate = initial.session
+    let saved = initial.fits && saveStoredJson(CHAT_SESSION_KEY, candidate)
+    while (!saved) {
+      const smaller = removeOldestChatTurn(candidate)
+      if (!smaller) break
+      candidate = smaller
+      saved = saveStoredJson(CHAT_SESSION_KEY, candidate)
+    }
+
+    if (!saved) {
+      setPersistenceWarning('浏览器无法保存当前对话，刷新页面后本次内容可能丢失。')
+      return
+    }
+    setPersistenceWarning(null)
+
+    const historyChanged = candidate.analysisHistory.length !== analysisHistory.length
+      || candidate.analysisHistory[0]?.id !== analysisHistory[0]?.id
+    const messagesChanged = candidate.messages.length !== stableMessages.length
+      || candidate.messages[0]?.id !== stableMessages[0]?.id
+    if (historyChanged || messagesChanged) {
+      setMessages(candidate.messages)
+      setAnalysisHistory(candidate.analysisHistory)
+      setSelectedAnalysisIndex(candidate.selectedAnalysisIndex)
+      setAnalysis(candidate.analysisHistory[candidate.selectedAnalysisIndex]?.analysis ?? null)
+    }
   }, [activeScenario.id, analysisHistory, messagePersistenceRevision, selectedAnalysisIndex])
 
   const streamAssistantReply = useCallback(async (args: {
@@ -455,7 +485,7 @@ export function useChatSession(args: { currentLevel: DifficultyLevel; activeScen
   }, [analysisHistory.length, showAnalysisAtIndex])
 
   return {
-    messages, analysis, analysisHistory, selectedAnalysisIndex,
+    messages, analysis, analysisHistory, selectedAnalysisIndex, persistenceWarning,
     isChatLoading, isAnalysisLoading, resetConversation, sendMessage,
     regeneratableAssistantId, regenerateLastReply, retrySelectedAnalysis,
     showPreviousAnalysis, showNextAnalysis, showLatestAnalysis,

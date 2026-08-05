@@ -57,7 +57,7 @@ function storedProgress(value: unknown): FillBlankProgress | null {
   return { input: value.input, attempts: value.attempts, status: value.status as FillBlankProgress['status'] }
 }
 
-function loadSession(defaultLevel: DifficultyLevel): StoredFillBlankSession {
+export function loadFillBlankSession(defaultLevel: DifficultyLevel): StoredFillBlankSession {
   const empty: StoredFillBlankSession = {
     version: 1,
     phase: 'setup',
@@ -86,7 +86,8 @@ function loadSession(defaultLevel: DifficultyLevel): StoredFillBlankSession {
   }
   const cards = value.cards as FillBlankCard[]
   if (cards.length < FILL_BLANK_MIN_COUNT || cards.length > FILL_BLANK_MAX_COUNT
-    || new Set(cards.map((card) => card.id)).size !== cards.length) {
+    || new Set(cards.map((card) => card.id)).size !== cards.length
+    || (focus !== 'mixed' && cards.some((card) => card.focusType !== focus))) {
     return { ...empty, level, count, focus }
   }
   const progress: Record<string, FillBlankProgress> = {}
@@ -130,7 +131,7 @@ function loadHistory(): string[] {
 
 export function useFillBlankPractice(args: { level: DifficultyLevel; modelId: string; thinkingEffort: ThinkingEffort }) {
   const { level, modelId, thinkingEffort } = args
-  const [initialSession] = useState(() => loadSession(level))
+  const [initialSession] = useState(() => loadFillBlankSession(level))
   const [phase, setPhase] = useState<PracticePhase>(initialSession.phase)
   const [practiceLevel, setPracticeLevel] = useState<DifficultyLevel>(initialSession.level)
   const [count, setCountState] = useState(initialSession.count)

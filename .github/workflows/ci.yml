@@ -1,7 +1,7 @@
 name: ci
 
 # ----------------------------------------------------------------------
-# Quick CI: type-check on every push / PR.
+# Quick CI: type-check and deterministic self-tests on every push / PR.
 # Cheap (~1-2 min) — runs in parallel with the docker-image workflow.
 # ----------------------------------------------------------------------
 
@@ -22,3 +22,4 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run lint
+      - run: npm test

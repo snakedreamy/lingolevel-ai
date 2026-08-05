@@ -23,7 +23,7 @@ An interactive AI English coach designed for Chinese learners with adaptive diff
   - `providers/index.ts` — factory: build provider from `process.env`
   - `providers/tts/` — vendor-neutral server TTS interface plus isolated vendor adapters (currently MiMo)
 - **Server** (`server/`): Express on the Vite dev middleware. `server/index.ts` is the entry; `server/routes.ts` mounts server config, streaming chat/ask, analysis, fill-blank, and system-learning practice/evaluation endpoints. Fill-blank output is normalized, deduplicated, and completed from a level-matched verified backup bank when necessary. `server/learningPractice.ts` validates generated course activities and evaluations. The active provider and model names are selected at boot from `.env.local` / `process.env`.
-- **Frontend** (`src/`): React + Vite SPA with three independent workspaces: systematic learning, fill-blank practice, and free conversation. Browser-owned preferences are stored under `lingolevel_prefs`; theme uses `lingolevel_theme`; each practice workspace owns its local session/progress data. Active provider / model / base URL are fetched from `GET /api/server-config`. Speech UI depends only on the common interface in `src/lib/tts/`; browser speech and the same-origin `/api/tts` fallback are separate playback providers. **No API keys, tokens, or secrets ever touch the browser**.
+- **Frontend** (`src/`): React + Vite SPA with three independent workspaces: systematic learning, fill-blank practice, and free conversation. Browser-owned preferences are stored under `lingolevel_prefs`; theme uses `lingolevel_theme`; each practice workspace owns its local session/progress data. Chat persistence uses a bounded local snapshot and removes the oldest complete turns before reaching browser storage limits; unavailable storage is surfaced in the UI instead of failing silently. Active provider / model / base URL are fetched from `GET /api/server-config`. Speech UI depends only on the common interface in `src/lib/tts/`; browser speech and the same-origin `/api/tts` fallback are separate playback providers. **No API keys, tokens, or secrets ever touch the browser**.
 - **Runtime tuning via `.env.local`**: provider/model/base URL, outbound timeout, and chat context window are all server-owned runtime settings. The browser only reads a sanitized summary from `/api/server-config`.
 
 ## Run Locally
@@ -211,5 +211,7 @@ lingolevel-ai/
 - `npm run build` — production bundle
 - `npm run start` — run the production bundle
 - `npm run lint` — strict TypeScript check, including unused code
+- `npm test` — deterministic provider, storage, fill-blank, learning-data, and TTS self-tests
+- `npm run validate:data` — validate the static curriculum and lesson graph outside the browser runtime
 
 The settings panel will also show the active request timeout and context-window size reported by `/api/server-config`, so you can verify the server really booted with the `.env.local` values you expect.

@@ -67,7 +67,7 @@ export default function App() {
     maxContextMessages: serverConfig?.maxContextMessages,
   })
 
-  useEffect(() => saveStoredJson(WORKSPACE_KEY, workspace), [workspace])
+  useEffect(() => { saveStoredJson(WORKSPACE_KEY, workspace) }, [workspace])
 
   useEffect(() => {
     const viewport = window.visualViewport

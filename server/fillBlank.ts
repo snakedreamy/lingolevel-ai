@@ -354,10 +354,7 @@ export function fallbackFillBlankCards(level: string, focus: FillBlankFocus = 'm
   }
   const ordered = focus === 'mixed'
     ? rotate(bank)
-    : [
-        ...rotate(bank.filter((card) => card.focusType === focus)),
-        ...rotate(bank.filter((card) => card.focusType !== focus)),
-      ]
+    : rotate(bank.filter((card) => card.focusType === focus))
   return ordered.map((card) => ({ ...card, id: randomUUID() }))
 }
 
