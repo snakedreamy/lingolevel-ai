@@ -18,7 +18,7 @@
     "test:providers": "tsx providers/openai-compatible.selftest.ts",
     "test:storage": "tsx src/lib/chatSessionStorage.selftest.ts",
     "test:fill-blank": "tsx server/fillBlank.selftest.ts && tsx src/hooks/useFillBlankPractice.selftest.ts",
-    "test:tts": "tsx src/lib/tts/fallback.selftest.ts && tsx providers/tts/mimo.selftest.ts"
+    "test:tts": "tsx src/lib/tts/fallback.selftest.ts && tsx src/lib/tts/api.selftest.ts && tsx providers/tts/mimo.selftest.ts"
   },
   "dependencies": {
     "@fontsource-variable/newsreader": "^5.3.0",

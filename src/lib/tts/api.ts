@@ -2,10 +2,28 @@ import { synthesizeSpeech } from '../api'
 import { TtsError } from './types'
 import type { TtsProvider, TtsSpeakInput } from './types'
 
+const SILENT_WAV = 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAwF0AAIC7AAACABAAZGF0YQIAAAAAAA=='
+
 function apiPlaybackAvailable(): boolean {
   return typeof Audio === 'function'
     && typeof URL.createObjectURL === 'function'
     && typeof URL.revokeObjectURL === 'function'
+}
+
+async function unlockAudioPlayback(audio: HTMLAudioElement, signal: AbortSignal): Promise<void> {
+  if (signal.aborted) throw new TtsError('canceled')
+  audio.muted = true
+  audio.src = SILENT_WAV
+  try {
+    await audio.play()
+  } catch {
+    throw new TtsError('blocked')
+  } finally {
+    audio.pause()
+    audio.removeAttribute('src')
+    audio.load()
+    audio.muted = false
+  }
 }
 
 export const apiTtsProvider: TtsProvider = {
@@ -17,6 +35,11 @@ export const apiTtsProvider: TtsProvider = {
     if (!apiPlaybackAvailable()) throw new TtsError('unavailable')
     if (signal.aborted) throw new TtsError('canceled')
 
+    const audio = new Audio()
+    audio.preload = 'auto'
+    audio.setAttribute('playsinline', '')
+    await unlockAudioPlayback(audio, signal)
+
     let blob: Blob
     try {
       blob = await synthesizeSpeech({ text, language, speed }, signal)
@@ -27,8 +50,7 @@ export const apiTtsProvider: TtsProvider = {
 
     if (signal.aborted) throw new TtsError('canceled')
     const objectUrl = URL.createObjectURL(blob)
-    const audio = new Audio(objectUrl)
-    audio.preload = 'auto'
+    audio.src = objectUrl
 
     await new Promise<void>((resolve, reject) => {
       let settled = false
