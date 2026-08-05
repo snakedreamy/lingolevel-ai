@@ -8,7 +8,8 @@
     "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "NODE_ENV=production node dist/server.cjs",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:tts": "tsx src/lib/tts/fallback.selftest.ts && tsx providers/tts/mimo.selftest.ts"
   },
   "dependencies": {
     "@fontsource-variable/newsreader": "^5.3.0",

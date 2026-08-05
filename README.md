@@ -10,7 +10,7 @@ An interactive AI English coach designed for Chinese learners with adaptive diff
 - **AI fill-in-the-blank practice** — choose 3–20 cards, a learning level, and a vocabulary/grammar focus. `/api/fill-blank` generates bilingual cloze sentences, while the practice workspace provides hints, retries, pronunciation, sentence-pattern explanations, and a review summary. The current set survives refreshes, completed cards can be revisited read-only, and ending the set discards its snapshot. Recent sentences are kept locally and sent as an avoid-list so later sets are less repetitive.
 - **Adaptive difficulty + scenarios** — seven learner levels from kindergarten to IELTS, with free discussion and themed conversation scenarios.
 - **Real-time analysis** — `/api/analyze` returns translation, grammar corrections, a reply insight, keywords, and follow-up suggestions for each user/assistant turn. The single current conversation and its analysis survive refreshes; “restart conversation” replaces that snapshot instead of creating a conversation archive.
-- **Speech and theme controls** — browser speech preferences are stored locally; the explicit light/dark choice has one source of truth under `lingolevel_theme`.
+- **Speech and theme controls** — speech uses the browser engine first and automatically falls back to the server-side TTS provider when that engine is unavailable; pronunciation preferences are stored locally, while the explicit light/dark choice has one source of truth under `lingolevel_theme`.
 
 ## Architecture
 
@@ -21,8 +21,9 @@ An interactive AI English coach designed for Chinese learners with adaptive diff
   - `providers/fallback.ts` — canned replies returned by adapters when all retries are exhausted
   - `providers/util.ts` — shared helpers (e.g. `errorMessage`)
   - `providers/index.ts` — factory: build provider from `process.env`
+  - `providers/tts/` — vendor-neutral server TTS interface plus isolated vendor adapters (currently MiMo)
 - **Server** (`server/`): Express on the Vite dev middleware. `server/index.ts` is the entry; `server/routes.ts` mounts server config, streaming chat/ask, analysis, fill-blank, and system-learning practice/evaluation endpoints. Fill-blank output is normalized, deduplicated, and completed from a level-matched verified backup bank when necessary. `server/learningPractice.ts` validates generated course activities and evaluations. The active provider and model names are selected at boot from `.env.local` / `process.env`.
-- **Frontend** (`src/`): React + Vite SPA with three independent workspaces: systematic learning, fill-blank practice, and free conversation. Browser-owned preferences are stored under `lingolevel_prefs`; theme uses `lingolevel_theme`; each practice workspace owns its local session/progress data. Active provider / model / base URL are fetched from `GET /api/server-config`. **No API keys, tokens, or secrets ever touch the browser**.
+- **Frontend** (`src/`): React + Vite SPA with three independent workspaces: systematic learning, fill-blank practice, and free conversation. Browser-owned preferences are stored under `lingolevel_prefs`; theme uses `lingolevel_theme`; each practice workspace owns its local session/progress data. Active provider / model / base URL are fetched from `GET /api/server-config`. Speech UI depends only on the common interface in `src/lib/tts/`; browser speech and the same-origin `/api/tts` fallback are separate playback providers. **No API keys, tokens, or secrets ever touch the browser**.
 - **Runtime tuning via `.env.local`**: provider/model/base URL, outbound timeout, and chat context window are all server-owned runtime settings. The browser only reads a sanitized summary from `/api/server-config`.
 
 ## Run Locally
@@ -44,6 +45,7 @@ Other useful runtime knobs in `.env.local`:
 - `MAX_CONTEXT_MESSAGES` — shared limit for recent user/assistant messages sent back to the model as conversational memory
 - `FILL_BLANK_BATCH_SIZE` / `FILL_BLANK_ATTEMPTS` — fill-blank batching and structured-output validation attempts; these do not limit model capacity
 - `OPENAI_MODELS` / `ANTHROPIC_MODELS` — comma-separated server allowlist shown in the web model selector; chat and analyze defaults are always included
+- `TTS_PROVIDER` / `TTS_MAX_TEXT_CHARS` / `TTS_TIMEOUT_MS` — optional server-side speech fallback and its request limits
 
 The server prints its URL on startup (default `http://localhost:59100`).
 
@@ -54,6 +56,22 @@ The server prints its URL on startup (default `http://localhost:59100`).
 Set `PROVIDER` to one of `openai` (any OpenAI-compatible service) or `anthropic` in `.env.local`, then fill the matching section. Add optional model IDs to the provider's `*_MODELS` comma-separated list to make them selectable in the web settings; the server rejects model IDs outside this list.
 
 > **API keys live only on the server.** They are never sent to or stored in the browser. The in-app Settings panel shows the active server-side provider/model/base URL from `/api/server-config`, but those connection values are controlled by `.env.local` and require a server restart to change. The browser only persists non-sensitive learning preferences and local progress. `GET /api/server-config` does not contain an `apiKey` field.
+
+### Configuring the TTS fallback
+
+Browser speech remains the first choice and requires no server configuration. To enable automatic fallback on browsers without Web Speech synthesis, configure the server-side adapter:
+
+```bash
+TTS_PROVIDER=mimo
+MIMO_TTS_API_KEY=sk-...
+MIMO_TTS_BASE_URL=https://api.xiaomimimo.com/v1
+MIMO_TTS_MODEL=mimo-v2.5-tts
+MIMO_TTS_VOICE_ZH=冰糖
+MIMO_TTS_VOICE_EN_US=Mia
+MIMO_TTS_VOICE_EN_GB=Mia
+```
+
+The browser sends only the common `{ text, language, speed }` request to the same-origin `POST /api/tts` endpoint. MiMo's endpoint, authentication header, message layout, voice mapping, and base64 response decoding stay isolated in `providers/tts/mimo.ts`. Adding another TTS vendor does not change the speech UI or API contract; add its adapter and register it in `providers/tts/index.ts`. Never use a `VITE_` prefix for TTS credentials.
 
 ### A note on third-party "transit" proxies
 

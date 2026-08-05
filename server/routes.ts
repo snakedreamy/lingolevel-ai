@@ -4,6 +4,7 @@ import type { Request, Response } from 'express'
 import type { Provider, ProviderChatInput, ProviderThinkingEffort } from '../providers'
 import type { ServerConfig } from '../providers'
 import { loadServerConfigFromEnv } from '../providers'
+import type { TtsLanguage, TtsProvider } from '../providers/tts'
 import { errorMessage, extractJsonObject } from '../providers/util'
 import {
   composeScenarioInstruction,
@@ -34,6 +35,7 @@ const LEVEL_IDS = new Set(['kindergarten', 'primary_low', 'primary_high', 'junio
 const THINKING_EFFORTS = new Set<ProviderThinkingEffort>(['low', 'medium', 'high', 'xhigh', 'max'])
 const ASK_CONTEXT_SOURCES = new Set(['chat', 'fill-blank', 'learning'])
 const ASK_FOCUS_TYPES = new Set(['word', 'sentence', 'section'])
+const TTS_LANGUAGES = new Set<TtsLanguage>(['zh-CN', 'en-US', 'en-GB'])
 
 // Only validate shape here. Overall input capacity is governed by Express's
 // 1 MB body limit, while conversational history count uses MAX_CONTEXT_MESSAGES.
@@ -112,8 +114,13 @@ function resolveThinkingEffort(value: unknown): ProviderThinkingEffort | undefin
     : undefined
 }
 
-export function createApiRouter(args: { provider: Provider; cfg: ServerConfig }): Router {
-  const { provider, cfg } = args
+export function createApiRouter(args: {
+  provider: Provider
+  cfg: ServerConfig
+  ttsProvider: TtsProvider | null
+  ttsMaxTextChars: number
+}): Router {
+  const { provider, cfg, ttsProvider, ttsMaxTextChars } = args
   const router = Router()
 
   // GET /api/server-config (unchanged)
@@ -122,6 +129,42 @@ export function createApiRouter(args: { provider: Provider; cfg: ServerConfig })
       res.json(loadServerConfigFromEnv())
     } catch (error) {
       res.status(500).json({ error: 'SERVER_CONFIG_UNAVAILABLE', message: errorMessage(error) })
+    }
+  })
+
+  // POST /api/tts — provider-neutral speech synthesis.
+  router.post('/tts', async (req, res) => {
+    if (!ttsProvider) return res.status(503).json({ error: 'TTS_UNAVAILABLE' })
+
+    const text = requiredText(req.body?.text)
+    if (!text) return res.status(400).json({ error: 'INVALID_TTS_TEXT' })
+    // minimal-debt: 当前 API 回退一次合成完整文本；当长度限制实际阻断播报或首包延迟成为问题时改为分段流式合成。
+    if (text.length > ttsMaxTextChars) {
+      return res.status(400).json({ error: 'TTS_TEXT_TOO_LONG', maxTextChars: ttsMaxTextChars })
+    }
+    const language = typeof req.body?.language === 'string' && TTS_LANGUAGES.has(req.body.language as TtsLanguage)
+      ? req.body.language as TtsLanguage
+      : null
+    if (!language) return res.status(400).json({ error: 'INVALID_TTS_LANGUAGE' })
+    const speed = req.body?.speed
+    if (typeof speed !== 'number' || !Number.isFinite(speed) || speed < 0.5 || speed > 1.5) {
+      return res.status(400).json({ error: 'INVALID_TTS_SPEED' })
+    }
+
+    const start = Date.now()
+    const abortController = abortWhenClientDisconnects(req, res)
+    try {
+      const output = await ttsProvider.synthesize({ text, language, speed, signal: abortController.signal })
+      if (abortController.signal.aborted) return
+      res.setHeader('Content-Type', output.contentType)
+      res.setHeader('Content-Length', output.audio.length)
+      res.setHeader('Cache-Control', 'no-store')
+      console.log(`[tts] ${ttsProvider.id} → 200 (${Date.now() - start}ms)`)
+      return res.send(output.audio)
+    } catch (error) {
+      if (abortController.signal.aborted) return
+      console.error(`[tts] ${ttsProvider.id} → 502 (${Date.now() - start}ms) error=${JSON.stringify(errorMessage(error))}`)
+      return res.status(502).json({ error: 'TTS_FAILED' })
     }
   })
 

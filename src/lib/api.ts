@@ -1,5 +1,6 @@
 import type { AnalysisResult, AskContext, DifficultyLevel, FillBlankCard, FillBlankFocus, ProviderId, Scenario, ThinkingEffort } from "../types"
 import type { ApplyActivity, LearningActivity } from '../data/learningLessons'
+import type { TtsLanguage } from './tts/types'
 
 export interface ServerConfig {
   provider: ProviderId
@@ -39,6 +40,22 @@ export async function fetchServerConfig(): Promise<ServerConfig> {
     throw new Error("SERVER_CONFIG_UNAVAILABLE")
   }
   return (await response.json()) as ServerConfig
+}
+
+export async function synthesizeSpeech(
+  request: { text: string; language: TtsLanguage; speed: number },
+  signal?: AbortSignal,
+): Promise<Blob> {
+  const response = await fetch('/api/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+    signal,
+  })
+  if (!response.ok) throw new Error('TTS_FAILED')
+  const contentType = response.headers.get('content-type') ?? ''
+  if (!contentType.startsWith('audio/')) throw new Error('TTS_INVALID_RESPONSE')
+  return response.blob()
 }
 
 export async function sendAnalyze(request: AnalyzeRequest, signal?: AbortSignal): Promise<AnalysisResult> {
