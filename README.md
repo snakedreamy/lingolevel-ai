@@ -28,7 +28,7 @@ An interactive AI English coach designed for Chinese learners with adaptive diff
 
 ## Run Locally
 
-**Prerequisites:** Node.js 20+
+**Prerequisites:** Node.js 22.19+
 
 ```bash
 npm install
