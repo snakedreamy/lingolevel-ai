@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
+import { DIFFICULTY_LEVELS } from '../src/types'
 import { fallbackFillBlankCards, selectUniqueCards } from './fillBlank'
 
-const levels = ['kindergarten', 'primary_low', 'primary_high', 'junior', 'senior', 'college', 'ielts']
-for (const level of levels) {
+for (const level of DIFFICULTY_LEVELS) {
   for (const focus of ['vocabulary', 'grammar'] as const) {
     const fallback = fallbackFillBlankCards(level, focus, 0)
     assert.ok(fallback.length > 0, `${level}/${focus} should have fallback cards`)

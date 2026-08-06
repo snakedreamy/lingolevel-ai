@@ -1,3 +1,5 @@
+import type { DifficultyLevel } from '../src/types'
+
 const COMMON_GUIDELINES = `
     - Gently correct minor mistakes in the learner's sentences by restating the correct version, but do not interrupt the flow every turn.
     - Keep the conversation moving naturally. Ask at most one follow-up question only when it meaningfully develops what the learner said; you may instead react, add a short related idea, or offer two useful directions.
@@ -29,7 +31,7 @@ const FREE_CHAT_DIRECTIONS = [
   'an imaginative what-if situation with a concrete decision',
 ]
 
-const levelSystemPrompts: Record<string, string> = {
+const levelSystemPrompts: Record<DifficultyLevel, string> = {
   kindergarten: `
     Role: You are a friendly, encouraging English speaking partner for children who are absolute beginners (Kindergarten level / 幼儿园级别).
     Rules:
@@ -87,8 +89,8 @@ const levelSystemPrompts: Record<string, string> = {
   `
 }
 
-export function getLevelSystemPrompt(level: string): string {
-  return levelSystemPrompts[level] || levelSystemPrompts.junior
+export function getLevelSystemPrompt(level: DifficultyLevel): string {
+  return levelSystemPrompts[level]
 }
 
 export function composeScenarioInstruction(args: {
@@ -116,7 +118,7 @@ const ASK_SYSTEM_PROMPT = `你是一位耐心的中英双语英语辅导老师�
 - 回答短、具体、可直接照着练，不要长篇理论铺垫。
 - 若学习者提问本身含英语错误，用括号温和指出并给正确写法。`
 
-export function composeAskSystemPrompt(level: string): string {
+export function composeAskSystemPrompt(level: DifficultyLevel): string {
   return `${ASK_SYSTEM_PROMPT}\n学习者当前英语水平约为：${level}。请按此水平调整讲解深度与用词。`
 }
 

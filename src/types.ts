@@ -1,6 +1,20 @@
 import type { ComponentProps, FC } from 'react'
 
-export type DifficultyLevel = 'kindergarten' | 'primary_low' | 'primary_high' | 'junior' | 'senior' | 'college' | 'ielts';
+export const DIFFICULTY_LEVELS = [
+  'kindergarten',
+  'primary_low',
+  'primary_high',
+  'junior',
+  'senior',
+  'college',
+  'ielts',
+] as const
+
+export type DifficultyLevel = typeof DIFFICULTY_LEVELS[number]
+
+export function isDifficultyLevel(value: unknown): value is DifficultyLevel {
+  return typeof value === 'string' && DIFFICULTY_LEVELS.some((level) => level === value)
+}
 
 /** 与本地 `components/Icon` 的图标签名一致（接收 className 的 SVG 组件）。 */
 export type ScenarioIcon = FC<ComponentProps<'svg'>>;

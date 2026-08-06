@@ -126,20 +126,6 @@ function resolveProviderEnv(): ResolvedProviderEnv {
   }
 }
 
-export function loadProviderFromEnv(): Provider {
-  const env = resolveProviderEnv()
-  return createProvider({
-    provider: env.provider,
-    apiKey: env.apiKey,
-    baseUrl: env.baseUrl,
-    chatModel: env.chatModel,
-    analyzeModel: env.analyzeModel,
-    timeoutMs: env.timeoutMs,
-    maxOutputTokens: env.maxOutputTokens,
-    proxyUrl: env.proxyUrl,
-  })
-}
-
 export interface ServerConfig {
   provider: 'openai' | 'anthropic'
   chatModel: string
@@ -154,34 +140,46 @@ export interface ServerConfig {
 }
 
 /**
- * Build the sanitized public server config from environment variables.
+ * Build the provider and its sanitized public config from one validated
+ * environment snapshot.
  *
  * @remarks
- * SECURITY: this function deliberately omits the API key. The returned object
- * is suitable for sending to the browser (e.g. as a `/api/config` endpoint
- * payload) so the client can display the active provider, model and base URL
- * without ever leaking secrets.
+ * SECURITY: the returned provider owns the API key, while `config`
+ * deliberately omits it and is safe to send to the browser. This lets the
+ * client display the active provider, model and base URL without receiving
+ * credentials.
  *
- * NO apiKey. NO apiKeyPreview. NO keyHint. NO anything-key.
+ * `config` contains NO apiKey, apiKeyPreview, keyHint, or anything-key.
  *
- * Delegates to the same env validation as {@link loadProviderFromEnv}: an
- * invalid PROVIDER, missing required env var, or bad REQUEST_TIMEOUT_MS will
- * cause this function to throw — which surfaces to the client as a 5xx and
- * keeps the public config in lockstep with what the server actually uses.
+ * An invalid provider, missing required variable, or bad numeric setting
+ * prevents the server from starting. The config returned to the browser is
+ * therefore guaranteed to describe the provider instance serving requests.
  */
-export function loadServerConfigFromEnv(): ServerConfig {
+export function loadServerRuntimeFromEnv(): { provider: Provider; config: ServerConfig } {
   const env = resolveProviderEnv()
   return {
-    provider: env.provider,
-    chatModel: env.chatModel,
-    analyzeModel: env.analyzeModel,
-    availableModels: env.availableModels,
-    baseUrl: env.baseUrl,
-    requestTimeoutMs: env.timeoutMs,
-    maxOutputTokens: env.maxOutputTokens,
-    maxContextMessages: env.maxContextMessages,
-    fillBlankBatchSize: env.fillBlankBatchSize,
-    fillBlankAttempts: env.fillBlankAttempts,
-    // Deliberately NO apiKey, NO apiKeyPreview, NO keyHint, NO anything-key.
+    provider: createProvider({
+      provider: env.provider,
+      apiKey: env.apiKey,
+      baseUrl: env.baseUrl,
+      chatModel: env.chatModel,
+      analyzeModel: env.analyzeModel,
+      timeoutMs: env.timeoutMs,
+      maxOutputTokens: env.maxOutputTokens,
+      proxyUrl: env.proxyUrl,
+    }),
+    config: {
+      provider: env.provider,
+      chatModel: env.chatModel,
+      analyzeModel: env.analyzeModel,
+      availableModels: env.availableModels,
+      baseUrl: env.baseUrl,
+      requestTimeoutMs: env.timeoutMs,
+      maxOutputTokens: env.maxOutputTokens,
+      maxContextMessages: env.maxContextMessages,
+      fillBlankBatchSize: env.fillBlankBatchSize,
+      fillBlankAttempts: env.fillBlankAttempts,
+      // Deliberately NO apiKey, NO apiKeyPreview, NO keyHint, NO anything-key.
+    },
   }
 }

@@ -2,6 +2,8 @@
 // JSON Schema describing the analyze endpoint output shape.
 // Used by OpenAI response_format.json_schema and Anthropic tools[].input_schema.
 
+import type { DifficultyLevel } from '../src/types'
+
 export const analysisJsonSchema = {
   type: 'object',
   properties: {
@@ -93,7 +95,7 @@ export const analysisSystemPrompt = `
 {SCENARIO_LINE}
 `
 
-export function buildAnalysisUserPrompt(level: string, userMessage: string, assistantMessage: string, scenarioContext?: string): string {
+export function buildAnalysisUserPrompt(level: DifficultyLevel, userMessage: string, assistantMessage: string, scenarioContext?: string): string {
   const scenarioLine = scenarioContext
     ? `\n  NOTE: This conversation is in the context of "${scenarioContext}". Ensure all suggestions and examples fit this scenario naturally.`
     : ''

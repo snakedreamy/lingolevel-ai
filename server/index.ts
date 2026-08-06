@@ -3,7 +3,8 @@ import dotenv from 'dotenv'
 import express from 'express'
 import helmet from 'helmet'
 import path from 'path'
-import { loadProviderFromEnv, loadServerConfigFromEnv } from '../providers'
+import type { ServerConfig } from '../providers'
+import { loadServerRuntimeFromEnv } from '../providers'
 import { loadTtsFromEnv } from '../providers/tts'
 import { errorMessage } from '../providers/util'
 import { buildApiLimiter } from './middleware/apiLimiter'
@@ -21,9 +22,8 @@ function parsePort(raw: string | undefined): number {
   return value
 }
 
-async function createApp(): Promise<express.Express> {
-  const provider = loadProviderFromEnv()
-  const cfg = loadServerConfigFromEnv()
+async function createApp(): Promise<{ app: express.Express; cfg: ServerConfig }> {
+  const { provider, config: cfg } = loadServerRuntimeFromEnv()
   const tts = loadTtsFromEnv()
 
   const app = express()
@@ -53,19 +53,18 @@ async function createApp(): Promise<express.Express> {
     const { createServer: createViteServer } = await import('vite')
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' })
     app.use(vite.middlewares)
-    return app
+    return { app, cfg }
   }
 
   const distPath = path.join(process.cwd(), 'dist')
   app.use('/api', (_req, res) => { res.status(404).json({ error: 'NOT_FOUND' }) })
   app.use(express.static(distPath))
   app.get(/.*/, (_req, res) => { res.sendFile(path.join(distPath, 'index.html')) })
-  return app
+  return { app, cfg }
 }
 
-createApp().then((app) => {
+createApp().then(({ app, cfg }) => {
   const port = parsePort(process.env.PORT)
-  const cfg = loadServerConfigFromEnv()
   console.log(`[boot] provider=${cfg.provider} ready`)
   console.log(`[boot] listening on port ${port}`)
   app.listen(port, '0.0.0.0', () => {

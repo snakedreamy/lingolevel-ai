@@ -6,10 +6,10 @@ import { hasOrphanedUserMessage, removeOldestChatTurn, trimChatSessionToBudget }
 import type { StoredChatSession } from '../lib/chatSessionStorage'
 import { incrementStoredCounter, isStoredRecord, loadStoredJson, saveStoredJson } from '../lib/storage'
 import type { AnalysisHistoryEntry, AnalysisResult, DifficultyLevel, Message, Scenario, ThinkingEffort } from '../types'
+import { isDifficultyLevel } from '../types'
 
 const CHAT_VARIETY_KEY = 'lingolevel_chat_variety'
 const CHAT_SESSION_KEY = 'lingolevel_chat_session_v1'
-const LEVEL_IDS = new Set<DifficultyLevel>(['kindergarten', 'primary_low', 'primary_high', 'junior', 'senior', 'college', 'ielts'])
 
 function isText(value: unknown): value is string {
   return typeof value === 'string'
@@ -59,7 +59,7 @@ function storedAnalysisEntry(value: unknown): AnalysisHistoryEntry | null {
     assistantMessageId: isText(value.assistantMessageId) ? value.assistantMessageId : undefined,
     userMessage: value.userMessage,
     assistantMessage: value.assistantMessage,
-    level: isText(value.level) && LEVEL_IDS.has(value.level as DifficultyLevel) ? value.level as DifficultyLevel : undefined,
+    level: isDifficultyLevel(value.level) ? value.level : undefined,
     scenarioContext: isText(value.scenarioContext) ? value.scenarioContext : undefined,
     analysis: value.analysis,
     createdAt: value.createdAt,

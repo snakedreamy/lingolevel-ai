@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { FillBlankBreakdownItem, FillBlankCard, FillBlankFocus, FillBlankImitationGuide } from '../src/types'
+import type { DifficultyLevel, FillBlankBreakdownItem, FillBlankCard, FillBlankFocus, FillBlankImitationGuide } from '../src/types'
 
 type CardSeed = Omit<FillBlankCard, 'id'>
 
@@ -39,7 +39,7 @@ const IMITATION_REPLACEMENTS: Array<{ en: RegExp; enValue: string; zh: RegExp; z
   { en: /\bproject\b/i, enValue: 'team', zh: /项目/, zhValue: '团队' },
 ]
 
-const LEVEL_GUIDANCE: Record<string, string> = {
+const LEVEL_GUIDANCE: Record<DifficultyLevel, string> = {
   kindergarten: 'ages 3-6; 3-6 words; concrete nouns and simple be/do sentences',
   primary_low: 'primary grades 1-3; 5-9 words; daily vocabulary and simple present/past tense',
   primary_high: 'primary grades 4-6; 8-14 words; conjunctions such as and, but, because',
@@ -72,12 +72,12 @@ const FILL_CONTEXTS = [
 
 export function buildFillBlankPrompt(args: {
   count: number
-  level: string
+  level: DifficultyLevel
   focus: FillBlankFocus
   recentSentences: string[]
   diversitySeed?: number
 }): { systemInstruction: string; userPrompt: string } {
-  const levelGuide = LEVEL_GUIDANCE[args.level] ?? LEVEL_GUIDANCE.junior
+  const levelGuide = LEVEL_GUIDANCE[args.level]
   const diversitySeed = Number.isSafeInteger(args.diversitySeed) ? Math.abs(args.diversitySeed as number) : 0
   const contextPlan = Array.from(
     { length: Math.min(args.count, FILL_CONTEXTS.length) },
@@ -341,7 +341,7 @@ export function normalizeGeneratedCards(raw: unknown, requestedFocus: FillBlankF
   return cards
 }
 
-export function fallbackFillBlankCards(level: string, focus: FillBlankFocus = 'mixed', diversitySeed = 0): FillBlankCard[] {
+export function fallbackFillBlankCards(level: DifficultyLevel, focus: FillBlankFocus = 'mixed', diversitySeed = 0): FillBlankCard[] {
   const bank = level === 'kindergarten' || level === 'primary_low'
     ? BEGINNER_BANK
     : level === 'senior' || level === 'college' || level === 'ielts'

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { generateFillBlank } from '../lib/api'
 import { incrementStoredCounter, isStoredRecord, loadStoredJson, saveStoredJson } from '../lib/storage'
-import { FILL_BLANK_MAX_COUNT, FILL_BLANK_MIN_COUNT } from '../types'
+import { FILL_BLANK_MAX_COUNT, FILL_BLANK_MIN_COUNT, isDifficultyLevel } from '../types'
 import type { DifficultyLevel, FillBlankCard, FillBlankFocus, FillBlankProgress, ThinkingEffort } from '../types'
 
 const HISTORY_KEY = 'lingolevel_fill_blank_history'
@@ -25,7 +25,6 @@ interface StoredFillBlankSession {
   fallbackCount: number
 }
 
-const LEVEL_IDS = new Set<DifficultyLevel>(['kindergarten', 'primary_low', 'primary_high', 'junior', 'senior', 'college', 'ielts'])
 const FOCUS_IDS = new Set<FillBlankFocus>(['mixed', 'vocabulary', 'grammar'])
 const PROGRESS_STATUSES = new Set<FillBlankProgress['status']>(['answering', 'correct', 'revealed'])
 
@@ -75,9 +74,7 @@ export function loadFillBlankSession(defaultLevel: DifficultyLevel): StoredFillB
   const count = typeof value.count === 'number' && Number.isFinite(value.count)
     ? Math.min(FILL_BLANK_MAX_COUNT, Math.max(FILL_BLANK_MIN_COUNT, Math.round(value.count)))
     : empty.count
-  const level = storedText(value.level) && LEVEL_IDS.has(value.level as DifficultyLevel)
-    ? value.level as DifficultyLevel
-    : defaultLevel
+  const level = isDifficultyLevel(value.level) ? value.level : defaultLevel
   const focus = storedText(value.focus) && FOCUS_IDS.has(value.focus as FillBlankFocus)
     ? value.focus as FillBlankFocus
     : empty.focus

@@ -199,7 +199,7 @@ lingolevel-ai/
 
 ## Security
 
-- **API keys are server-only.** The browser only ever talks to our own Express server; the server holds the upstream credentials and forwards requests. `BrowserPrefs` in `src/types.ts` has no `apiKey` field; `loadServerConfigFromEnv()` strips the key before responding to `GET /api/server-config`.
+- **API keys are server-only.** The browser only ever talks to our own Express server; the server holds the upstream credentials and forwards requests. `BrowserPrefs` in `src/types.ts` has no `apiKey` field; `loadServerRuntimeFromEnv()` builds a sanitized config without the key for `GET /api/server-config`.
 - **No request-body redaction is performed by `logRequest`.** The server logs only `provider`, `model`, `status`, `latency`, `retry`, `fallback`, and (on error) `errorMessage(err)` — never the request body, the `Authorization` / `x-api-key` header, or any part of the upstream response. Keep it that way when extending the logger.
 - **Request bodies are capped at 1 MB** at the Express middleware level.
 - **CORS is same-origin only.** The server does not enable `cors()`; it serves both the API and the SPA on the same port.

@@ -1,5 +1,4 @@
 // providers/fallback.ts
-import type { AnalysisResult } from '../src/types'
 import type { ProviderAnalyzeOutput } from './types'
 
 const FALLBACKS_BY_SCENARIO: Record<string, string[]> = {
@@ -46,35 +45,23 @@ export function fallbackChatReply(scenarioId?: string | null, diversitySeed = 0,
   return list[idx]
 }
 
-export function fallbackAnalyzeResult(
-  _userMessage: string,
-  _assistantMessage: string | undefined,
-  _level: string
-): AnalysisResult {
+export function fallbackAnalyzeOutput(): ProviderAnalyzeOutput {
   // Do not invent a correction, score, translation, vocabulary, or follow-up
   // suggestion when the analysis model is unavailable. A fabricated 100/100
   // is actively harmful in a learning product, so the UI presents an explicit
   // "not assessed" state for this deliberately empty payload.
   return {
-    translation: '',
-    grammarCorrections: [],
-    assistantReplyInsight: {
-      structure: '',
-      grammar: '',
-      whyThisReply: '',
+    data: {
+      translation: '',
+      grammarCorrections: [],
+      assistantReplyInsight: {
+        structure: '',
+        grammar: '',
+        whyThisReply: '',
+      },
+      keyWords: [],
+      suggestions: [],
     },
-    keyWords: [],
-    suggestions: [],
-  }
-}
-
-export function fallbackAnalyzeOutput(
-  userMessage: string,
-  assistantMessage: string | undefined,
-  level: string
-): ProviderAnalyzeOutput {
-  return {
-    data: fallbackAnalyzeResult(userMessage, assistantMessage, level),
-    isFallback: true
+    isFallback: true,
   }
 }

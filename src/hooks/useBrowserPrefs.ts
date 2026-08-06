@@ -1,12 +1,10 @@
 // src/hooks/useBrowserPrefs.ts — 浏览器端偏好：等级/场景/模型/输入与发音习惯 + 主题
 import { useEffect, useState } from 'react'
-import { LEVELS } from '../data/levels'
-import type { BrowserPrefs, DifficultyLevel, ThinkingEffort } from '../types'
-import { BROWSER_PREFS_KEY, DEFAULT_BROWSER_PREFS } from '../types'
+import type { BrowserPrefs, ThinkingEffort } from '../types'
+import { BROWSER_PREFS_KEY, DEFAULT_BROWSER_PREFS, isDifficultyLevel } from '../types'
 import { fetchServerConfig, type ServerConfig } from '../lib/api'
 import { loadStoredJson, saveStoredJson } from '../lib/storage'
 
-const VALID_LEVELS = new Set<DifficultyLevel>(LEVELS.map((l) => l.id))
 const VALID_THINKING_EFFORTS = new Set<ThinkingEffort>(['', 'low', 'medium', 'high', 'xhigh', 'max'])
 
 function normalizeBrowserPrefs(value: unknown): Omit<BrowserPrefs, 'theme'> {
@@ -16,8 +14,7 @@ function normalizeBrowserPrefs(value: unknown): Omit<BrowserPrefs, 'theme'> {
   return {
     ...defaults,
     scenarioId: typeof v.scenarioId === 'string' ? v.scenarioId : defaults.scenarioId,
-    level: typeof v.level === 'string' && VALID_LEVELS.has(v.level as DifficultyLevel)
-      ? (v.level as DifficultyLevel) : defaults.level,
+    level: isDifficultyLevel(v.level) ? v.level : defaults.level,
     modelId: typeof v.modelId === 'string' ? v.modelId.trim() : defaults.modelId,
     thinkingEffort: typeof v.thinkingEffort === 'string' && VALID_THINKING_EFFORTS.has(v.thinkingEffort as ThinkingEffort)
       ? (v.thinkingEffort as ThinkingEffort) : defaults.thinkingEffort,

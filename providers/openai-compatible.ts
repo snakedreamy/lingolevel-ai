@@ -299,7 +299,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
       return { data, isFallback: false }
     } catch (err) {
       console.error('[openai.analyze] falling back:', errorMessage(err))
-      return fallbackAnalyzeOutput(input.userMessage, input.assistantMessage, input.level)
+      return fallbackAnalyzeOutput()
     }
   }
 

@@ -1,7 +1,36 @@
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
+import { loadServerRuntimeFromEnv } from './index'
 import { createOpenAIProvider } from './openai-compatible'
+
+const runtimeEnv = {
+  PROVIDER: 'openai',
+  OPENAI_API_KEY: 'test-key',
+  OPENAI_BASE_URL: 'https://example.test/v1',
+  OPENAI_CHAT_MODEL: 'test-chat',
+  OPENAI_ANALYZE_MODEL: 'test-analyze',
+  OPENAI_MODELS: 'test-extra',
+  OPENAI_PROXY: '',
+  REQUEST_TIMEOUT_MS: '5000',
+  MAX_OUTPUT_TOKENS: '100',
+  MAX_CONTEXT_MESSAGES: '12',
+  FILL_BLANK_BATCH_SIZE: '10',
+  FILL_BLANK_ATTEMPTS: '2',
+} as const
+const previousEnv = new Map(Object.keys(runtimeEnv).map((name) => [name, process.env[name]]))
+try {
+  Object.assign(process.env, runtimeEnv)
+  const runtime = loadServerRuntimeFromEnv()
+  assert.equal(runtime.config.provider, 'openai')
+  assert.deepEqual(runtime.config.availableModels, ['test-chat', 'test-analyze', 'test-extra'])
+  assert.equal('apiKey' in runtime.config, false)
+} finally {
+  for (const [name, value] of previousEnv) {
+    if (value === undefined) delete process.env[name]
+    else process.env[name] = value
+  }
+}
 
 let mode: 'normal' | 'done-open' | 'partial-error' | 'partial-error-no-newline' | 'error-first' = 'normal'
 let openResponseClosed: (() => void) | null = null

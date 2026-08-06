@@ -3,7 +3,6 @@ import { Router } from 'express'
 import type { Request, Response } from 'express'
 import type { Provider, ProviderChatInput, ProviderThinkingEffort } from '../providers'
 import type { ServerConfig } from '../providers'
-import { loadServerConfigFromEnv } from '../providers'
 import type { TtsLanguage, TtsProvider } from '../providers/tts'
 import { errorMessage, extractJsonObject } from '../providers/util'
 import {
@@ -19,8 +18,8 @@ import {
   normalizeGeneratedCards,
   selectUniqueCards,
 } from './fillBlank'
-import type { FillBlankFocus } from '../src/types'
-import { FILL_BLANK_MAX_COUNT, FILL_BLANK_MIN_COUNT } from '../src/types'
+import type { DifficultyLevel, FillBlankFocus } from '../src/types'
+import { FILL_BLANK_MAX_COUNT, FILL_BLANK_MIN_COUNT, isDifficultyLevel } from '../src/types'
 import { LESSON_BY_ID } from '../src/data/learningLessons'
 import type { ApplyActivity } from '../src/data/learningLessons'
 import {
@@ -31,7 +30,6 @@ import {
   normalizeLearningEvaluation,
 } from './learningPractice'
 
-const LEVEL_IDS = new Set(['kindergarten', 'primary_low', 'primary_high', 'junior', 'senior', 'college', 'ielts'])
 const THINKING_EFFORTS = new Set<ProviderThinkingEffort>(['low', 'medium', 'high', 'xhigh', 'max'])
 const ASK_CONTEXT_SOURCES = new Set(['chat', 'fill-blank', 'learning'])
 const ASK_FOCUS_TYPES = new Set(['word', 'sentence', 'section'])
@@ -51,8 +49,8 @@ function optionalText(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined
 }
 
-function resolveLevel(value: unknown): string | null {
-  return typeof value === 'string' && LEVEL_IDS.has(value) ? value : null
+function resolveLevel(value: unknown): DifficultyLevel | null {
+  return isDifficultyLevel(value) ? value : null
 }
 
 function resolveScenario(value: unknown): { id: string; name: string; englishName: string; description: string } | null {
@@ -123,14 +121,7 @@ export function createApiRouter(args: {
   const { provider, cfg, ttsProvider, ttsMaxTextChars } = args
   const router = Router()
 
-  // GET /api/server-config (unchanged)
-  router.get('/server-config', (_req, res) => {
-    try {
-      res.json(loadServerConfigFromEnv())
-    } catch (error) {
-      res.status(500).json({ error: 'SERVER_CONFIG_UNAVAILABLE', message: errorMessage(error) })
-    }
-  })
+  router.get('/server-config', (_req, res) => { res.json(cfg) })
 
   // POST /api/tts — provider-neutral speech synthesis.
   router.post('/tts', async (req, res) => {

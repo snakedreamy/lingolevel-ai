@@ -1,3 +1,5 @@
+import type { DifficultyLevel } from '../src/types'
+
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
@@ -37,7 +39,7 @@ export interface ProviderChatStreamOutput {
 export interface ProviderAnalyzeInput {
   userMessage: string
   assistantMessage: string
-  level: string
+  level: DifficultyLevel
   /** Server-validated model selected for this request. */
   model?: string
   /** Optional request-specific reasoning/thinking effort for models that support it. */
