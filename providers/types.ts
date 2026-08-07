@@ -46,6 +46,8 @@ export interface ProviderAnalyzeInput {
   thinkingEffort?: ProviderThinkingEffort
   /** Optional scenario context injected into the analysis prompt (e.g. "Ordering Coffee at Starbucks"). */
   scenarioContext?: string
+  /** Optional abort signal; the provider cancels the upstream analysis when aborted. */
+  signal?: AbortSignal
 }
 
 export interface ProviderAnalyzeOutput {

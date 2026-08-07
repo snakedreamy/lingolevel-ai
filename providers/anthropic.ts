@@ -9,22 +9,13 @@ import { JSON_EXTRACT_HINT, errorMessage, extractJsonObject, looksLikeErrorConte
 import { normalizeAnalysisShape } from './normalize'
 
 const ANTHROPIC_VERSION = '2023-06-01'
-const ANTHROPIC_THINKING_BUDGETS: Record<ProviderThinkingEffort, number> = {
-  low: 1024,
-  medium: 4096,
-  high: 8192,
-  xhigh: 16384,
-  max: 32768,
-}
 
-type AnthropicThinkingConfig = { type: 'enabled'; budget_tokens: number }
+type AnthropicOutputConfig = { effort?: ProviderThinkingEffort }
 
-function anthropicThinking(effort: ProviderThinkingEffort | undefined, maxTokens: number): AnthropicThinkingConfig | undefined {
-  if (!effort || maxTokens <= 1024) return undefined
-  return {
-    type: 'enabled',
-    budget_tokens: Math.min(ANTHROPIC_THINKING_BUDGETS[effort], maxTokens - 1),
-  }
+function anthropicReasoning(effort: ProviderThinkingEffort | undefined, maxTokens: number): { thinking?: { type: 'adaptive' }; output_config?: AnthropicOutputConfig } {
+  return effort && maxTokens > 1024
+    ? { thinking: { type: 'adaptive' }, output_config: { effort } }
+    : {}
 }
 
 export function createAnthropicProvider(cfg: ProviderConfig): Provider {
@@ -124,13 +115,12 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
   }
 
   async function chat(input: ProviderChatInput) {
-    const thinking = anthropicThinking(input.thinkingEffort, cfg.maxOutputTokens)
     const body = {
       model: input.model ?? cfg.chatModel,
       max_tokens: cfg.maxOutputTokens,
       system: input.systemInstruction,
       messages: input.messages,
-      ...(thinking ? { thinking, temperature: 1 } : { temperature: input.temperature ?? 0.7 }),
+      ...anthropicReasoning(input.thinkingEffort, cfg.maxOutputTokens),
     }
     try {
       const text = await callWithRetry(
@@ -150,13 +140,12 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
   }
 
   async function chatStream(input: ProviderChatInput): Promise<ProviderChatStreamOutput> {
-    const thinking = anthropicThinking(input.thinkingEffort, cfg.maxOutputTokens)
     const body = {
       model: input.model ?? cfg.chatModel,
       max_tokens: cfg.maxOutputTokens,
       system: input.systemInstruction,
       messages: input.messages,
-      ...(thinking ? { thinking, temperature: 1 } : { temperature: input.temperature ?? 0.7 }),
+      ...anthropicReasoning(input.thinkingEffort, cfg.maxOutputTokens),
     }
     const output: ProviderChatStreamOutput = {
       stream: undefined as never,
@@ -189,7 +178,6 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
   }
 
   async function analyzeJSON(input: ProviderAnalyzeInput) {
-    const thinking = anthropicThinking(input.thinkingEffort, cfg.maxOutputTokens)
     const body = {
       model: input.model ?? cfg.analyzeModel,
       max_tokens: cfg.maxOutputTokens,
@@ -197,12 +185,12 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
       messages: [
         { role: 'user', content: buildAnalysisUserPrompt(input.level, input.userMessage, input.assistantMessage, input.scenarioContext) + JSON_EXTRACT_HINT }
       ],
-      ...(thinking ? { thinking, temperature: 1 } : {}),
+      ...anthropicReasoning(input.thinkingEffort, cfg.maxOutputTokens),
     }
     try {
       const text = await callWithRetry(
         (signal) => runCompletion(body, signal, parseAnalyzeText),
-        { timeoutMs: cfg.timeoutMs }
+        { timeoutMs: cfg.timeoutMs, signal: input.signal }
       )
       let parsed: unknown
       try {
@@ -221,6 +209,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
       }
       return { data, isFallback: false }
     } catch (err) {
+      if (input.signal?.aborted) throw err
       console.error('[anthropic.analyze] falling back:', errorMessage(err))
       return fallbackAnalyzeOutput()
     }

@@ -285,9 +285,9 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
             throw new Error(`OpenAI analyze returned non-JSON content: no parseable json found: ${errorMessage(err)}`)
           }
         },
-        { timeoutMs: cfg.timeoutMs }
+        { timeoutMs: cfg.timeoutMs, signal: input.signal }
       )
-      
+
       const { data, coerced } = normalizeAnalysisShape(
         text,
         input.userMessage,
@@ -298,6 +298,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
       }
       return { data, isFallback: false }
     } catch (err) {
+      if (input.signal?.aborted) throw err
       console.error('[openai.analyze] falling back:', errorMessage(err))
       return fallbackAnalyzeOutput()
     }

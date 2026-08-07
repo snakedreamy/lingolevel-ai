@@ -20,9 +20,17 @@ interface MimoTtsResponse {
 
 function styleInstruction(language: TtsLanguage, speed: number): string {
   const locale = language === 'zh-CN'
-    ? '普通话中文'
-    : language === 'en-US' ? '美式英语' : '英式英语'
-  return `请使用自然、清晰的${locale}朗读，语速约为正常语速的 ${speed.toFixed(1)} 倍。`
+    ? '标准普通话'
+    : language === 'en-US' ? '自然美式英语' : '自然英式英语'
+  const learningTone = language === 'zh-CN'
+    ? '像耐心老师朗读中文提示：清楚、温和，不夸张表演。'
+    : '像英语跟读材料：发音清晰，重音和连读自然，句尾语调符合真实交流。'
+  return [
+    `请只朗读用户提供的文本，不添加解释、标题、提示音或额外句子。`,
+    `语言风格：${locale}。${learningTone}`,
+    `速度：约为正常语速的 ${speed.toFixed(1)} 倍；保持可跟读，不要为了速度吞音。`,
+    `保留文本原有停顿和标点；遇到缩写、数字和专有名词时按该语言的常见读法自然处理。`,
+  ].join('\n')
 }
 
 function readAudioData(value: unknown): string | null {

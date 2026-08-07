@@ -28,6 +28,7 @@ import {
   learningLessonForConcept,
   normalizeLearningActivities,
   normalizeLearningEvaluation,
+  staticLearningActivities,
 } from './learningPractice'
 
 const THINKING_EFFORTS = new Set<ProviderThinkingEffort>(['low', 'medium', 'high', 'xhigh', 'max'])
@@ -248,6 +249,7 @@ export function createApiRouter(args: {
     const thinkingEffort = resolveThinkingEffort(req.body?.thinkingEffort)
     const normalizedScenarioContext = optionalText(scenarioContext)
     try {
+      const abortController = abortWhenClientDisconnects(req, res)
       const { data, isFallback } = await provider.analyzeJSON({
         userMessage: normalizedUserMessage ?? '',
         assistantMessage: normalizedAssistantMessage ?? '',
@@ -255,10 +257,13 @@ export function createApiRouter(args: {
         model,
         thinkingEffort,
         scenarioContext: normalizedScenarioContext,
+        signal: abortController.signal,
       })
+      if (abortController.signal.aborted) return
       logRequest({ endpoint: 'analyze', provider: cfg.provider, model, status: 200, latencyMs: Date.now() - start, fallback: !!isFallback })
       res.json({ ...(typeof data === 'object' && data !== null ? data : {}), isFallback: !!isFallback })
     } catch (error) {
+      if (req.aborted || res.destroyed) return
       logRequest({ endpoint: 'analyze', provider: cfg.provider, model, status: 500, latencyMs: Date.now() - start, retry: 3, fallback: true, errorMsg: errorMessage(error) })
       res.status(500).json({ error: 'ANALYZE_FAILED' })
     }
@@ -398,12 +403,14 @@ export function createApiRouter(args: {
           }
         } catch { /* retry malformed structured output */ }
       }
-      logRequest({ endpoint: 'learning-practice', provider: cfg.provider, model, status: 503, latencyMs: Date.now() - start, retry: 1, fallback: true })
-      return res.status(503).json({ error: 'LEARNING_PRACTICE_GENERATION_FAILED' })
+      const activities = staticLearningActivities(lesson)
+      logRequest({ endpoint: 'learning-practice', provider: cfg.provider, model, status: 200, latencyMs: Date.now() - start, retry: 1, fallback: true })
+      return res.json({ activities, isFallback: true })
     } catch (error) {
       if (abortController.signal.aborted) return
-      logRequest({ endpoint: 'learning-practice', provider: cfg.provider, model, status: 500, latencyMs: Date.now() - start, errorMsg: errorMessage(error) })
-      return res.status(500).json({ error: 'LEARNING_PRACTICE_GENERATION_FAILED' })
+      const activities = staticLearningActivities(lesson)
+      logRequest({ endpoint: 'learning-practice', provider: cfg.provider, model, status: 200, latencyMs: Date.now() - start, fallback: true, errorMsg: errorMessage(error) })
+      return res.json({ activities, isFallback: true })
     }
   })
 

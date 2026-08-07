@@ -319,10 +319,11 @@ function LessonPlayer({ lesson, modelId, thinkingEffort, ask, onClose, onFinish,
         thinkingEffort: thinkingEffort || undefined,
       }, controller.signal)
       if (response.activities.length !== DIMENSIONS.length) throw new Error('INCOMPLETE_PRACTICE')
-      savePracticeHistory(lesson.conceptId, response.activities.map((item) => item.prompt))
+      if (!response.isFallback) savePracticeHistory(lesson.conceptId, response.activities.map((item) => item.prompt))
       setActivities(response.activities)
       setResults({})
       setActivityIndex(0)
+      setGenerationError(response.isFallback ? 'AI 暂时没有生成出新练习，已切换到本课固定校验题；你仍可正常完成练习。' : null)
       if (enterWhenReady) setPhase('practice')
     } catch {
       if (!controller.signal.aborted) setGenerationError('AI 暂时没有生成出经过结构校验的新练习，请重试。课程讲解仍可正常阅读。')
@@ -334,7 +335,7 @@ function LessonPlayer({ lesson, modelId, thinkingEffort, ask, onClose, onFinish,
   useEffect(() => {
     void preparePractice(false)
     return () => generationControllerRef.current?.abort()
-  }, [lesson.id, modelId, thinkingEffort])
+  }, [lesson.id])
   useEffect(() => {
     if (phase !== 'practice') onPageContextChange(lessonPageContext)
   }, [lessonPageContext, onPageContextChange, phase])

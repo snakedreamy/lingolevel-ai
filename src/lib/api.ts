@@ -158,13 +158,13 @@ export async function generateLearningPractice(request: {
   diversitySeed: number
   model?: string
   thinkingEffort?: Exclude<ThinkingEffort, ''>
-}, signal?: AbortSignal): Promise<{ activities: LearningActivity[] }> {
+}, signal?: AbortSignal): Promise<{ activities: LearningActivity[]; isFallback?: boolean }> {
   const response = await fetch('/api/learning-practice', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request), signal,
   })
   if (!response.ok) throw new Error('LEARNING_PRACTICE_GENERATION_FAILED')
-  return (await response.json()) as { activities: LearningActivity[] }
+  return (await response.json()) as { activities: LearningActivity[]; isFallback?: boolean }
 }
 
 export interface LearningEvaluationResult {

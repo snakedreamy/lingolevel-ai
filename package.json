@@ -14,7 +14,7 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "test": "npm run validate:data && npm run test:providers && npm run test:storage && npm run test:fill-blank && npm run test:tts",
-    "validate:data": "tsx src/data/learningData.selftest.ts",
+    "validate:data": "tsx src/data/learningData.selftest.ts && tsx server/learningPractice.selftest.ts",
     "test:providers": "tsx providers/openai-compatible.selftest.ts",
     "test:storage": "tsx src/lib/chatSessionStorage.selftest.ts",
     "test:fill-blank": "tsx server/fillBlank.selftest.ts && tsx src/hooks/useFillBlankPractice.selftest.ts",

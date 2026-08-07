@@ -7,7 +7,7 @@ import type { ServerConfig } from '../providers'
 import { loadServerRuntimeFromEnv } from '../providers'
 import { loadTtsFromEnv } from '../providers/tts'
 import { errorMessage } from '../providers/util'
-import { buildApiLimiter } from './middleware/apiLimiter'
+import { buildApiLimiter, buildTtsLimiter } from './middleware/apiLimiter'
 import { createApiRouter } from './routes'
 
 // Local development overrides the generic .env file, matching the documented
@@ -32,6 +32,7 @@ async function createApp(): Promise<{ app: express.Express; cfg: ServerConfig }>
   // X-Forwarded-For instead of seeing the proxy's address.
   app.set('trust proxy', 1)
   const apiLimiter = buildApiLimiter()
+  const ttsLimiter = buildTtsLimiter()
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-origin' }, contentSecurityPolicy: false }))
   app.use(express.json({ limit: '1mb' }))
@@ -41,7 +42,7 @@ async function createApp(): Promise<{ app: express.Express; cfg: ServerConfig }>
   app.post('/api/fill-blank', apiLimiter)
   app.post('/api/learning-practice', apiLimiter)
   app.post('/api/learning-evaluate', apiLimiter)
-  app.post('/api/tts', apiLimiter)
+  app.post('/api/tts', ttsLimiter)
   app.use('/api', createApiRouter({
     provider,
     cfg,

@@ -72,7 +72,7 @@ try {
   assert.deepEqual(receivedBody, {
     model: 'mimo-v2.5-tts',
     messages: [
-      { role: 'user', content: '请使用自然、清晰的美式英语朗读，语速约为正常语速的 1.2 倍。' },
+      { role: 'user', content: '请只朗读用户提供的文本，不添加解释、标题、提示音或额外句子。\n语言风格：自然美式英语。像英语跟读材料：发音清晰，重音和连读自然，句尾语调符合真实交流。\n速度：约为正常语速的 1.2 倍；保持可跟读，不要为了速度吞音。\n保留文本原有停顿和标点；遇到缩写、数字和专有名词时按该语言的常见读法自然处理。' },
       { role: 'assistant', content: 'Hello' },
     ],
     audio: { format: 'wav', voice: 'Mia' },

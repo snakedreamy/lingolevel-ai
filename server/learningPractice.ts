@@ -51,6 +51,10 @@ Return {"activities":[...]} with four new tasks. Do not copy or lightly reword A
   }
 }
 
+export function staticLearningActivities(lesson: LearningLesson): LearningActivity[] {
+  return structuredClone(lesson.activities)
+}
+
 export function normalizeLearningActivities(value: unknown, args: {
   conceptId: string
   diversitySeed: number
