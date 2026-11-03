@@ -33,19 +33,64 @@ export async function callWithRetry<T>(
       lastErr = err
       if (opts.signal?.aborted) throw err
       if (!isTransient(err) || i === retries - 1) break
-      const delayMs = Math.min(initialDelay * 2 ** i, 8000)
-      console.warn(`[retry] attempt ${i + 1}/${retries} failed, backing off ${delayMs}ms`)
-      await delay(delayMs, undefined, { signal: opts.signal })
+      await waitBeforeRetry(i, retries, initialDelay, opts.signal)
     } finally {
       clearTimeout(timer)
     }
   }
-  const wrapped = new Error(
-    `[retry] exhausted after ${attempts} attempt(s)`
-  ) as Error & { cause?: unknown; attempts: number }
-  wrapped.cause = lastErr
-  wrapped.attempts = attempts
-  throw wrapped
+  throw exhaustedError(lastErr, attempts)
+}
+
+/** 超时覆盖整个迭代；输出正文后绝不重试，以免重放或混合不同回答。 */
+export async function* streamWithRetry(
+  fn: (signal: AbortSignal) => AsyncIterable<string>,
+  opts: RetryOptions = {},
+): AsyncGenerator<string> {
+  const retries = opts.retries ?? 3
+  const initialDelay = opts.initialDelayMs ?? 1000
+  const timeoutMs = opts.timeoutMs ?? 30000
+  let lastErr: unknown
+  let attempts = 0
+  let emitted = false
+
+  for (let i = 0; i < retries; i++) {
+    opts.signal?.throwIfAborted()
+    attempts = i + 1
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    const signal = opts.signal
+      ? AbortSignal.any([controller.signal, opts.signal])
+      : controller.signal
+    try {
+      for await (const delta of fn(signal)) {
+        signal.throwIfAborted()
+        if (!delta) continue
+        emitted = true
+        yield delta
+      }
+      signal.throwIfAborted()
+      if (!emitted) throw new Error('Stream returned empty content')
+      return
+    } catch (err) {
+      if (opts.signal?.aborted || emitted) throw err
+      lastErr = err
+      if (!isTransient(err) || i === retries - 1) break
+    } finally {
+      clearTimeout(timer)
+    }
+    await waitBeforeRetry(i, retries, initialDelay, opts.signal)
+  }
+  throw exhaustedError(lastErr, attempts)
+}
+
+function exhaustedError(cause: unknown, attempts: number): Error {
+  return Object.assign(new Error(`[retry] exhausted after ${attempts} attempt(s)`), { cause, attempts })
+}
+
+async function waitBeforeRetry(attempt: number, retries: number, initialDelay: number, signal?: AbortSignal): Promise<void> {
+  const delayMs = Math.min(initialDelay * 2 ** attempt, 8000)
+  console.warn(`[retry] attempt ${attempt + 1}/${retries} failed, backing off ${delayMs}ms`)
+  await delay(delayMs, undefined, { signal })
 }
 
 function isTransient(err: unknown): boolean {

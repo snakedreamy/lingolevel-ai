@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Send, RotateCcw, X } from './Icon'
 import type { AskContext, AskMessage } from '../types'
 import { renderMarkdown } from '../lib/markdown'
+import { isComposingKeyEvent } from '../lib/keyboard'
 import { SideDrawer, useSpeech } from './ui'
 import SpeechButton from './SpeechButton'
 
@@ -94,6 +95,7 @@ export default function AskAssistant({ isOpen, onClose, messages, isLoading, ini
         <div className="flex gap-2">
           <textarea rows={1} value={question} onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={(e) => {
+              if (isComposingKeyEvent(e.nativeEvent)) return
               const isSendCombo = sendOnCtrlEnter ? (e.ctrlKey || e.metaKey) : !e.shiftKey
               if (e.key === 'Enter' && isSendCombo) { e.preventDefault(); submit() }
             }}

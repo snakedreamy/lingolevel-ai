@@ -7,7 +7,7 @@ import type { ServerConfig } from '../providers'
 import { loadServerRuntimeFromEnv } from '../providers'
 import { loadTtsFromEnv } from '../providers/tts'
 import { errorMessage } from '../providers/util'
-import { buildApiLimiter, buildTtsLimiter } from './middleware/apiLimiter'
+import { buildApiLimiter, buildTtsLimiter, configureTrustProxy } from './middleware/apiLimiter'
 import { createApiRouter } from './routes'
 
 // Local development overrides the generic .env file, matching the documented
@@ -27,10 +27,7 @@ async function createApp(): Promise<{ app: express.Express; cfg: ServerConfig }>
   const tts = loadTtsFromEnv()
 
   const app = express()
-  // Trust the immediate upstream reverse proxy (Nginx / Caddy / Traefik).
-  // Required for express-rate-limit to read the real client IP from
-  // X-Forwarded-For instead of seeing the proxy's address.
-  app.set('trust proxy', 1)
+  configureTrustProxy(app, process.env.TRUST_PROXY)
   const apiLimiter = buildApiLimiter()
   const ttsLimiter = buildTtsLimiter()
 

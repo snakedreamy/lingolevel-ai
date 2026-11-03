@@ -265,7 +265,8 @@ function ActivityPlayer({ activity, conceptId, lesson, modelId, thinkingEffort, 
   </div>
 }
 
-function LessonPlayer({ lesson, modelId, thinkingEffort, ask, onClose, onFinish, onPageContextChange }: {
+function LessonPlayer({ lesson, modelId, thinkingEffort, ask, onClose, onFinish, onPageContextChange, persistenceWarning }: {
+  persistenceWarning: string | null
   lesson: LearningLesson
   modelId: string
   thinkingEffort: ThinkingEffort
@@ -341,6 +342,7 @@ function LessonPlayer({ lesson, modelId, thinkingEffort, ask, onClose, onFinish,
   }, [lessonPageContext, onPageContextChange, phase])
   return <div className="flex h-full min-h-0 flex-col bg-surface">
     <header className="flex shrink-0 items-center gap-3 border-b ui-rule px-4 py-3 sm:px-6"><button type="button" onClick={onClose} className="cursor-pointer rounded-md p-2 ui-text-muted hover:bg-muted-bg" aria-label="返回课程"><ArrowLeft className="h-4 w-4" /></button><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{lessonConcept && <span className="margin-code mr-2">{conceptCode(lessonConcept)}</span>}{lesson.title}</p><p className="margin-code mt-0.5">{phase === 'learn' ? '学习内容' : phase === 'practice' ? `AI 引导练习 ${activityIndex + 1} / ${activities.length}` : '本课结果'}</p></div><span className="flex items-center gap-1 text-[10px] ui-text-faint"><Clock3 className="h-3.5 w-3.5" />约 {lesson.estimatedMinutes} 分钟</span></header>
+    {persistenceWarning && <p role="alert" className="ui-danger-soft shrink-0 border-b px-4 py-2 text-xs leading-5 sm:px-6">{persistenceWarning}</p>}
     <div className="ui-scroll min-h-0 flex-1 overflow-y-auto">
       {phase === 'learn' && <article className="mx-auto max-w-3xl px-4 py-7 sm:px-8 sm:py-10"><p className="margin-code">本课目标</p><h2 className="mt-2 font-display text-2xl font-semibold leading-tight">{lesson.objective}</h2>{prerequisiteTitles.length > 0 && <p className="mt-3 text-[11px] ui-text-faint">前置知识：{prerequisiteTitles.join(' · ')}</p>}
         {lessonConcept && <details className="mt-5 rounded-md border ui-rule px-4 py-3"><summary className="cursor-pointer text-xs font-bold ui-text-muted">查看掌握标准</summary><div className="mt-3 grid gap-3 sm:grid-cols-2">{DIMENSIONS.map((item) => <div key={item.id}><p className="margin-code margin-code--accent">{item.label}</p><p className="mt-1 text-[11px] leading-5 ui-text-muted">{lessonConcept.mastery[item.id]}</p></div>)}</div></details>}
@@ -440,13 +442,16 @@ export default function SystemLearning({ modelId, thinkingEffort, ask, onPageCon
       .catch(() => setCourseLoadError(true))
       .finally(() => setLoadingConceptId(null))
   }
-  if (activeLesson) return <LessonPlayer lesson={activeLesson} modelId={modelId} thinkingEffort={thinkingEffort} ask={ask} onPageContextChange={onPageContextChange} onClose={() => setActiveLesson(null)} onFinish={(scores) => learning.completeLesson(activeLesson.conceptId, scores)} />
+  if (activeLesson) return <LessonPlayer lesson={activeLesson} modelId={modelId} thinkingEffort={thinkingEffort} ask={ask} onPageContextChange={onPageContextChange} onClose={() => setActiveLesson(null)} onFinish={(scores) => learning.completeLesson(activeLesson.conceptId, scores)} persistenceWarning={learning.persistenceWarning} />
   return <div className="ui-surface relative flex h-full min-h-0 flex-col overflow-hidden lg:flex-row">
     <LearningSidebar view={view} setView={setView} dueCount={learning.dueReviews.length} />
-    <div className="min-h-0 flex-1 overflow-hidden">
-      {view === 'home' && <div className="ui-scroll h-full overflow-y-auto"><HomeView getProgress={learning.getProgress} suggestedId={learning.suggestedConceptId} onOpenConcept={openConcept} setView={setView} /></div>}
-      {view === 'routes' && <RoutesView selectedRouteId={learning.selectedRouteId} setSelectedRouteId={learning.setSelectedRouteId} getProgress={learning.getProgress} onOpenConcept={openConcept} />}
-      {view === 'review' && <ReviewView dueReviews={learning.dueReviews} getProgress={learning.getProgress} onOpenConcept={openConcept} />}
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      {learning.persistenceWarning && <p role="alert" className="ui-danger-soft shrink-0 border-b px-4 py-2 text-xs leading-5 sm:px-6">{learning.persistenceWarning}</p>}
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {view === 'home' && <div className="ui-scroll h-full overflow-y-auto"><HomeView getProgress={learning.getProgress} suggestedId={learning.suggestedConceptId} onOpenConcept={openConcept} setView={setView} /></div>}
+        {view === 'routes' && <RoutesView selectedRouteId={learning.selectedRouteId} setSelectedRouteId={learning.setSelectedRouteId} getProgress={learning.getProgress} onOpenConcept={openConcept} />}
+        {view === 'review' && <ReviewView dueReviews={learning.dueReviews} getProgress={learning.getProgress} onOpenConcept={openConcept} />}
+      </div>
     </div>
     {loadingConceptId && <div role="status" aria-live="polite" className="absolute inset-0 z-30 flex items-center justify-center bg-surface/70 backdrop-blur-sm"><span className="ui-surface px-4 py-3 text-xs font-bold ui-text-muted shadow-lg">正在打开课程…</span></div>}
     {courseLoadError && <div role="alert" className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-md border ui-danger-soft px-4 py-3 text-xs shadow-lg"><span>课程内容加载失败，请检查网络后重试。</span><button type="button" onClick={() => setCourseLoadError(false)} className="cursor-pointer font-bold">关闭</button></div>}

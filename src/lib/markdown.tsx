@@ -5,6 +5,8 @@
 // 不引入第三方依赖；流式增量时未闭合的标记会被当作普通文本显示，下一帧自动修正。
 import React from 'react'
 
+const CODE_FENCE = /^```(\S*)/
+
 type Block =
   | { type: 'code'; lang: string; content: string }
   | { type: 'heading'; level: number; content: string }
@@ -26,13 +28,13 @@ function parseBlocks(text: string): Block[] {
     if (!line.trim()) { i++; continue }
 
     // 代码块 ```
-    const fence = line.match(/^```(\w*)\s*$/)
+    const fence = line.match(CODE_FENCE)
     if (fence) {
       const lang = fence[1] ?? ''
       const code: string[] = []
       i++
       while (i < lines.length && !/^```\s*$/.test(lines[i])) { code.push(lines[i]); i++ }
-      i++ // 跳过闭合 ```
+      if (i < lines.length) i++ // 跳过闭合 ```；未闭合时保留全部正文
       blocks.push({ type: 'code', lang, content: code.join('\n') })
       continue
     }
@@ -90,7 +92,7 @@ function parseBlocks(text: string): Block[] {
     while (
       i < lines.length &&
       lines[i].trim() &&
-      !/^```/.test(lines[i]) &&
+      !CODE_FENCE.test(lines[i]) &&
       !/^\s*([-*_])\1{2,}\s*$/.test(lines[i]) &&
       !/^(#{1,3})\s+/.test(lines[i]) &&
       !/^>\s?/.test(lines[i]) &&
