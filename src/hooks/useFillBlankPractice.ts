@@ -137,6 +137,7 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; modelId: st
   const [progress, setProgress] = useState<Record<string, FillBlankProgress>>(initialSession.progress)
   const [currentIndex, setCurrentIndex] = useState(initialSession.currentIndex)
   const [error, setError] = useState<string | null>(null)
+  const [persistenceWarning, setPersistenceWarning] = useState<string | null>(null)
   const [isFallback, setIsFallback] = useState(initialSession.isFallback)
   const [fallbackCount, setFallbackCount] = useState(initialSession.fallbackCount)
   const controllerRef = useRef<AbortController | null>(null)
@@ -144,7 +145,7 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; modelId: st
   useEffect(() => () => controllerRef.current?.abort(), [])
   useEffect(() => {
     if (phase === 'loading') return
-    saveStoredJson<StoredFillBlankSession>(SESSION_KEY, {
+    const saved = saveStoredJson<StoredFillBlankSession>(SESSION_KEY, {
       version: 1,
       phase,
       level: phase === 'setup' ? level : practiceLevel,
@@ -156,6 +157,7 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; modelId: st
       isFallback,
       fallbackCount,
     })
+    setPersistenceWarning(saved ? null : '浏览器无法保存填词练习，刷新页面后本次进度可能丢失。')
   }, [cards, count, currentIndex, fallbackCount, focus, isFallback, level, phase, practiceLevel, progress])
 
   const setCount = useCallback((next: number) => {
@@ -277,7 +279,7 @@ export function useFillBlankPractice(args: { level: DifficultyLevel; modelId: st
 
   return {
     phase, count, setCount, focus, setFocus, cards, progress, currentCard, currentProgress,
-    currentIndex, practiceLevel, error, isFallback, fallbackCount, stats,
+    currentIndex, practiceLevel, error, persistenceWarning, isFallback, fallbackCount, stats,
     start, updateInput, submit, reveal, next, goTo, resetToSetup,
   }
 }

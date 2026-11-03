@@ -46,6 +46,7 @@ Other useful runtime knobs in `.env.local`:
 - `FILL_BLANK_BATCH_SIZE` / `FILL_BLANK_ATTEMPTS` — fill-blank batching and structured-output validation attempts; these do not limit model capacity
 - `OPENAI_MODELS` / `ANTHROPIC_MODELS` — comma-separated server allowlist shown in the web model selector; chat and analyze defaults are always included
 - `TTS_PROVIDER` / `TTS_MAX_TEXT_CHARS` / `TTS_TIMEOUT_MS` — optional server-side speech fallback and its request limits
+- `TRUST_PROXY` — 默认留空，不信任代理。使用反向代理时，填写实际可信代理的 IP/CIDR 列表，以逗号分隔；本机代理可用 `127.0.0.1,::1`。不接受布尔字符串、代理跳数或 `loopback`/`linklocal`/`uniquelocal` 等别名，也不会自动信任私网。应让代理覆盖转发头，并限制非预期的服务端口直连。未配置时，代理后的用户会共享代理 IP 的限流额度。
 
 The server prints its URL on startup (default `http://localhost:59100`).
 
@@ -81,6 +82,7 @@ If you point `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL` at a third-party proxy or 
   `POST /chat/completions` (OpenAI) and `POST /v1/messages` (Anthropic). A
   proxy that returns a different JSON shape, a wrapped envelope, or HTML will
   trigger our fallback path and you'll see "AI 暂不可用" instead of a real reply.
+- **Anthropic 请求拒绝重定向。** 请将 `ANTHROPIC_BASE_URL` 设置为最终 API 地址，而非会跳转到其他主机或路径的地址。
 - **The proxy must validate the API key you send it.** Some proxies accept
   *any* key, substitute their own upstream key, and quietly rewrite
   responses. This app intentionally rejects responses that don't match the

@@ -89,8 +89,12 @@ function emptyProgress(conceptId: string): ConceptLearningProgress {
 
 export function useSystemLearning() {
   const [state, setState] = useState<StoredLearningState>(loadState)
+  const [persistenceWarning, setPersistenceWarning] = useState<string | null>(null)
 
-  useEffect(() => { saveStoredJson(STORAGE_KEY, state) }, [state])
+  useEffect(() => {
+    const saved = saveStoredJson(STORAGE_KEY, state)
+    setPersistenceWarning(saved ? null : '浏览器无法保存学习进度，刷新页面后本次进度可能丢失。')
+  }, [state])
 
   const update = useCallback((recipe: (current: StoredLearningState) => StoredLearningState) => {
     setState((current) => recipe(current))
@@ -159,6 +163,7 @@ export function useSystemLearning() {
   return {
     selectedRouteId: state.selectedRouteId,
     progress: state.progress,
+    persistenceWarning,
     dueReviews,
     suggestedConceptId,
     setSelectedRouteId,

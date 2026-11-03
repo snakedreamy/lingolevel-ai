@@ -2,7 +2,7 @@
 import type {
   Provider, ProviderConfig, ProviderChatInput, ProviderChatStreamOutput, ProviderAnalyzeInput, ProviderThinkingEffort
 } from './types'
-import { callWithRetry } from './retry'
+import { callWithRetry, streamWithRetry } from './retry'
 import { fetchViaProxy } from './proxy'
 import { fallbackChatReply, fallbackAnalyzeOutput } from './fallback'
 import { analysisJsonSchema, buildAnalysisUserPrompt } from './schema'
@@ -30,7 +30,7 @@ function parseOpenAISseData(data: string): OpenAISseResult {
   if (typeof parsed !== 'object' || parsed === null) return { done: false }
 
   const payload = parsed as {
-    choices?: Array<{ delta?: { content?: unknown } }>
+    choices?: Array<{ delta?: { content?: unknown }; finish_reason?: unknown }>
     error?: { message?: unknown; type?: unknown; code?: unknown }
   }
   if (payload.error) {
@@ -46,8 +46,12 @@ function parseOpenAISseData(data: string): OpenAISseResult {
     throw error
   }
 
-  const delta = payload.choices?.[0]?.delta?.content
-  return { done: false, delta: typeof delta === 'string' && delta ? delta : undefined }
+  const choice = payload.choices?.[0]
+  const delta = choice?.delta?.content
+  return {
+    done: typeof choice?.finish_reason === 'string' && choice.finish_reason.trim().length > 0,
+    delta: typeof delta === 'string' && delta ? delta : undefined,
+  }
 }
 
 export function createOpenAIProvider(cfg: ProviderConfig): Provider {
@@ -106,6 +110,7 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
         }
         buffer += decoder.decode()
         if (!completed && buffer.trim()) consumeLine(buffer)
+        if (!completed) throw new Error(`OpenAI ${label} stream closed before completion`)
       } finally {
         await reader.cancel().catch(() => undefined)
       }
@@ -165,16 +170,17 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
         buffer = lines.pop() ?? ''
         for (const line of lines) {
           const result = consumeLine(line)
-          if (result?.done) return
           if (result?.delta) yield result.delta
+          if (result?.done) return
         }
       }
       buffer += decoder.decode()
       if (buffer.trim()) {
         const result = consumeLine(buffer)
-        if (result?.done) return
         if (result?.delta) yield result.delta
+        if (result?.done) return
       }
+      throw new Error(`OpenAI ${label} stream closed before completion`)
     } finally {
       await reader.cancel().catch(() => undefined)
     }
@@ -228,19 +234,15 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
       isFallback: false,
     }
     output.stream = (async function* () {
-      const timeoutController = new AbortController()
-      const timer = setTimeout(() => timeoutController.abort(), cfg.timeoutMs)
-      const combined = input.signal
-        ? AbortSignal.any([timeoutController.signal, input.signal])
-        : timeoutController.signal
       let emitted = false
-
       try {
-        for await (const delta of runCompletionStream('chat', body, combined)) {
+        for await (const delta of streamWithRetry(
+          (signal) => runCompletionStream('chat', body, signal),
+          { timeoutMs: cfg.timeoutMs, retries: input.maxAttempts, signal: input.signal },
+        )) {
           emitted = true
           yield { delta }
         }
-        if (!emitted) throw new Error('OpenAI chat stream returned empty content')
       } catch (err) {
         // A real client disconnect should stop work silently. Before the first
         // token, other failures can still be replaced by a coherent fallback.
@@ -250,8 +252,6 @@ export function createOpenAIProvider(cfg: ProviderConfig): Provider {
         console.error('[openai.chatStream] falling back:', errorMessage(err))
         output.isFallback = true
         yield { delta: fallbackChatReply(input.scenarioId, input.diversitySeed, input.messages.length) }
-      } finally {
-        clearTimeout(timer)
       }
     })()
     return output

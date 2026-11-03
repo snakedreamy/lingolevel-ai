@@ -80,15 +80,29 @@ assert.equal(impossible.fits, false)
 assert.deepEqual(impossible.session.messages.map((message) => message.id), ['starter', 'user-3', 'assistant-3'])
 assert.deepEqual(impossible.session.analysisHistory.map((entry) => entry.id), ['analysis-3'])
 
+let storedSnapshot = JSON.stringify({ ok: 'previous' })
+let storageFailure: string | null = null
 Object.defineProperty(globalThis, 'window', {
   configurable: true,
-  value: { localStorage: { setItem: () => { throw new DOMException('blocked', 'SecurityError') } } },
+  value: {
+    localStorage: {
+      setItem: (_key: string, value: string) => {
+        if (storageFailure) throw new DOMException('Cannot save', storageFailure)
+        storedSnapshot = value
+      },
+    },
+  },
 })
-assert.equal(saveStoredJson('test', { ok: true }), false)
-Object.defineProperty(globalThis, 'window', {
-  configurable: true,
-  value: { localStorage: { setItem: () => undefined } },
-})
-assert.equal(saveStoredJson('test', { ok: true }), true)
+for (const failure of ['SecurityError', 'QuotaExceededError']) {
+  const previous = storedSnapshot
+  const current = { ok: failure }
+  storageFailure = failure
+  assert.equal(saveStoredJson('test', current), false)
+  assert.equal(storedSnapshot, previous, 'A failed save must preserve the previous snapshot')
+  assert.deepEqual(current, { ok: failure }, 'A failed save must not change in-memory state')
+  storageFailure = null
+  assert.equal(saveStoredJson('test', current), true)
+  assert.equal(storedSnapshot, JSON.stringify(current), 'A later save must work after recovery')
+}
 
 console.log('Chat session storage self-test OK')

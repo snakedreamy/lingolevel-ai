@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { BookOpen, Languages, Copy, Send, Mic, MicOff, RefreshCw, HelpCircle } from './Icon'
 import type { Message, Scenario } from '../types'
 import { createSpeechRecognition, type SpeechRecognition } from '../lib/speech'
+import { isComposingKeyEvent } from '../lib/keyboard'
 import { useSpeech } from './ui'
 import SpeechButton from './SpeechButton'
 
@@ -302,6 +303,7 @@ export default function ChatWindow({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isComposingKeyEvent(e.nativeEvent)) return
     // sendOnCtrlEnter 模式：仅 Ctrl/Cmd+Enter 发送，裸 Enter 换行
     // 默认模式：裸 Enter 发送，Shift+Enter 换行
     const isSendCombo = sendOnCtrlEnter ? (e.ctrlKey || e.metaKey) : !e.shiftKey

@@ -9,7 +9,7 @@ export function normalizeAnalysisShape(
   userMessage: string,
   assistantMessage: string
 ): { data: AnalysisResult; coerced: boolean } {
-  if (typeof raw !== 'object' || raw === null) {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     throw new Error('normalizeAnalysisShape: input is not an object')
   }
   const r = raw as Record<string, unknown>
@@ -94,11 +94,7 @@ export function normalizeAnalysisShape(
       const single = pickString(g, ['explanation', 'detail'])
       if (single) explanationParts.push(single)
     }
-    const scoreRaw = g.score
-    const score =
-      typeof scoreRaw === 'number' && Number.isFinite(scoreRaw)
-        ? scoreRaw
-        : Number(scoreRaw) || 60
+    const score = normalizeGrammarScore(g.score)
     const combinedExplanation = explanationParts.join('；') || 'No specific issues found.'
     const corrected = resolveCorrectedSentence(
       pickString(g, ['correctedVersion', 'corrected', 'correction']),
@@ -121,16 +117,7 @@ export function normalizeAnalysisShape(
       }
     ]
   } else {
-    coerced = true
-    grammarCorrections = [
-      {
-        original: userMessage,
-        corrected: userMessage,
-        explanation: 'No specific issues found.',
-        politeForm: userMessage,
-        score: 80
-      }
-    ]
+    throw new Error('normalizeAnalysisShape: missing or invalid grammarCorrections')
   }
 
   let assistantReplyInsight: AnalysisResult['assistantReplyInsight']
@@ -177,26 +164,25 @@ function pickString(obj: Record<string, unknown>, keys: string[]): string | unde
   return undefined
 }
 
+function normalizeGrammarScore(value: unknown): number {
+  const score = typeof value === 'string' && value.trim() ? Number(value) : value
+  if (typeof score !== 'number' || !Number.isFinite(score)) {
+    throw new Error('normalizeAnalysisShape: missing or invalid grammar score')
+  }
+  return score
+}
+
 function normalizeGrammarCorrection(
   item: unknown,
   fallbackOriginal: string,
   assistantMessage: string
 ): AnalysisResult['grammarCorrections'][number] {
-  if (typeof item !== 'object' || item === null) {
-    return {
-      original: fallbackOriginal,
-      corrected: fallbackOriginal,
-      explanation: '',
-      politeForm: fallbackOriginal,
-      score: 80
-    }
+  if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+    throw new Error('normalizeAnalysisShape: invalid grammar correction')
   }
   const g = item as Record<string, unknown>
   const explanation = pickString(g, ['explanation', 'detail', 'note']) ?? ''
-  const score =
-    typeof g.score === 'number' && Number.isFinite(g.score)
-      ? g.score
-      : Number(g.score) || 80
+  const score = normalizeGrammarScore(g.score)
   const corrected = resolveCorrectedSentence(
     pickString(g, ['corrected', 'correction']),
     fallbackOriginal,

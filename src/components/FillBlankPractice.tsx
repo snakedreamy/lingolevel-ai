@@ -9,6 +9,7 @@ import {
 } from './Icon'
 import { LEVELS } from '../data/levels'
 import { useFillBlankPractice } from '../hooks/useFillBlankPractice'
+import { isComposingKeyEvent } from '../lib/keyboard'
 import { FILL_BLANK_MAX_COUNT, FILL_BLANK_MIN_COUNT } from '../types'
 import type { AskContext, DifficultyLevel, FillBlankCard, FillBlankFocus, FillBlankProgress, ThinkingEffort } from '../types'
 import { useSpeech } from './ui'
@@ -164,8 +165,9 @@ function Sentence({ card, reveal }: { card: FillBlankCard; reveal: boolean }) {
 }
 
 function SetupView({
-  count, setCount, focus, setFocus, level, error, onLevelChange, onStart,
+  count, setCount, focus, setFocus, level, error, persistenceWarning, onLevelChange, onStart,
 }: {
+  persistenceWarning: string | null
   count: number
   setCount: (count: number) => void
   focus: FillBlankFocus
@@ -186,6 +188,7 @@ function SetupView({
         <TextCursorInput className="h-5 w-5 ui-text-faint" />
       </header>
 
+      {persistenceWarning && <p role="alert" className="ui-danger-soft mx-5 mt-4 rounded-md border px-3 py-2 text-xs leading-5 sm:mx-8">{persistenceWarning}</p>}
       <div className="grid gap-8 p-5 sm:p-8 lg:grid-cols-2 lg:gap-12 lg:p-10">
         <section className="space-y-6" aria-labelledby="fill-basic-settings">
           <h3 id="fill-basic-settings" className="text-base font-bold">基础设置</h3>
@@ -255,10 +258,11 @@ function SetupView({
   )
 }
 
-function LoadingView({ count }: { count: number }) {
+function LoadingView({ count, persistenceWarning }: { count: number; persistenceWarning: string | null }) {
   return (
     <div className="grid h-full place-items-center">
       <div className="max-w-sm px-6 text-center">
+        {persistenceWarning && <p role="alert" className="ui-danger-soft mb-5 rounded-md border px-3 py-2 text-xs leading-5">{persistenceWarning}</p>}
         <div className="relative mx-auto grid h-20 w-20 place-items-center rounded-full border ui-rule text-accent">
           <LoaderCircle className="h-8 w-8 animate-spin" />
         </div>
@@ -329,10 +333,10 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
 
   if (practice.phase === 'setup') {
     return <SetupView count={practice.count} setCount={practice.setCount} focus={practice.focus}
-      setFocus={practice.setFocus} level={props.level} error={practice.error}
+      setFocus={practice.setFocus} level={props.level} error={practice.error} persistenceWarning={practice.persistenceWarning}
       onLevelChange={props.onLevelChange} onStart={() => { void practice.start() }} />
   }
-  if (practice.phase === 'loading') return <LoadingView count={practice.count} />
+  if (practice.phase === 'loading') return <LoadingView count={practice.count} persistenceWarning={practice.persistenceWarning} />
 
   if (practice.phase === 'complete') {
     const score = practice.stats.total ? Math.round((practice.stats.firstTry / practice.stats.total) * 100) : 0
@@ -343,6 +347,7 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
     return (
       <div className="fill-blank-enter ui-surface ui-scroll mx-auto h-full w-full max-w-5xl overflow-y-auto p-5 sm:p-9">
         <div className="mx-auto max-w-3xl">
+          {practice.persistenceWarning && <p role="alert" className="ui-danger-soft mb-5 rounded-md border px-3 py-2 text-xs leading-5">{practice.persistenceWarning}</p>}
           <div className="flex items-start justify-between gap-4 border-b ui-rule pb-7">
             <div>
               <span className="margin-code">本组批阅结果</span>
@@ -452,6 +457,7 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
           <button type="button" onClick={practice.resetToSetup} className="rounded-md p-1.5 ui-text-faint hover:bg-muted-bg md:hidden" aria-label="结束本组"><XCircle className="h-4 w-4" /></button>
         </div>
 
+        {practice.persistenceWarning && <p role="alert" className="ui-danger-soft shrink-0 border-b px-5 py-2 text-xs leading-5 sm:px-7">{practice.persistenceWarning}</p>}
         <div ref={contentRef} className="fill-blank-content ui-scroll min-h-0 flex-1 overflow-y-auto px-5 py-7 sm:px-9 sm:py-10 lg:px-14">
           <div className="mx-auto max-w-3xl">
             {practice.isFallback && practice.currentIndex === 0 && (
@@ -579,7 +585,10 @@ export default function FillBlankPractice(props: FillBlankPracticeProps) {
               <label htmlFor="fill-answer" className="text-xs font-bold ui-text-muted">填写缺少的单词</label>
               <div className={`mt-2 flex items-center rounded-md border bg-surface pr-2 transition focus-within:ring-1  ${answerError ? 'border-mark focus-within:ring-mark/40' : 'border-input-border focus-within:border-accent focus-within:ring-accent/40 '}`}>
                 <input ref={inputRef} id="fill-answer" value={item.input} onChange={(event) => { practice.updateInput(event.target.value); setAnswerError(false) }}
-                  onKeyDown={(event) => { if (event.key === 'Enter') handleSubmit() }} autoComplete="off" autoCapitalize="none" spellCheck={false} enterKeyHint="done"
+                  onKeyDown={(event) => {
+                    if (isComposingKeyEvent(event.nativeEvent)) return
+                    if (event.key === 'Enter') handleSubmit()
+                  }} autoComplete="off" autoCapitalize="none" spellCheck={false} enterKeyHint="done"
                   placeholder="输入答案" className="target-lang h-13 min-w-0 flex-1 bg-transparent px-4 text-lg outline-none placeholder:text-disabled-text" />
                 <button type="button" onClick={handleSubmit} disabled={!item.input.trim()}
                   className="h-9 cursor-pointer rounded-md bg-accent px-4 text-xs font-bold text-on-accent transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text">检查</button>

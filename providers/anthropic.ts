@@ -1,7 +1,7 @@
 import type {
   Provider, ProviderConfig, ProviderChatInput, ProviderChatStreamOutput, ProviderAnalyzeInput, ProviderThinkingEffort
 } from './types'
-import { callWithRetry } from './retry'
+import { callWithRetry, streamWithRetry } from './retry'
 import { fetchViaProxy } from './proxy'
 import { fallbackChatReply, fallbackAnalyzeOutput } from './fallback'
 import { buildAnalysisUserPrompt } from './schema'
@@ -15,6 +15,39 @@ type AnthropicOutputConfig = { effort?: ProviderThinkingEffort }
 function anthropicReasoning(effort: ProviderThinkingEffort | undefined, maxTokens: number): { thinking?: { type: 'adaptive' }; output_config?: AnthropicOutputConfig } {
   return effort && maxTokens > 1024
     ? { thinking: { type: 'adaptive' }, output_config: { effort } }
+    : {}
+}
+
+function parseAnthropicSseEvent(event: string): { delta?: string; done?: boolean } {
+  const data = event.split(/\r?\n/)
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice(5).trimStart())
+    .join('\n')
+  if (!data.trim()) return {}
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(data)
+  } catch (error) {
+    if (error instanceof SyntaxError) return {}
+    throw error
+  }
+  if (typeof parsed !== 'object' || parsed === null) return {}
+  const payload = parsed as {
+    type?: string
+    delta?: { text?: unknown }
+    error?: { message?: unknown; type?: unknown }
+  }
+  if (payload.type === 'error') {
+    const message = typeof payload.error?.message === 'string' ? payload.error.message : 'unknown'
+    const type = typeof payload.error?.type === 'string' ? payload.error.type : ''
+    throw Object.assign(new Error(`Anthropic stream error (${type}): ${message}`), {
+      status: type === 'rate_limit_error' ? 429 : undefined,
+    })
+  }
+  if (payload.type === 'message_stop') return { done: true }
+  return payload.type === 'content_block_delta' && typeof payload.delta?.text === 'string'
+    ? { delta: payload.delta.text }
     : {}
 }
 
@@ -35,6 +68,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
         'anthropic-version': ANTHROPIC_VERSION
       },
       body: JSON.stringify(body),
+      redirect: 'error',
       signal
     }, cfg.proxyUrl)
     if (!res.ok) {
@@ -72,6 +106,7 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
         'anthropic-version': ANTHROPIC_VERSION,
       },
       body: JSON.stringify({ ...(body as object), stream: true }),
+      redirect: 'error',
       signal,
     }, cfg.proxyUrl)
     if (!res.ok) {
@@ -84,33 +119,28 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
     if (!reader) throw new Error(`Anthropic ${label} returned no body`)
     const decoder = new TextDecoder()
     let buffer = ''
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      const events = buffer.split('\n\n')
-      buffer = events.pop() ?? ''
-      for (const evt of events) {
-        const line = evt.trim()
-        if (!line.startsWith('data:')) continue
-        const data = line.slice(5).trim()
-        try {
-          const parsed = JSON.parse(data) as {
-            type?: string
-            delta?: { type?: string; text?: string }
-            error?: { message?: string }
-          }
-          if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
-            yield parsed.delta.text
-          }
-          if (parsed.type === 'error') {
-            throw new Error(`Anthropic stream error: ${parsed.error?.message ?? 'unknown'}`)
-          }
-        } catch (err) {
-          // Re-throw real stream errors; ignore JSON parse hiccups on partial lines.
-          if (err instanceof Error && err.message.startsWith('Anthropic stream error')) throw err
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const events = buffer.split(/\r?\n\r?\n/)
+        buffer = events.pop() ?? ''
+        for (const event of events) {
+          const result = parseAnthropicSseEvent(event)
+          if (result.delta) yield result.delta
+          if (result.done) return
         }
       }
+      buffer += decoder.decode()
+      if (buffer.trim()) {
+        const result = parseAnthropicSseEvent(buffer)
+        if (result.delta) yield result.delta
+        if (result.done) return
+      }
+      throw new Error(`Anthropic ${label} stream closed before completion`)
+    } finally {
+      await reader.cancel().catch(() => undefined)
     }
   }
 
@@ -152,26 +182,20 @@ export function createAnthropicProvider(cfg: ProviderConfig): Provider {
       isFallback: false,
     }
     output.stream = (async function* () {
-      const timeoutController = new AbortController()
-      const timer = setTimeout(() => timeoutController.abort(), cfg.timeoutMs)
-      const combined = input.signal
-        ? AbortSignal.any([timeoutController.signal, input.signal])
-        : timeoutController.signal
       let emitted = false
-
       try {
-        for await (const delta of runCompletionStream('chat', body, combined)) {
+        for await (const delta of streamWithRetry(
+          (signal) => runCompletionStream('chat', body, signal),
+          { timeoutMs: cfg.timeoutMs, retries: input.maxAttempts, signal: input.signal },
+        )) {
           emitted = true
           yield { delta }
         }
-        if (!emitted) throw new Error('Anthropic chat stream returned empty content')
       } catch (err) {
         if (input.signal?.aborted || emitted) throw err
         console.error('[anthropic.chatStream] falling back:', errorMessage(err))
         output.isFallback = true
         yield { delta: fallbackChatReply(input.scenarioId, input.diversitySeed, input.messages.length) }
-      } finally {
-        clearTimeout(timer)
       }
     })()
     return output
